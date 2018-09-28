@@ -17,7 +17,7 @@ then
         | gzip > test/tmp.input.vcf.gz
 fi
 
-if [ ! -f test/hg38.fa ]
+if [ ! -f test/tmp.hg38.fa ]
 then
     curl http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz | gunzip > test/tmp.hg38.fa
     samtools faidx test/tmp.hg38.fa
