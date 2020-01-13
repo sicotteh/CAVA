@@ -1,12 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 
 # Collection of basic classes and functions
 #######################################################################################################################
 
 
-from __future__ import division
-import os, sys
+
+import os
 import logging
 import gzip
 import time
@@ -168,7 +168,13 @@ class Record(object):
         if options.args['inputformat'].upper() == 'VCF':
             cols = line.strip().split("\t")
             self.chrom = cols[0]
-            if self.chrom.startswith('chr'): self.chrom = self.chrom[3:]
+
+            if self.chrom.startswith('chr'):
+                self.chrom_chr_prefix = True
+                self.chrom = self.chrom[3:]
+            else:
+                self.chrom_chr_prefix = False
+
             self.pos = int(cols[1])
             self.id = cols[2]
             self.ref = cols[3]
@@ -299,8 +305,9 @@ class Record(object):
         if outformat.upper() == 'VCF':
 
             # Creating first part of the VCF record (up to FILTER field)
-            record = self.chrom + '\t' + str(self.pos) + '\t' + self.id + '\t' + self.ref + '\t' + ",".join(
-                outalts) + '\t' + self.qual + '\t' + self.filter + '\t'
+
+            chromstr = 'chr' + self.chrom if self.chrom_chr_prefix else self.chrom
+            record = [chromstr, str(self.pos), self.id, self.ref, ",".join(outalts), self.qual, self.filter]
 
             # Preparing components of the String to be added to the INFO field
             flags = []
@@ -327,15 +334,17 @@ class Record(object):
 
             # Adding second part of the VCF record (starting from the INFO field)
             if self.info == '.' or self.info == '':
-                record += added + '\t' + "\t".join(self.rest)
+                record += [added]
+                record += self.rest
             else:
-                record += self.info + ';' + added + '\t' + "\t".join(self.rest)
+                record += [self.info + ';' + added]
+                record += self.rest
 
             # Writing record to the output file
             if stdout:
-                print record
+                print('\t'.join(record))
             else:
-                outfile.write(record + '\n')
+                outfile.write('\t'.join(record) + '\n')
 
         # Writing output in TSV format
         if outformat.upper() == 'TSV':
@@ -372,7 +381,7 @@ class Record(object):
 
                     # Writing record to the output file
                     if stdout:
-                        print record + rest
+                        print(record + rest)
                     else:
                         outfile.write(record + rest + '\n')
 
@@ -771,7 +780,9 @@ class Options(object):
         self.read()
 
         if (self.args['ensembl'] == '.' or self.args['ensembl'] == ''):
-            self.args['ensembl'] = os.path.dirname(os.path.realpath(__file__)) + '/defaultdb/ensembl75s.gz'
+            d = os.path.dirname(os.path.realpath(__file__))
+            dir = d[:d.rfind('env/lib')]
+            self.args['ensembl'] = dir + '/defaultdb/ensembl75s.gz'
 
 
     # Reading options from configuration file
@@ -781,13 +792,13 @@ class Options(object):
             line = line.strip()
             if line.startswith('@'):
                 key = line[1:line.index('=')].strip()
-                if key in self.defs.keys():
+                if key in list(self.defs.keys()):
                     (typeofvar, default) = self.defs[key]
                     if typeofvar == 'string': self.args[key] = line[line.find('=') + 1:].strip()
                     if typeofvar == 'list': self.args[key] = line[line.find('=') + 1:].strip().split(',')
                     if typeofvar == 'boolean': self.args[key] = (line[line.find('=') + 1:].strip().upper() == 'TRUE')
-        for key, (typeofvar, default) in self.defs.iteritems():
-            if not key in self.args.keys(): self.args[key] = default
+        for key, (typeofvar, default) in self.defs.items():
+            if not key in list(self.args.keys()): self.args[key] = default
 
 
 #######################################################################################################################            
@@ -797,7 +808,7 @@ class Options(object):
 # Reading gene, transcript or snp list from file
 def readSet(options, tag):
     ret = set()
-    if tag in options.args.keys() and not (options.args[tag] == '' or options.args[tag] == '.'):
+    if tag in list(options.args.keys()) and not (options.args[tag] == '' or options.args[tag] == '.'):
         for line in open(options.args[tag]):
             line = line.strip()
             if line == '' or line == '.': continue
@@ -816,31 +827,31 @@ def writeHeader(options, header, outfile, stdout):
 
     if options.args['prefix']: prefix = 'CAVA_'
     else: prefix = ''
-    headerinfo = '##INFO=<ID='+prefix+'TYPE,Number=.,Type=String,Description=\"Variant type: Substitution, Insertion, Deletion or Complex\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'GENE,Number=.,Type=String,Description=\"HGNC gene symbol\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'TRANSCRIPT,Number=.,Type=String,Description=\"Transcript identifier\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'GENEID,Number=.,Type=String,Description=\"Gene identifier\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'TRINFO,Number=.,Type=String,Description=\"Transcript information: Strand/Length of transcript/Number of exons/Length of coding DNA + UTR/Protein length\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'LOC,Number=.,Type=String,Description=\"Location of variant in transcript\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'CSN,Number=.,Type=String,Description=\"CSN annotation\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'PROTPOS,Number=.,Type=String,Description=\"Protein position\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'PROTREF,Number=.,Type=String,Description=\"Reference amino acids\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'PROTALT,Number=.,Type=String,Description=\"Alternate amino acids\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'CLASS,Number=.,Type=String,Description=\"5PU: Variant in 5 prime untranslated region, 3PU: Variant in 3 prime untranslated region, INT: Intronic variant that does not alter splice site bases, SS: Intronic variant that alters a splice site base but not an ESS or SS5 base, ESS: Variant that alters essential splice site base (+1,+2,-1,-2), SS5: Variant that alters the +5 splice site base, but not an ESS base, SY: Synonymous change caused by a base substitution (i.e. does not alter amino acid), NSY: Nonsynonymous change (missense) caused by a base substitution (i.e. alters amino acid), IF: Inframe insertion and/or deletion (variant alters the length of coding sequence but not the frame), IM: Variant that alters the start codon, SG: Variant resulting in stop-gain (nonsense) mutation, SL: Variant resulting in stop-loss mutation, FS: Frameshifting insertion and/or deletion (variant alters the length and frame of coding sequence), EE: Inframe deletion, insertion or base substitution which affects the first or last three bases of the exon\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'SO,Number=.,Type=String,Description=\"Sequence Ontology term\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'ALTFLAG,Number=.,Type=String,Description=\"None: variant has the same CSN annotation regardless of its left or right-alignment, AnnNotClass/AnnNotSO/AnnNotClassNotSO: indel has an alternative CSN but the same CLASS and/or SO, AnnAndClass/AnnAndSO/AnnAndClassNotSO/AnnAndSONotClass/AnnAndClassAndSO: Multiple CSN with different CLASS and/or SO annotations\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'ALTANN,Number=.,Type=String,Description=\"Alternate CSN annotation\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'ALTCLASS,Number=.,Type=String,Description=\"Alternate CLASS annotation\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'ALTSO,Number=.,Type=String,Description=\"Alternate SO annotation\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'IMPACT,Number=.,Type=String,Description=\"Impact group the variant is stratified into\",Source=\"CAVA\",Version=\"1.2.0\">\n'
-    headerinfo += '##INFO=<ID='+prefix+'DBSNP,Number=.,Type=String,Description=\"rsID from dbSNP\",Source=\"CAVA\",Version=\"1.2.0\">\n'
+    headerinfo = '##INFO=<ID='+prefix+'TYPE,Number=.,Type=String,Description=\"Variant type: Substitution, Insertion, Deletion or Complex\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'GENE,Number=.,Type=String,Description=\"HGNC gene symbol\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'TRANSCRIPT,Number=.,Type=String,Description=\"Transcript identifier\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'GENEID,Number=.,Type=String,Description=\"Gene identifier\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'TRINFO,Number=.,Type=String,Description=\"Transcript information: Strand/Length of transcript/Number of exons/Length of coding DNA + UTR/Protein length\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'LOC,Number=.,Type=String,Description=\"Location of variant in transcript\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'CSN,Number=.,Type=String,Description=\"CSN annotation\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'PROTPOS,Number=.,Type=String,Description=\"Protein position\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'PROTREF,Number=.,Type=String,Description=\"Reference amino acids\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'PROTALT,Number=.,Type=String,Description=\"Alternate amino acids\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'CLASS,Number=.,Type=String,Description=\"5PU: Variant in 5 prime untranslated region, 3PU: Variant in 3 prime untranslated region, INT: Intronic variant that does not alter splice site bases, SS: Intronic variant that alters a splice site base but not an ESS or SS5 base, ESS: Variant that alters essential splice site base (+1,+2,-1,-2), SS5: Variant that alters the +5 splice site base, but not an ESS base, SY: Synonymous change caused by a base substitution (i.e. does not alter amino acid), NSY: Nonsynonymous change (missense) caused by a base substitution (i.e. alters amino acid), IF: Inframe insertion and/or deletion (variant alters the length of coding sequence but not the frame), IM: Variant that alters the start codon, SG: Variant resulting in stop-gain (nonsense) mutation, SL: Variant resulting in stop-loss mutation, FS: Frameshifting insertion and/or deletion (variant alters the length and frame of coding sequence), EE: Inframe deletion, insertion or base substitution which affects the first or last three bases of the exon\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'SO,Number=.,Type=String,Description=\"Sequence Ontology term\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'ALTFLAG,Number=.,Type=String,Description=\"None: variant has the same CSN annotation regardless of its left or right-alignment, AnnNotClass/AnnNotSO/AnnNotClassNotSO: indel has an alternative CSN but the same CLASS and/or SO, AnnAndClass/AnnAndSO/AnnAndClassNotSO/AnnAndSONotClass/AnnAndClassAndSO: Multiple CSN with different CLASS and/or SO annotations\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'ALTANN,Number=.,Type=String,Description=\"Alternate CSN annotation\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'ALTCLASS,Number=.,Type=String,Description=\"Alternate CLASS annotation\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'ALTSO,Number=.,Type=String,Description=\"Alternate SO annotation\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'IMPACT,Number=.,Type=String,Description=\"Impact group the variant is stratified into\",Source=\"CAVA\",Version=\"1.2.2\">\n'
+    headerinfo += '##INFO=<ID='+prefix+'DBSNP,Number=.,Type=String,Description=\"rsID from dbSNP\",Source=\"CAVA\",Version=\"1.2.2\">\n'
 
     dateline = '##fileDate='+time.strftime("%Y-%m-%d")
 
     if options.args['outputformat'] == 'VCF':
         if header == '':
             if stdout:
-                print '##fileformat=VCFv4.1\n' + dateline + '\n' + headerinfo + '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO'
+                print('##fileformat=VCFv4.1\n' + dateline + '\n' + headerinfo + '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO')
             else:
                 outfile.write('##fileformat=VCFv4.1\n' + dateline + '\n' + headerinfo + '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n')
         else:
@@ -854,7 +865,7 @@ def writeHeader(options, header, outfile, stdout):
                     continue
                 headerm.append(x)
             if stdout:
-                print startline + '\n' + dateline + '\n' + headerinfo + '\n'.join(headerm)+'\n'
+                print(startline + '\n' + dateline + '\n' + headerinfo + '\n'.join(headerm)+'\n')
             else:
                 outfile.write(startline + '\n' + dateline + '\n' + headerinfo + '\n'.join(headerm)+'\n')
 
@@ -878,7 +889,7 @@ def writeHeader(options, header, outfile, stdout):
             str += '\tDBSNP'
 
         if stdout:
-            print str
+            print(str)
         else:
             outfile.write(str + '\n')
 
@@ -887,7 +898,7 @@ def writeHeader(options, header, outfile, stdout):
 def countRecords(filename):
     ret = 0
     if filename.endswith('.gz'):
-        inputf = gzip.open(filename, 'r')
+        inputf = gzip.open(filename, 'rt')
     else:
         inputf = open(filename)
     for line in inputf:
@@ -901,10 +912,10 @@ def checkOptions(options):
     # Checking if @inputformat was given correct value
     str = options.args['inputformat'].upper()
     if not (str == 'VCF' or str == 'TXT'):
-        print 'ERROR: incorrect value of the tag @inputformat.'
-        print '(Allowed values: \'VCF\' or \'TXT\')'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: incorrect value of the tag @inputformat.')
+        print('(Allowed values: \'VCF\' or \'TXT\')')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('Incorrect value of the tag @inputformat.')
             logging.info('No output file written. CAVA quit.')
@@ -913,10 +924,10 @@ def checkOptions(options):
     # Checking if @outputformat was given correct value
     str = options.args['outputformat'].upper()
     if not (str == 'VCF' or str == 'TSV'):
-        print 'ERROR: incorrect value of the tag @outputformat.'
-        print '(Allowed values: \'VCF\' or \'TSV\')'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: incorrect value of the tag @outputformat.')
+        print('(Allowed values: \'VCF\' or \'TSV\')')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('Incorrect value of the tag @outputformat.')
             logging.info('No output file written. CAVA quit.')
@@ -926,10 +937,10 @@ def checkOptions(options):
     str = options.args['type'].upper()
     if not (
                                     str == 'ALL' or str == 'SUBSTITUTION' or str == 'INDEL' or str == 'INSERTION' or str == 'DELETION' or str == 'COMPLEX'):
-        print 'ERROR: incorrect value of the tag @type.'
-        print '(Allowed values: \'all\', \'substitution\', \'indel\', \'insertion\', \'deletion\' or \'complex\')'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: incorrect value of the tag @type.')
+        print('(Allowed values: \'all\', \'substitution\', \'indel\', \'insertion\', \'deletion\' or \'complex\')')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('Incorrect value of the tag @type.')
             logging.info('No output file written. CAVA quit.')
@@ -938,10 +949,10 @@ def checkOptions(options):
     # Checking if @ssrange was given correct value
     ssrange = int(options.args['ssrange'])
     if not ssrange >= 6:
-        print 'ERROR: incorrect value of the tag @ssrange.'
-        print '(Minimum value allowed is 6.)'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: incorrect value of the tag @ssrange.')
+        print('(Minimum value allowed is 6.)')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('Incorrect value of the tag @ssrange.')
             logging.info('No output file written. CAVA quit.')
@@ -950,10 +961,10 @@ def checkOptions(options):
     # Checking if @ontology was given correct value
     str = options.args['ontology'].upper()
     if not (str == 'CLASS' or str == 'SO' or str == 'BOTH'):
-        print 'ERROR: incorrect value of the tag @ontology.'
-        print '(Allowed values: \'CLASS\' or \'SO\' or \'both\')'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: incorrect value of the tag @ontology.')
+        print('(Allowed values: \'CLASS\' or \'SO\' or \'both\')')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('Incorrect value of the tag @ontology.')
             logging.info('No output file written. CAVA quit.')
@@ -961,9 +972,9 @@ def checkOptions(options):
 
     # Checking if @reference file exists
     if not os.path.isfile(options.args['reference']):
-        print 'ERROR: the file given as @reference does not exist.'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: the file given as @reference does not exist.')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('The file given as @reference does not exist.')
             logging.info('No output file written. CAVA quit.')
@@ -971,9 +982,9 @@ def checkOptions(options):
 
     # Checking if @reference index file exists
     if not os.path.isfile(options.args['reference'] + '.fai'):
-        print 'ERROR: the .fa.fai index file for @reference is not found.'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: the .fa.fai index file for @reference is not found.')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('The .fa.fai index file for @reference is not found.')
             logging.info('No output file written. CAVA quit.')
@@ -982,9 +993,9 @@ def checkOptions(options):
     # Checking if @ensembl file exists
     if not (options.args['ensembl'] == '.' or options.args['ensembl'] == '') and not os.path.isfile(
             options.args['ensembl']):
-        print 'ERROR: the file given as @ensembl does not exist.'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: the file given as @ensembl does not exist.')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('The file given as @ensembl does not exist.')
             logging.info('No output file written. CAVA quit.')
@@ -993,9 +1004,9 @@ def checkOptions(options):
     # Checking if @ensembl index file exists
     if not (options.args['ensembl'] == '.' or options.args['ensembl'] == '') and not os.path.isfile(
                     options.args['ensembl'] + '.tbi'):
-        print 'ERROR: the .gz.tbi index file for @ensembl is not found.'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: the .gz.tbi index file for @ensembl is not found.')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('The .gz.tbi index file for @ensembl is not found.')
             logging.info('No output file written. CAVA quit.')
@@ -1003,9 +1014,9 @@ def checkOptions(options):
 
     # Checking if @dbsnp file exists
     if not (options.args['dbsnp'] == '.' or options.args['dbsnp'] == '') and not os.path.isfile(options.args['dbsnp']):
-        print 'ERROR: the file given as @dbsnp does not exist.'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: the file given as @dbsnp does not exist.')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('The file given as @dbsnp does not exist.')
             logging.info('No output file written. CAVA quit.')
@@ -1014,9 +1025,9 @@ def checkOptions(options):
     # Checking if @dbsnp index file exists
     if not (options.args['dbsnp'] == '.' or options.args['dbsnp'] == '') and not os.path.isfile(
                     options.args['dbsnp'] + '.tbi'):
-        print 'ERROR: the .gz.tbi index file for @dbsnp is not found.'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: the .gz.tbi index file for @dbsnp is not found.')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('The .gz.tbi index file for @dbsnp is not found.')
             logging.info('No output file written. CAVA quit.')
@@ -1025,9 +1036,9 @@ def checkOptions(options):
     # Checking if @target file exists
     if not (options.args['target'] == '.' or options.args['target'] == '') and not os.path.isfile(
             options.args['target']):
-        print 'ERROR: the file given as @target does not exist.'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: the file given as @target does not exist.')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('The file given as @target does not exist.')
             logging.info('No output file written. CAVA quit.')
@@ -1036,9 +1047,9 @@ def checkOptions(options):
     # Checking if @target index file exists
     if not (options.args['target'] == '.' or options.args['target'] == '') and not os.path.isfile(
                     options.args['target'] + '.tbi'):
-        print 'ERROR: the .bed.tbi index file for @target is not found.'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: the .bed.tbi index file for @target is not found.')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('The .bed.tbi index file for @target is not found.')
             logging.info('No output file written. CAVA quit.')
@@ -1047,9 +1058,9 @@ def checkOptions(options):
     # Checking if @genelist file exists
     if not (options.args['genelist'] == '.' or options.args['genelist'] == '') and not os.path.isfile(
             options.args['genelist']):
-        print 'ERROR: the file given as @genelist does not exist.'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: the file given as @genelist does not exist.')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('The file given as @genelist does not exist.')
             logging.info('No output file written. CAVA quit.')
@@ -1058,9 +1069,9 @@ def checkOptions(options):
     # Checking if @transcriptlist file exists
     if not (options.args['transcriptlist'] == '.' or options.args['transcriptlist'] == '') and not os.path.isfile(
             options.args['transcriptlist']):
-        print 'ERROR: the file given as @transcriptlist does not exist.'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: the file given as @transcriptlist does not exist.')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('The file given as @transcriptlist does not exist.')
             logging.info('No output file written. CAVA quit.')
@@ -1069,9 +1080,9 @@ def checkOptions(options):
     # Checking if @snplist file exists
     if not (options.args['snplist'] == '.' or options.args['snplist'] == '') and not os.path.isfile(
             options.args['snplist']):
-        print 'ERROR: the file given as @snplist does not exist.'
-        print '\nNo output file written. CAVA quit.'
-        print "--------------------------------------------------------------------\n"
+        print('ERROR: the file given as @snplist does not exist.')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
             logging.error('The file given as @snplist does not exist.')
             logging.info('No output file written. CAVA quit.')
