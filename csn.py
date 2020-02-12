@@ -60,7 +60,10 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
     coord1, intr1, coord2, intr2 = calculateCSNCoordinates(variant, transcript)
 
     # Creating DNA level annotation
-    dna, dna_ins = makeDNAannotation(variant, transcript, reference)
+    try:
+        dna, dna_ins = makeDNAannotation(variant, transcript, reference)
+    except TypeError:
+        dna, dna_ins = 'X', 'X'
 
     # Creating protein level annotation
     where = transcript.whereIsThisVariant(variant)
