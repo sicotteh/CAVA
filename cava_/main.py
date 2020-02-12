@@ -4,12 +4,13 @@ import logging
 import multiprocessing
 import os
 import sys
+
 import pysam
 
-from . import core
 from cava_.data import Ensembl
 from cava_.data import Reference
 from cava_.data import dbSNP
+from . import core
 from .core import Options
 from .core import Record
 
@@ -83,7 +84,7 @@ def printEndInfo(options, copts, starttime):
 	print('\n(Size of output file: ' + str(round(os.stat(outfn).st_size / 1000, 1)) + ' Kbyte)')
 	print('\nCAVA (Clinical Annotation of VAriants) successfully finished.')
 	print('Ended: ', str(endtime))
-	print('Total runtime: '+str(endtime-starttime))
+	print('Total runtime: ' + str(endtime - starttime))
 	print("-----------------------------------------------------------------------\n")
 	if options.args['logfile']:
 		logging.info('100% of records annotated.')
@@ -97,8 +98,10 @@ def findFileBreaks(inputf, threads):
 	started = False
 	counter = 0
 
-	if inputf.endswith('.gz'): infile = gzip.open(inputf, 'rt')
-	else: infile = open(inputf)
+	if inputf.endswith('.gz'):
+		infile = gzip.open(inputf, 'rt')
+	else:
+		infile = open(inputf)
 
 	for line in infile:
 		counter += 1
@@ -120,8 +123,10 @@ def findFileBreaks(inputf, threads):
 def readHeader(inputfn):
 	ret = []
 
-	if inputfn.endswith('.gz'): infile = gzip.open(inputfn, 'rt')
-	else: infile = open(inputfn)
+	if inputfn.endswith('.gz'):
+		infile = gzip.open(inputfn, 'rt')
+	else:
+		infile = open(inputfn)
 
 	for line in infile:
 		line = line.strip()
@@ -163,7 +168,7 @@ def mergeTmpFiles(output, format, threads):
 class SingleJob(multiprocessing.Process):
 	# Process constructor
 	def __init__(self, threadidx, options, copts, startline, endline, genelist, transcriptlist, snplist, impactdir,
-				 numOfRecords):
+	             numOfRecords):
 		multiprocessing.Process.__init__(self)
 
 		# Thread index
@@ -194,10 +199,11 @@ class SingleJob(multiprocessing.Process):
 			for line in c:
 				if line.startswith('@chrom'):
 					chroms = line[line.find('=') + 1:].strip().split(',')
-					self.chroms=chroms
+					self.chroms = chroms
 		if self.chroms[0] == '.':
-			self.chroms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X', 'Y', 'MT']
-			
+			self.chroms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17',
+			               '18', '19', '20', '21', '22', 'X', 'Y', 'MT']
+
 		# Input file
 		if copts.input.endswith('.gz'):
 			self.infile = gzip.open(copts.input, 'rt')
@@ -225,10 +231,10 @@ class SingleJob(multiprocessing.Process):
 			for line in c:
 				if line.startswith('@codon_usage'):
 					codon_usage = line[line.find('=') + 1:].strip().split(',')
-					self.codon_usage=codon_usage
+					self.codon_usage = codon_usage
 
 		if (not options.args['ensembl'] == '.') and (not options.args['ensembl'] == ''):
-			self.ensembl = Ensembl(options, genelist, transcriptlist, codon_usage[0] )
+			self.ensembl = Ensembl(options, genelist, transcriptlist, codon_usage[0])
 			if options.args['logfile'] and threadidx == 1: logging.info('Connected to Ensembl database.')
 		else:
 			self.ensembl = None
@@ -285,15 +291,17 @@ class SingleJob(multiprocessing.Process):
 			if self.options.args['filter'] and not record.filter == 'PASS': continue
 
 			# Only include records of allowed chromosome names
-			if record.chrom not in self.chroms: 
-				logging.warn("\n####################################\t\t!!!!!!Chromosome " + record.chrom + " not found, skipping!!!!!!\n")
+			if record.chrom not in self.chroms:
+				logging.warning(
+					"\n####################################\t\t!!!!!!Chromosome " + record.chrom + " not found, skipping!!!!!!\n")
 				continue
 
 			# Annotating the record based on the Ensembl, dbSNP and reference data
 			record.annotate(self.ensembl, self.dbsnp, self.reference, self.impactdir)
 
 			# Writing annotated record to output file
-			record.output(self.options.args['outputformat'], self.outfile, self.options, self.genelist, self.transcriptlist, self.snplist, self.copts.stdout)
+			record.output(self.options.args['outputformat'], self.outfile, self.options, self.genelist,
+			              self.transcriptlist, self.snplist, self.copts.stdout)
 
 			# Writing progress information to log file
 			if self.threadidx == 1 and self.options.args['logfile']:
@@ -312,7 +320,6 @@ class SingleJob(multiprocessing.Process):
 
 
 def run(copts, version, default_config_file):
-
 	copts.threads = int(copts.threads)
 	if copts.threads > 1:
 		copts.stdout = False
@@ -338,7 +345,8 @@ def run(copts, version, default_config_file):
 
 	# Initializing log file
 	if options.args['logfile']:
-		logging.basicConfig(filename=copts.output + '.log', filemode='w', format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
+		logging.basicConfig(filename=copts.output + '.log', filemode='w',
+		                    format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
 
 	# Printing out version information and start time
 	if not copts.stdout: starttime = printStartInfo(version)
@@ -392,7 +400,9 @@ def run(copts, version, default_config_file):
 	processes = []
 	for (startline, endline) in breaks:
 		threadidx += 1
-		processes.append(SingleJob(threadidx, options, copts, startline, endline, genelist, transcriptlist, snplist, impactdir, numOfRecords))
+		processes.append(
+			SingleJob(threadidx, options, copts, startline, endline, genelist, transcriptlist, snplist, impactdir,
+			          numOfRecords))
 
 	# Running annotation processes
 	for process in processes:
