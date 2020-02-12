@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 
 # CSN annotation
 #######################################################################################################################
 
-import core
+from . import core
 
 
 # Class representing a CSN annotation
@@ -178,7 +178,7 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
 
     # Checking if there was no change in protein sequence
     if prot == mutprot:
-        idx = coord1 / 3
+        idx = int(coord1 / 3)
         if coord1 % 3 > 0: idx += 1
         return '_p.=', (str(idx), prot[idx-1], prot[idx-1])
 
@@ -284,7 +284,7 @@ def transformToCSNCoordinate(pos, transcript):
                 if transcript.strand == 1:
                     # Checking if genomic position is within intron
                     if prevExonEnd < pos < exon.start + 1:
-                        if pos <= (exon.start + 1 - prevExonEnd) / 2 + prevExonEnd:
+                        if pos <= int((exon.start + 1 - prevExonEnd) / 2) + prevExonEnd:
                             x, y = transformToCSNCoordinate(prevExonEnd, transcript)
                             return x, pos - prevExonEnd
                         else:
@@ -293,7 +293,7 @@ def transformToCSNCoordinate(pos, transcript):
                 else:
                     # Checking if genomic position is within intron
                     if exon.end < pos < prevExonEnd:
-                        if pos >= (prevExonEnd - exon.end + 1) / 2 + exon.end:
+                        if pos >= int((prevExonEnd - exon.end + 1) / 2) + exon.end:
                             x, y = transformToCSNCoordinate(prevExonEnd, transcript)
                             return x, prevExonEnd - pos
                         else:
@@ -323,7 +323,7 @@ def transformToCSNCoordinate(pos, transcript):
                 if transcript.strand == 1:
                     # Checking if genomic position is within intron
                     if prevExonEnd < pos < exon.start + 1:
-                        if pos <= (exon.start + 1 - prevExonEnd) / 2 + prevExonEnd:
+                        if pos <= int((exon.start + 1 - prevExonEnd) / 2) + prevExonEnd:
                             x, y = transformToCSNCoordinate(prevExonEnd, transcript)
                             return x, pos - prevExonEnd
                         else:
@@ -332,7 +332,7 @@ def transformToCSNCoordinate(pos, transcript):
                 else:
                     # Checking if genomic position is within intron
                     if exon.end < pos < prevExonEnd:
-                        if pos >= (prevExonEnd - exon.end + 1) / 2 + exon.end:
+                        if pos >= int((prevExonEnd - exon.end + 1) / 2) + exon.end:
                             x, y = transformToCSNCoordinate(prevExonEnd, transcript)
                             return x, prevExonEnd - pos
                         else:
