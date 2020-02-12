@@ -1,13 +1,15 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 
 # Classes providing interfaces with annotation databases and the reference genome
 #######################################################################################################################
 
-import sys, os
-import core
-import csn
-import conseq
+import os
+import sys
+
+from . import conseq
+from . import core
+from . import csn
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + '/pysamdir')
 import pysam
@@ -68,22 +70,22 @@ class Ensembl(object):
                 hitdict2[transcript.TRANSCRIPT] = transcript
 
             # Find transcripts with which the variant fully or partially overlaps
-            for key, transcript in hitdict1.iteritems():
+            for key, transcript in hitdict1.items():
 
                 if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
                 if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
 
-                if key in hitdict2.keys():
+                if key in list(hitdict2.keys()):
                     ret[key] = transcript
                 else:
                     if not variant.isInsertion(): retOUT[key] = transcript
 
             if not variant.isInsertion():
-                for key, transcript in hitdict2.iteritems():
+                for key, transcript in hitdict2.items():
                     if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
                     if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
 
-                    if not key in hitdict1.keys():
+                    if not key in list(hitdict1.keys()):
                         retOUT[key] = transcript
 
         else:
@@ -189,8 +191,8 @@ class Ensembl(object):
         transcripts_plus, transcriptsOUT_plus = self.findTranscripts(variant_plus, 1, reference)
         transcripts_minus, transcriptsOUT_minus = self.findTranscripts(variant_minus, -1, reference)
 
-        transcripts = set(transcripts_plus.keys() + transcripts_minus.keys())
-        transcriptsOUT = set(transcriptsOUT_plus.keys() + transcriptsOUT_minus.keys())
+        transcripts = set(list(transcripts_plus.keys()) + list(transcripts_minus.keys()))
+        transcriptsOUT = set(list(transcriptsOUT_plus.keys()) + list(transcriptsOUT_minus.keys()))
 
         transcripts = sorted(list(transcripts))
         transcriptsOUT = sorted(list(transcriptsOUT))
@@ -200,7 +202,7 @@ class Ensembl(object):
 
             if TRANSCRIPT in transcripts: continue
 
-            if TRANSCRIPT in transcriptsOUT_plus.keys(): transcript = transcriptsOUT_plus[TRANSCRIPT]
+            if TRANSCRIPT in list(transcriptsOUT_plus.keys()): transcript = transcriptsOUT_plus[TRANSCRIPT]
             else: transcript = transcriptsOUT_minus[TRANSCRIPT]
 
             if len(TRANSCRIPTstring) > 0:
@@ -227,10 +229,10 @@ class Ensembl(object):
             TRINFOstring += transcript.TRINFO
 
             if transcript.strand == 1:
-                if TRANSCRIPT in transcriptsOUT_plus.keys(): LOCstring += 'OUT'
+                if TRANSCRIPT in list(transcriptsOUT_plus.keys()): LOCstring += 'OUT'
                 else: LOCstring += '.'
             else:
-                if TRANSCRIPT in transcriptsOUT_minus.keys(): LOCstring += 'OUT'
+                if TRANSCRIPT in list(transcriptsOUT_minus.keys()): LOCstring += 'OUT'
                 else: LOCstring += '.'
 
             CSNstring += '.'
@@ -249,7 +251,7 @@ class Ensembl(object):
         # Iterating through the list of transcripts
         for TRANSCRIPT in transcripts:
 
-            if TRANSCRIPT in transcripts_plus.keys(): transcript = transcripts_plus[TRANSCRIPT]
+            if TRANSCRIPT in list(transcripts_plus.keys()): transcript = transcripts_plus[TRANSCRIPT]
             else: transcript = transcripts_minus[TRANSCRIPT]
 
             # Separating annotations by different transcripts with colon
@@ -278,13 +280,13 @@ class Ensembl(object):
             TRINFOstring += transcript.TRINFO
 
             # Creating the LOC annotation
-            if TRANSCRIPT in transcripts_plus.keys(): loc_plus = transcript.whereIsThisVariant(variant_plus)
-            elif TRANSCRIPT in transcriptsOUT_plus.keys(): loc_plus = 'OUT'
+            if TRANSCRIPT in list(transcripts_plus.keys()): loc_plus = transcript.whereIsThisVariant(variant_plus)
+            elif TRANSCRIPT in list(transcriptsOUT_plus.keys()): loc_plus = 'OUT'
             else: loc_plus = '.'
 
             if difference:
-                if TRANSCRIPT in transcripts_minus.keys(): loc_minus = transcript.whereIsThisVariant(variant_minus)
-                elif TRANSCRIPT in transcriptsOUT_minus.keys(): loc_minus = 'OUT'
+                if TRANSCRIPT in list(transcripts_minus.keys()): loc_minus = transcript.whereIsThisVariant(variant_minus)
+                elif TRANSCRIPT in list(transcriptsOUT_minus.keys()): loc_minus = 'OUT'
                 else: loc_minus = '.'
             else:
                 loc_minus = loc_plus
@@ -298,8 +300,8 @@ class Ensembl(object):
             if notexonic_plus and notexonic_minus:
                 protein = ''
             else:
-                if not transcript.TRANSCRIPT in self.proteinSeqs.keys():
-                    protein, exonseqs = transcript.getProteinSequence(reference, None, None, self.codon_usage)
+                if not transcript.TRANSCRIPT in list(self.proteinSeqs.keys()):
+                    protein, exonseqs = transcript.getProteinSequence(reference, None, None)
 
                     if len(self.proteinSeqs) > 5:
                         self.proteinSeqs = dict()
@@ -326,13 +328,13 @@ class Ensembl(object):
 
 
             # Creating the CSN annotations both for left and right aligned variant
-            if TRANSCRIPT in transcripts_plus.keys():
+            if TRANSCRIPT in list(transcripts_plus.keys()):
                 csn_plus, protchange_plus = csn.getAnnotation(variant_plus, transcript, reference, protein, mutprotein_plus)
                 csn_plus_str = csn_plus.getAsString()
             else: csn_plus_str, protchange_plus = '.', ('.','.','.')
 
             if difference:
-                if TRANSCRIPT in transcripts_minus.keys():
+                if TRANSCRIPT in list(transcripts_minus.keys()):
                     csn_minus, protchange_minus = csn.getAnnotation(variant_minus, transcript, reference, protein, mutprotein_minus)
                     csn_minus_str = csn_minus.getAsString()
                 else: csn_minus_str, protchange_minus = '.', ('.','.','.')
@@ -352,12 +354,12 @@ class Ensembl(object):
             if not impactdir == None or self.options.args['ontology'].upper() in ['CLASS', 'BOTH']:
 
                 # Creating the CLASS annotations both for left and right aligned variant
-                if TRANSCRIPT in transcripts_plus.keys():
+                if TRANSCRIPT in list(transcripts_plus.keys()):
                     class_plus = conseq.getClassAnnotation(variant_plus, transcript, protein, mutprotein_plus, loc_plus, int(self.options.args['ssrange']))
                 else: class_plus = '.'
 
                 if difference:
-                    if TRANSCRIPT in transcripts_minus.keys():
+                    if TRANSCRIPT in list(transcripts_minus.keys()):
                         class_minus = conseq.getClassAnnotation(variant_minus, transcript, protein, mutprotein_minus, loc_minus, int(self.options.args['ssrange']))
                     else: class_minus = '.'
                 else: class_minus = class_plus
@@ -366,14 +368,14 @@ class Ensembl(object):
             # Determining the IMPACT flag
             if not impactdir == None:
 
-                if TRANSCRIPT in transcripts_plus.keys():
-                    if class_plus in impactdir.keys(): impact_plus = impactdir[class_plus]
+                if TRANSCRIPT in list(transcripts_plus.keys()):
+                    if class_plus in list(impactdir.keys()): impact_plus = impactdir[class_plus]
                     else: impact_plus = 'None'
                 else:
                     impact_plus = '.'
 
-                if TRANSCRIPT in transcripts_minus.keys():
-                    if class_minus in impactdir.keys(): impact_minus = impactdir[class_minus]
+                if TRANSCRIPT in list(transcripts_minus.keys()):
+                    if class_minus in list(impactdir.keys()): impact_minus = impactdir[class_minus]
                     else: impact_minus = 'None'
                 else:
                     impact_minus = '.'
@@ -382,12 +384,12 @@ class Ensembl(object):
             if self.options.args['ontology'].upper() in ['SO', 'BOTH']:
                 # Creating the SO annotations both for left and right aligned variant
 
-                if TRANSCRIPT in transcripts_plus.keys():
+                if TRANSCRIPT in list(transcripts_plus.keys()):
                     so_plus = conseq.getSequenceOntologyAnnotation(variant_plus, transcript, protein, mutprotein_plus, loc_plus)
                 else: so_plus = '.'
 
                 if difference:
-                    if TRANSCRIPT in transcripts_minus.keys():
+                    if TRANSCRIPT in list(transcripts_minus.keys()):
                         so_minus = conseq.getSequenceOntologyAnnotation(variant_minus, transcript, protein, mutprotein_minus, loc_minus)
                     else: so_minus = '.'
 

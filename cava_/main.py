@@ -1,49 +1,25 @@
-#!/usr/bin/env python
-
-
-# Top-level code of CAVA
-###########################################################################################################################################
-
-# Basic imports
-from __future__ import division
+import datetime
+import gzip
+import logging
+import multiprocessing
 import os
 import sys
-import datetime
-import logging
-import gzip
-from optparse import OptionParser
-import multiprocessing
-
-if sys.version_info[0] == 3:
-    print '\nCAVA does not run on Python 3.\n'
-    quit()
-
-# Imports of CAVA code
-# Checking if installation is complete
-if not os.path.isfile(os.path.dirname(os.path.realpath(__file__))+"/pysamdir/pysam/Pileup.py"):
-    print '\nCAVA installation not complete.'
-    print 'Please run install.sh in the cava directory.\n'
-    quit()
-import core
-from core import Options
-from core import Record
-from data import Ensembl
-from data import dbSNP
-from data import Reference
-
-# Pysam import
-sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + '/pysamdir')
 import pysam
 
+from . import core
+from cava_.data import Ensembl
+from cava_.data import Reference
+from cava_.data import dbSNP
+from .core import Options
+from .core import Record
 
-###########################################################################################################################################
 
 # Printing out welcome meassage
 def printStartInfo(ver):
     starttime = datetime.datetime.now()
-    print "\n-----------------------------------------------------------------------"
-    print 'CAVA (Clinical Annotation of VAriants) ' + ver + ' is now running.'
-    print 'Started: ', str(starttime), '\n'
+    print("\n-----------------------------------------------------------------------")
+    print('CAVA (Clinical Annotation of VAriants) ' + ver + ' is now running.')
+    print('Started: ', str(starttime), '\n')
     return starttime
 
 
@@ -53,12 +29,12 @@ def printInputFileNames(copts, options):
         outfn = copts.output + '.vcf'
     else:
         outfn = copts.output + '.txt'
-    print 'Configuration file:  ' + copts.conf
-    print 'Input file (' + options.args['inputformat'] + '):    ' + copts.input
-    print 'Output file (' + options.args['outputformat'] + '):   ' + outfn
-    if options.args['logfile']:  print 'Log file:            ' + copts.output + '.log'
+    print('Configuration file:  ' + copts.conf)
+    print('Input file (' + options.args['inputformat'] + '):    ' + copts.input)
+    print('Output file (' + options.args['outputformat'] + '):   ' + outfn)
+    if options.args['logfile']:  print('Log file:            ' + copts.output + '.log')
     if copts.threads > 1:
-        print '\nMultithreading:      ' + str(copts.threads) + ' threads'
+        print('\nMultithreading:      ' + str(copts.threads) + ' threads')
 
     if options.args['logfile']:
         logging.info('Configuration file - ' + copts.conf)
@@ -73,7 +49,7 @@ def printInputFileNames(copts, options):
 
 # Printing out number of records in the input file
 def printNumOfRecords(numOfRecords):
-    print '\nInput file contains ' + str(numOfRecords) + ' records to annotate.\n'
+    print('\nInput file contains ' + str(numOfRecords) + ' records to annotate.\n')
 
 
 # Initializing progress information
@@ -94,7 +70,7 @@ def printProgressInfo(counter, numOfRecords):
 def finalizeProgressInfo():
     sys.stdout.write('\rAnnotating variants ... 100.0%')
     sys.stdout.flush()
-    print ' - Done.'
+    print(' - Done.')
 
 
 # Printing out goodbye message
@@ -104,11 +80,11 @@ def printEndInfo(options, copts, starttime):
         outfn = copts.output + '.vcf'
     else:
         outfn = copts.output + '.txt'
-    print '\n(Size of output file: ' + str(round(os.stat(outfn).st_size / 1000, 1)) + ' Kbyte)'
-    print '\nCAVA (Clinical Annotation of VAriants) successfully finished.'
-    print 'Ended: ', str(endtime)
-    print 'Total runtime: '+str(endtime-starttime)
-    print "-----------------------------------------------------------------------\n"
+    print('\n(Size of output file: ' + str(round(os.stat(outfn).st_size / 1000, 1)) + ' Kbyte)')
+    print('\nCAVA (Clinical Annotation of VAriants) successfully finished.')
+    print('Ended: ', str(endtime))
+    print('Total runtime: '+str(endtime-starttime))
+    print("-----------------------------------------------------------------------\n")
     if options.args['logfile']:
         logging.info('100% of records annotated.')
         if not copts.stdout: logging.info('Output file = ' + str(round(os.stat(outfn).st_size / 1000, 1)) + ' Kbyte')
@@ -121,7 +97,7 @@ def findFileBreaks(inputf, threads):
     started = False
     counter = 0
 
-    if inputf.endswith('.gz'): infile = gzip.open(inputf, 'r')
+    if inputf.endswith('.gz'): infile = gzip.open(inputf, 'rt')
     else: infile = open(inputf)
 
     for line in infile:
@@ -144,7 +120,7 @@ def findFileBreaks(inputf, threads):
 def readHeader(inputfn):
     ret = []
 
-    if inputfn.endswith('.gz'): infile = gzip.open(inputfn, 'r')
+    if inputfn.endswith('.gz'): infile = gzip.open(inputfn, 'rt')
     else: infile = open(inputfn)
 
     for line in infile:
@@ -179,13 +155,6 @@ def mergeTmpFiles(output, format, threads):
                     outfile.write(line)
 
     for fn in filenames: os.remove(fn)
-
-# Reads default config file path from the default_config_path file
-def defaultConfigPath():
-    for line in open(os.path.dirname(os.path.realpath(__file__)) + '/default_config_path'):
-        line = line.strip()
-        if line != '': return line
-    return None
 
 
 ###########################################################################################################################################
@@ -231,7 +200,7 @@ class SingleJob(multiprocessing.Process):
 			
 		# Input file
         if copts.input.endswith('.gz'):
-            self.infile = gzip.open(copts.input, 'r')
+            self.infile = gzip.open(copts.input, 'rt')
         else:
             self.infile = open(copts.input)
 
@@ -284,7 +253,7 @@ class SingleJob(multiprocessing.Process):
 
     # Running process
     def run(self):
-        if options.args['logfile']:
+        if self.options.args['logfile']:
             logging.info('Process ' + str(self.threadidx) + ' - variant annotation started.')
 
         # Iterating through input file
@@ -302,8 +271,9 @@ class SingleJob(multiprocessing.Process):
             if line == '': continue
 
             # Printing out progress information
-            if not copts.stdout and self.threadidx == 1:
-                if counter % 1000 == 0: printProgressInfo(counter, int(self.numOfRecords / self.copts.threads))
+            if not self.copts.stdout and self.threadidx == 1:
+                if counter % 1000 == 0:
+                    printProgressInfo(counter, int(self.numOfRecords / self.copts.threads))
 
             # Parsing record from input file
             record = Record(line, self.options, self.targetBED)
@@ -337,118 +307,103 @@ class SingleJob(multiprocessing.Process):
         self.outfile.close()
 
         # Finalizing progreaa info
-        if not copts.stdout and self.threadidx == 1: finalizeProgressInfo()
+        if not self.copts.stdout and self.threadidx == 1:
+            finalizeProgressInfo()
 
 
-###########################################################################################################################################
+def run(copts, version, default_config_file):
 
-ver = 'v1.2.0'
+    copts.threads = int(copts.threads)
+    if copts.threads > 1:
+        copts.stdout = False
 
-# Read default configuration file name from the default_config_path file
-default_config_file = defaultConfigPath()
+    # Use default path read from the default_config_path file, if -c is not used
+    if copts.conf is None:
+        copts.conf = default_config_file
 
-# Command line argument parsing
-descr = 'CAVA (Clinical Annotation of VAriants) ' + ver + ' is a lightweight, fast and flexible NGS variant annotation tool that provides consistent transcript-level annotation.'
-epilog = '\nExample usage: path/to/cava/cava.py -c config.txt -i input.vcf -o output\n\n'
-OptionParser.format_epilog = lambda self, formatter: self.epilog
-parser = OptionParser(usage='python path/to/cava/cava.py <options>', version=ver, description=descr, epilog=epilog)
-parser.add_option('-i', "--in", default='input.vcf', dest='input', action='store',
-                  help="Input file name [default value: %default]")
-parser.add_option('-o', "--out", default='output', dest='output', action='store',
-                  help="Output file name prefix [default value: %default]")
-parser.add_option('-c', "--config", default=default_config_file, dest='conf', action='store',
-                  help="Configuration file name [default value: %default]")
-parser.add_option('-s', "--stdout", default=False, dest='stdout', action='store_true',
-                  help="Write output to standard output [default value: %default]")
-parser.add_option('-t', "--threads", default=1, dest='threads', action='store',
-                  help="Number of threads [default value: %default]")
-(copts, args) = parser.parse_args()
-copts.threads = int(copts.threads)
-if copts.threads > 1: copts.stdout = False
+    # Check if input and configuration files exist
+    if copts.conf is None:
+        print('\nError: no configuration file specified.')
+        print('Please use option -c or add the absolute path to the default_config_path file.\n')
+        quit()
+    if not os.path.isfile(copts.conf):
+        print('\nError: configuration file (' + copts.conf + ') cannot be found.\n')
+        quit()
+    if not os.path.isfile(copts.input):
+        print('\nError: input file (' + copts.input + ') cannot be found.\n')
+        quit()
 
-# Use default path read from the default_config_path file, if -c is not used
-if copts.conf == None: copts.conf = default_config_file
+    # Reading options from configuration file
+    options = Options(copts.conf)
 
-# Check if input and configuration files exist
-if copts.conf == None:
-    print '\nError: no configuration file specified.'
-    print 'Please use option -c or add the absolute path to the default_config_path file.\n'
-    quit()
-if not os.path.isfile(copts.conf):
-    print '\nError: configuration file ('+copts.conf+') cannot be found.\n'
-    quit()
-if not os.path.isfile(copts.input):
-    print '\nError: input file ('+copts.input+') cannot be found.\n'
-    quit()
+    # Initializing log file
+    if options.args['logfile']:
+        logging.basicConfig(filename=copts.output + '.log', filemode='w', format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
 
-# Reading options from configuration file
-options = Options(copts.conf)
+    # Printing out version information and start time
+    if not copts.stdout: starttime = printStartInfo(version)
+    if options.args['logfile']:
+        logging.info('CAVA ' + version + ' started.')
 
-# Initializing log file
-if options.args['logfile']:
-    logging.basicConfig(filename=copts.output + '.log', filemode='w', format='%(asctime)s %(levelname)s: %(message)s',
-                        level=logging.DEBUG)
+    # Checking if options specified in the configuration file are correct
+    core.checkOptions(options)
 
-# Printing out version information and start time
-if not copts.stdout: starttime = printStartInfo(ver)
-if options.args['logfile']: logging.info('CAVA ' + ver + ' started.')
+    # Printing out configuration, input and output file names
+    if not copts.stdout:
+        printInputFileNames(copts, options)
 
-# Checking if options specified in the configuration file are correct
-core.checkOptions(options)
+    # Reading gene, transcript and snp lists from files
+    genelist = core.readSet(options, 'genelist')
+    transcriptlist = core.readSet(options, 'transcriptlist')
+    snplist = core.readSet(options, 'snplist')
 
-# Printing out configuration, input and output file names
-if not copts.stdout: printInputFileNames(copts, options)
+    # Parsing @impactdef string
+    if not (options.args['impactdef'] == '.' or options.args['impactdef'] == ''):
+        impactdir = dict()
+        valuev = options.args['impactdef'].split('|')
+        for i in range(len(valuev)):
+            classv = valuev[i].split(',')
+            for c in classv:
+                impactdir[c.strip()] = str(i + 1)
+    else:
+        impactdir = None
 
-# Reading gene, transcript and snp lists from files
-genelist = core.readSet(options, 'genelist')
-transcriptlist = core.readSet(options, 'transcriptlist')
-snplist = core.readSet(options, 'snplist')
+    # Counting and printing out number of records of input file
+    numOfRecords = core.countRecords(copts.input)
+    if not copts.stdout:
+        printNumOfRecords(numOfRecords)
+    if options.args['logfile']:
+        logging.info(str(numOfRecords) + ' records to be annotated.')
 
-# Parsing @impactdef string
-if not (options.args['impactdef'] == '.' or options.args['impactdef'] == ''):
-    impactdir = dict()
-    valuev = options.args['impactdef'].split('|')
-    for i in range(len(valuev)):
-        classv = valuev[i].split(',')
-        for c in classv: impactdir[c.strip()] = str(i + 1)
-else:
-    impactdir = None
+    # Writing header to output file
+    if options.args['outputformat'] == 'VCF':
+        outfile = open(copts.output + '.vcf', 'w')
+    else:
+        outfile = open(copts.output + '.txt', 'w')
+    header = readHeader(copts.input)
+    core.writeHeader(options, '\n'.join(header), outfile, copts.stdout)
+    outfile.close()
 
-# Counting and printing out number of records of input file
-numOfRecords = core.countRecords(copts.input)
-if not copts.stdout: printNumOfRecords(numOfRecords)
-if options.args['logfile']:
-    logging.info(str(numOfRecords) + ' records to be annotated.')
+    # Find break points in the input file
+    breaks = findFileBreaks(copts.input, copts.threads)
 
-# Writing header to output file
-if options.args['outputformat'] == 'VCF':
-    outfile = open(copts.output + '.vcf', 'w')
-else:
-    outfile = open(copts.output + '.txt', 'w')
-header = readHeader(copts.input)
-core.writeHeader(options, '\n'.join(header), outfile, copts.stdout)
-outfile.close()
+    # Initializing annotation processes
+    threadidx = 0
+    processes = []
+    for (startline, endline) in breaks:
+        threadidx += 1
+        processes.append(SingleJob(threadidx, options, copts, startline, endline, genelist, transcriptlist, snplist, impactdir, numOfRecords))
 
-# Find break points in the input file
-breaks = findFileBreaks(copts.input, copts.threads)
+    # Running annotation processes
+    for process in processes:
+        process.start()
+    for process in processes:
+        process.join()
 
-# Initializing annotation processes
-threadidx = 0
-processes = []
-for (startline, endline) in breaks:
-    threadidx += 1
-    processes.append(
-        SingleJob(threadidx, options, copts, startline, endline, genelist, transcriptlist, snplist, impactdir,
-                  numOfRecords))
+    # Merging tmp files
+    if copts.threads > 1:
+        mergeTmpFiles(copts.output, options.args['outputformat'], copts.threads)
 
-# Running annotation processes
-for process in processes: process.start()
-for process in processes: process.join()
-
-# Merging tmp files
-if copts.threads > 1: mergeTmpFiles(copts.output, options.args['outputformat'], copts.threads)
-
-# Printing out summary information and end time
-if not copts.stdout: printEndInfo(options, copts, starttime)
-
-###########################################################################################################################################
+    # Printing out summary information and end time
+    if not copts.stdout:
+        printEndInfo(options, copts, starttime)
