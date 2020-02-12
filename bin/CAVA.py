@@ -1,8 +1,9 @@
 #!env/bin/python3
 
 from optparse import OptionParser
-from cava_ import main
+
 from cava_ import helper
+from cava_ import main
 
 # Version
 version = 'v2.0.0'
@@ -14,12 +15,16 @@ descr = 'CAVA (Clinical Annotation of VAriants) is a lightweight, fast and flexi
 epilog = '\nExample usage: CAVA-{}/cava -c config.txt -i input.vcf -o output\n\n'.format(version)
 OptionParser.format_epilog = lambda self, formatter: self.epilog
 parser = OptionParser(usage='CAVA-{}/cava <options>'.format(version), version=version, description=descr, epilog=epilog)
-parser.add_option('-i', "--input", default='input.vcf', dest='input', action='store', help="Input file name [default value: %default]")
-parser.add_option('-o', "--output", default='output', dest='output', action='store', help="Output file name prefix [default value: %default]")
-parser.add_option('-c', "--config", default=default_config_file, dest='conf', action='store', help="Configuration file name [default value: %default]")
-parser.add_option('-s', "--stdout", default=False, dest='stdout', action='store_true', help="Write output to standard output [default value: %default]")
-parser.add_option('-t', "--threads", default=1, dest='threads', action='store', help="Number of threads [default value: %default]")
+parser.add_option('-i', "--input", default='input.vcf', dest='input', action='store',
+                  help="Input file name [default value: %default]")
+parser.add_option('-o', "--output", default='output', dest='output', action='store',
+                  help="Output file name prefix [default value: %default]")
+parser.add_option('-c', "--config", default=default_config_file, dest='conf', action='store',
+                  help="Configuration file name [default value: %default]")
+parser.add_option('-s', "--stdout", default=False, dest='stdout', action='store_true',
+                  help="Write output to standard output [default value: %default]")
+parser.add_option('-t', "--threads", default=1, dest='threads', action='store',
+                  help="Number of threads [default value: %default]")
 (copts, args) = parser.parse_args()
 
 main.run(copts, version, default_config_file)
-
