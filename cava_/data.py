@@ -128,12 +128,12 @@ class Ensembl(object):
         if '_' in cpart: [x, y] = cpart.split('_')
         else:
             x = self.getIntronBases(cpart)
-            if x == None: return False
+            if x is None: return False
             return x == ssrange or x == -ssrange
 
         x = self.getIntronBases(x)
         y = self.getIntronBases(y)
-        if x == None or y == None: return False
+        if x is None or y is None: return False
 
         return self.inrange(x, y, ssrange) or self.inrange(x, y, -ssrange)
 
@@ -351,7 +351,7 @@ class Ensembl(object):
             impact_plus = ''
             impact_minus = ''
 
-            if not impactdir == None or self.options.args['ontology'].upper() in ['CLASS', 'BOTH']:
+            if not impactdir is None or self.options.args['ontology'].upper() in ['CLASS', 'BOTH']:
 
                 # Creating the CLASS annotations both for left and right aligned variant
                 if TRANSCRIPT in list(transcripts_plus.keys()):
@@ -366,7 +366,7 @@ class Ensembl(object):
 
 
             # Determining the IMPACT flag
-            if not impactdir == None:
+            if not impactdir is None:
 
                 if TRANSCRIPT in list(transcripts_plus.keys()):
                     if class_plus in list(impactdir.keys()): impact_plus = impactdir[class_plus]
@@ -479,7 +479,7 @@ class Ensembl(object):
         if self.options.args['ontology'].upper() in ['CLASS', 'BOTH']: variant.addFlag('CLASS', CLASSstring)
         if self.options.args['ontology'].upper() in ['SO', 'BOTH']: variant.addFlag('SO', SOstring)
 
-        if not impactdir == None: variant.addFlag('IMPACT', IMPACTstring)
+        if not impactdir is None: variant.addFlag('IMPACT', IMPACTstring)
 
         if self.options.args['givealt']:
             variant.addFlag('ALTANN', ALTANNstring)
