@@ -4,9 +4,9 @@ setup(
     name= 'CAVA',
     version = '2.0.0',
     description = 'CAVA (Clinical Annotation of VAriants)',
-    url = 'https://github.com/RahmanTeam/CAVA',
-    author = 'RahmanTeam',
-    author_email = 'rahmanlab@icr.ac.uk',
+    url = 'https://github.com/Steven-N-Hart/CAVA',
+    author = 'Steven-N-Hart',
+    author_email = 'hart.steven@mayo.edu',
     license = 'MIT',
     packages=['cava_', 'ensembldb'],
     scripts=[
