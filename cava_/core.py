@@ -209,7 +209,8 @@ class Record(object):
 		for alt in alts:
 			# Initializing each Variant object with different alt allele
 			var = Variant(self.chrom, self.pos, self.ref, alt)
-
+			# DO  NOT FILTER
+			"""
 			if 'N' in self.ref or 'N' in alt:
 				logging.info('Variant ignored as allele contains unknown base (\'N\'): ' + self.chrom + ':' + str(
 					self.pos) + ' ' + self.ref + '>' + alt)
@@ -224,7 +225,7 @@ class Record(object):
 				logging.info("Variant ignored as format of alt allele is not supported: " + self.chrom + ':' + str(
 					self.pos) + ' ' + self.ref + '>' + alt)
 				continue
-
+			"""
 			# Filtering by variant type (i.e. substitution, indel, insertion, deletion, complex indel), if required
 			if options.args['type'].upper() == 'SUBSTITUTION' and not var.isSubstitution():
 				continue
