@@ -294,7 +294,8 @@ class SingleJob(multiprocessing.Process):
 			if record.chrom not in self.chroms:
 				logging.warning(
 					"\n####################################\t\t!!!!!!Chromosome " + record.chrom + " not found, skipping!!!!!!\n")
-				continue
+				#continue
+				pass
 
 			# Annotating the record based on the Ensembl, dbSNP and reference data
 			record.annotate(self.ensembl, self.dbsnp, self.reference, self.impactdir)
