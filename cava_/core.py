@@ -339,7 +339,7 @@ class Record(object):
 					added += key + '=' + value
 			########################################################################
 			# Add HGVS
-			HGVSC = flagvalues[flags.index('TRANSCRIPT')][0]
+			HGVSC = 'CAVA_HGVSc=' + flagvalues[flags.index('TRANSCRIPT')][0]
 			HGVSC += '(' + flagvalues[flags.index('GENE')][0] + '):'
 			try:
 				cdna, prot = flagvalues[flags.index('CSN')][0].split('_p.')
