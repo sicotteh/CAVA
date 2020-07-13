@@ -9,7 +9,10 @@ from cava_ import main
 version = 'v1.2.4'
 
 # Read default configuration file name from the default_config_path file
-#default_config_file = helper.defaultConfigPath()
+try:
+    default_config_file = helper.defaultConfigPath()
+except:
+    default_config_file = None
 
 descr = 'CAVA (Clinical Annotation of VAriants) is a lightweight, fast and flexible NGS variant annotation tool that provides consistent transcript-level annotation.'
 epilog = '\nExample usage: CAVA-{}/cava -c config.txt -i input.vcf -o output\n\n'.format(version)

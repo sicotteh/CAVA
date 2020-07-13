@@ -9,20 +9,20 @@ import pysam
 
 # Use Tabix to index the custom database file
 def indexFile(input_file):
-	sys.stdout.write('Compressing file... ')
-	sys.stdout.flush()
-	pysam.tabix_compress(input_file, input_file + '.gz', force=True)
-	sys.stdout.write('OK\n')
-	sys.stdout.write('Indexing output file... ')
-	sys.stdout.flush()
-	pysam.tabix_index(input_file + '.gz', seq_col=4, start_col=6, end_col=7, meta_char='#', force=True)
-	sys.stdout.write('OK\n')
+    sys.stdout.write('Compressing file... ')
+    sys.stdout.flush()
+    pysam.tabix_compress(input_file, input_file + '.gz', force=True)
+    sys.stdout.write('OK\n')
+    sys.stdout.write('Indexing output file... ')
+    sys.stdout.flush()
+    pysam.tabix_index(input_file + '.gz', seq_col=4, start_col=6, end_col=7, meta_char='#', force=True)
+    sys.stdout.write('OK\n')
 
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser(
-		formatter_class=argparse.RawDescriptionHelpFormatter,
-		description=textwrap.dedent('''\
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=textwrap.dedent('''\
      This utility is designed to compress a custom cava database from a pre-sorted input text file.
      
      The input file must be sorted on chromosome, and then by the transcript start position. 
@@ -45,11 +45,11 @@ if __name__ == '__main__':
      col 15 -- Exon 2 end position
      exons continue
          '''))
-	parser.add_argument('-i', dest='input_file', required='true', help='path to the input file')
-	args = parser.parse_args()
+    parser.add_argument('-i', dest='input_file', required='true', help='path to the input file')
+    args = parser.parse_args()
 
-	if not path.isfile(args.input_file):
-		print
-		"This does not appear to be a file"
+    if not path.isfile(args.input_file):
+        print
+        "This does not appear to be a file"
 
-	indexFile(path.abspath(args.input_file))
+    indexFile(path.abspath(args.input_file))
