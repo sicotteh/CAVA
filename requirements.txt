@@ -10,6 +10,6 @@ pysam>=0.15.0
 pytest>=3.0.7
 pytest-cov>=2.2.0
 radon==2.0.2
-six==1.10.0
+six==1.12.0
 sphinx==1.6.3
-gevent==1.2.2
+gevent==1.5.0
