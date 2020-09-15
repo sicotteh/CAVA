@@ -89,5 +89,5 @@
 # 4 = {'AGA':'X'} Mitochondrial Code: changes RAGAX, RAGGX, IAUAM, XUGAW (used if chr == M or MT)
 # 5 = {'ATA': 'I'} Bacterial code
 # Default = 1
-@codon_usage = 4
+@codon_usage = 1
 
