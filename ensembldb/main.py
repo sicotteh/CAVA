@@ -40,8 +40,8 @@ class Transcript(object):
         else:
             ret = '-/'
         cdna = self.getcDNALength()
-        return ret + str(self.POSEND - self.POS + 1) + 'bp/' + str(len(self.EXONS)) + '/' + str(cdna) + 'bp/' + str(
-            self.getProteinLength())
+        return ret + str(round((self.POSEND - self.POS + 1) / 1000, 1)) + 'kb/' + str(len(self.EXONS)) + '/' + str(
+            round(cdna / 1000, 1)) + 'kb/' + str(self.getProteinLength())
 
     # Get cDNA length of the transcript
     def getcDNALength(self):
