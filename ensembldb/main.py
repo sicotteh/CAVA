@@ -228,7 +228,7 @@ def readTranscriptIDs(inputfn):
 def sortRecords(records, idx1, idx2):
     ret = []
     chroms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19',
-              '20', '21', '22', '23', 'MT', 'X', 'Y']
+              '20', '21', '22', '23', 'M', 'MT', 'X', 'Y']
     for i in range(len(chroms)):
         chrom = chroms[i]
         if chrom in list(records.keys()):
@@ -325,7 +325,7 @@ def process_data(options, genome_build, version):
 
         # Only consider transcripts on the following chromosomes
         if cols[0] not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17',
-                           '18', '19', '20', '21', '22', '23', 'MT', 'X', 'Y']: continue
+                           '18', '19', '20', '21', '22', '23', 'M', 'MT', 'X', 'Y']: continue
 
         # Consider only certain types of lines
         if cols[2] not in ['exon', 'transcript', 'start_codon', 'stop_codon']: continue
