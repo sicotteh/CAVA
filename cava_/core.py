@@ -1155,7 +1155,7 @@ def checkOptions(options):
         print('\nNo output file written. CAVA quit.')
         print("--------------------------------------------------------------------\n")
         if options.args['logfile']:
-            logging.error('Incorrect value of the tag @outputformat.')
+            logging.error('Incorrect value of the tag @normalized_mitochondrial_chrom.')
             logging.info('No output file written. CAVA quit.')
         quit()
 
