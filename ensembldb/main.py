@@ -2,13 +2,31 @@ import datetime
 import gzip
 import os
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
+import pybedtools
+import pickle
+
 from operator import itemgetter
+import wget
+import requests
+requests.packages.urllib3.disable_warnings()
 
 import pysam
+from cmmodule.utils import read_chain_file
+from cmmodule.mapgff import crossmap_gff_file
 
+failed_conversions = dict()
+failed_conversions['GENE'] = set()
+failed_conversions['GENETYPE'] = set()
+failed_conversions['TRANSTYPE'] = set()
+failed_conversions['ENST'] = set()
+
+def warn(transcript):
+    global failed_conversions
+    failed_conversions['GENE'].add(transcript.GENE)
+    failed_conversions['GENETYPE'].add(transcript.GENETYPE)
+    failed_conversions['TRANSTYPE'].add(transcript.TRANSTYPE)
+    failed_conversions['ENST'].add(transcript.ENST)
+    #raise Exception(f"Messed up: {transcript.GENE}")
 
 # Class representing a transcript
 class Transcript(object):
@@ -46,7 +64,8 @@ class Transcript(object):
     # Get cDNA length of the transcript
     def getcDNALength(self):
         ret = 0
-        for exon in self.EXONS: ret += exon.END - exon.START
+        for exon in self.EXONS:
+            ret += exon.END - exon.START
         return ret
 
     # Get protein length of the transcript
@@ -89,8 +108,8 @@ class Transcript(object):
 
     # Output transcript
     def output(self, outfile, outfile_list):
-        out = self.ENST + '\t' + self.GENE + '\t' + self.ENSG + '\t' + self.getInfoString() + '\t' + self.CHROM + '\t' + self.STRAND + '\t' + str(
-            self.POS)
+        out = self.ENST + '\t' + self.GENE + '\t' + self.ENSG + '\t' + self.getInfoString() + '\t' + \
+              self.CHROM + '\t' + self.STRAND + '\t' + str(self.POS)
         out += '\t' + str(self.POSEND) + '\t' + str(self.CODING_START_RELATIVE) + '\t' + str(self.CODING_START)
         out += '\t' + str(self.CODING_END)
         for exondata in self.EXONS: out += '\t' + str(exondata.START) + '\t' + str(exondata.END)
@@ -102,6 +121,7 @@ class Transcript(object):
         if self.STRAND == '1':
             self.POS = self.EXONS[0].START
             self.POSEND = self.EXONS[len(self.EXONS) - 1].END
+            assert self.POS <= self.POSEND
             codingStartRelative = 0
             for exondata in self.EXONS:
                 if exondata.START <= self.CODING_START <= exondata.END:
@@ -113,6 +133,7 @@ class Transcript(object):
         else:
             self.POS = self.EXONS[len(self.EXONS) - 1].START
             self.POSEND = self.EXONS[0].END
+
             codingStartRelative = 0
             for exondata in self.EXONS:
                 if exondata.START <= self.CODING_START <= exondata.END:
@@ -176,149 +197,53 @@ class Gene(object):
         return selected
 
     # Output all or selected transcripts
-    def output(self, outfile, outfile_list, select, mcg_transcripts):
-        if select:
-            if self.SYMBOL in list(mcg_transcripts.keys()):
-                ok = False
-                for _, transcript in self.TRANSCRIPTS.items():
-                    if transcript.ENST in mcg_transcripts[self.SYMBOL]:
-                        transcript.output(outfile, outfile_list)
-                        ok = True
-            if self.SYMBOL not in list(mcg_transcripts.keys()) or not ok:
-                transcript = self.selectTranscript()
-                transcript.output(outfile, outfile_list)
-        else:
-            for _, transcript in self.TRANSCRIPTS.items():
-                transcript.output(outfile, outfile_list)
+    def output(self, outfile, outfile_list, select, target_transcripts):
+        for t, transcript in self.TRANSCRIPTS.items():
+            if select:
+                if t in target_transcripts:
+                    transcript.output(outfile, outfile_list)
+            else:
+                try:
+                    transcript.output(outfile, outfile_list)
+                except:
+                    warn(transcript)
 
 
 #######################################################################################################################
+def write_temp(output_name, options, candidates, genesdata):
+    outfile = open('temp.txt', 'w')
 
-# Retrieve tag value
-def getValue(tags, tag):
-    ret = None
-    for x in tags:
-        x = x.strip()
-        if x.startswith(tag):
-            s = x[x.find('\"') + 1:]
-            ret = s[:s.find('\"')]
-            break
-    return ret
+    # Initialize output list file if needed
+    outfile_list = open(output_name, 'w')
 
+    outfile_list.write(
+        '# Created by CAVA ensembl_db ' + options.version + ' based on Ensembl release ' + options.ensembl + '\n')
+    outfile_list.write('ENSG\tGENE\tENST\n')
 
-# Retrieve boolean tag value
-def getBooleanValue(tags, tag):
-    for x in tags:
-        x = x.strip()
-        if x.startswith('tag'):
-            s = x[x.find('\"') + 1:]
-            value = s[:s.find('\"')]
-            if value == tag: return True
-    return False
+    # Output transcripts of each gene
+    for ensg, gene in genesdata.items():
+        try:
+            gene.output(outfile, outfile_list, options.select, candidates)
+        except:
+            print(f'Failed {gene.SYMBOL}, {gene.TRANSCRIPTS}')
 
-
-# Read transcript IDs from file
-def readTranscriptIDs(inputfn):
-    ret = set()
-    for line in open(inputfn): ret.add(line.strip())
-    return ret
-
-
-# Sort records in file
-def sortRecords(records, idx1, idx2):
-    ret = []
-    chroms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19',
-              '20', '21', '22', '23', 'MT', 'X', 'Y']
-    for i in range(len(chroms)):
-        chrom = chroms[i]
-        if chrom in list(records.keys()):
-            records[chrom] = sorted(records[chrom], key=itemgetter(idx1, idx2))
-    for i in range(len(chroms)):
-        chrom = chroms[i]
-        if chrom in list(records.keys()):
-            for record in records[chrom]: ret.append(record)
-    return ret
-
-
-# Write records to file
-def writeToFile(sortedRecords, filename):
-    outfile = open(filename, 'w')
-    for record in sortedRecords:
-        s = str(record[0]).rstrip()
-        for i in range(1, len(record)): s += '\t' + str(record[i]).rstrip()
-        outfile.write(s + '\n')
+    # Close temporary output files
     outfile.close()
+    outfile_list.close()
 
-
-# Read records from file as a list
-def readRecords(inputfn):
-    ret = []
-    for line in open(inputfn): ret.append(line.strip())
-    return ret
-
-
-# Process Ensembl data
-def process_data(options, genome_build, version):
-    # Read manually selected MCG transcripts from file
-    datadir = os.path.dirname(os.path.realpath(__file__)) + '/data'
-    mcg_transcripts = dict()
-    for line in open(datadir + '/MCG_transcripts.txt'):
-        line = line.strip()
-        if line == '': continue
-        cols = line.split('\t')
-        if cols[0] not in list(mcg_transcripts.keys()): mcg_transcripts[cols[0]] = set()
-        mcg_transcripts[cols[0]].add(cols[1])
-    # Changing transcript for certain releases
-    if int(options.ensembl) >= 71: mcg_transcripts['BMPR1A'] = {'ENST00000372037'}
-    if int(options.ensembl) >= 69: mcg_transcripts['PRKAR1A'] = {'ENST00000392711'}
-    if int(options.ensembl) >= 76:
-        mcg_transcripts['MEN1'] = {'ENST00000394374'}
-        mcg_transcripts['RECQL4'] = {'ENST00000617875'}
-
-    # Dictionary of Gene objects
-    genesdata = dict()
-
-    # Load custom transcript IDs
-    transIDs = set()
-    if options.input is not None:
-        transIDs = readTranscriptIDs(options.input)
-        print('\nOnly ' + str(len(transIDs)) + ' transcripts read from ' + options.input + ' are considered\n')
-    else:
-        print('\nAll transcripts from the Ensembl release are considered\n')
-
-    # Print out info
-    if options.select: print('Transcript selection switched on\n')
-
-    # Load candidate and CCDS data for Ensembl <75
-    candidates = dict()
-    if int(options.ensembl) < 75:
-        datadir = os.path.dirname(os.path.realpath(__file__)) + '/data'
-        for line in open(datadir + '/info' + options.ensembl + '.txt'):
-            line = line.strip()
-            if line == '': continue
-            cols = line.split('\t')
-            if cols[0] not in list(candidates.keys()): candidates[cols[0]] = dict()
-            candidates[cols[0]][cols[1]] = int(cols[2])
-
-    # Download Ensembl data
-    sys.stdout.write('Downloading Ensembl database... ')
-    sys.stdout.flush()
-    url = 'ftp://ftp.ensembl.org/pub/release-' + options.ensembl + '/gtf/homo_sapiens/Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz'
-    try:
-        urllib.request.urlretrieve(url, 'ensembl_data.gz')
-    except:
-        print('\n\nCannot connect to Ensembl FTP site. No internet connection?\n')
-        quit()
-
-    sys.stdout.write('OK\n')
-
-    # Iterate through the lines in the ensembl data file
-    sys.stdout.write('Extracting transcript data... ')
-    sys.stdout.flush()
+def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
     first = True
     prevenst = ''
     transcript = None
-    for line in gzip.open('ensembl_data.gz', 'rt'):
+
+    if filename.endswith('gz'):
+        opener = gzip.open
+    else:
+        opener = open
+    print(f'Parsing {filename}', end="...")
+
+    for line in opener(filename, 'rt'):
+
         line = line.strip()
         if line.startswith('#'): continue
         cols = line.split('\t')
@@ -343,7 +268,11 @@ def process_data(options, genome_build, version):
 
             # Finalize transcript and add to Gene object if candidate
             if not first:
-                transcript.finalize()
+                try:
+                    transcript.finalize()
+                except:
+                    warn(transcript)
+
                 if transcript.isCandidate():
                     if transcript.ENSG not in list(genesdata.keys()):
                         genesdata[transcript.ENSG] = Gene(transcript.GENE, transcript.ENSG)
@@ -416,6 +345,174 @@ def process_data(options, genome_build, version):
 
         prevenst = enst
         if first: first = False
+    return transcript, prevenst, first, genesdata
+
+def sort_tmpfile(f):
+    # Sort temporary output file
+    data = dict()
+    counter = 0
+    for line in open(f, 'r'):
+        if not line.startswith('ENST'): continue
+        counter += 1
+        line.rstrip()
+        record = line.split('\t')
+        record[6] = int(record[6])
+        if record[4] in list(data.keys()):
+            data[record[4]].append(record)
+        else:
+            data[record[4]] = []
+            data[record[4]].append(record)
+
+    sys.stdout.write('OK\n')
+    sys.stdout.write(f'Sorting {counter} transcripts... ')
+    sys.stdout.flush()
+    sortedRecords = sortRecords(data, 6, 7)
+    return sortedRecords
+
+# Retrieve tag value
+def getValue(tags, tag):
+    ret = None
+    for x in tags:
+        x = x.strip()
+        if x.startswith(tag):
+            s = x[x.find('\"') + 1:]
+            ret = s[:s.find('\"')]
+            break
+    return ret
+
+# Retrieve boolean tag value
+def getBooleanValue(tags, tag):
+    for x in tags:
+        x = x.strip()
+        if x.startswith('tag'):
+            s = x[x.find('\"') + 1:]
+            value = s[:s.find('\"')]
+            if value == tag: return True
+    return False
+
+# Read transcript IDs from file
+def readTranscriptIDs(inputfn):
+    ret = set()
+    for line in open(inputfn): ret.add(line.strip())
+    return ret
+
+# Sort records in file
+def sortRecords(records, idx1, idx2):
+    ret = []
+    chroms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19',
+              '20', '21', '22', '23', 'MT', 'X', 'Y']
+    for i in range(len(chroms)):
+        chrom = chroms[i]
+        if chrom in list(records.keys()):
+            records[chrom] = sorted(records[chrom], key=itemgetter(idx1, idx2))
+    for i in range(len(chroms)):
+        chrom = chroms[i]
+        if chrom in list(records.keys()):
+            for record in records[chrom]: ret.append(record)
+    return ret
+
+# Write records to file
+def writeToFile(sortedRecords, filename):
+    outfile = open(filename, 'w')
+    for record in sortedRecords:
+        s = str(record[0]).rstrip()
+        for i in range(1, len(record)): s += '\t' + str(record[i]).rstrip()
+        outfile.write(s + '\n')
+    outfile.close()
+
+# Read records from file as a list
+def readRecords(inputfn):
+    ret = []
+    for line in open(inputfn): ret.append(line.strip())
+    return ret
+
+# Process Ensembl data
+def process_data(options, genome_build):
+
+    # Dictionary of Gene objects
+    genesdata = dict()
+
+    # Load custom transcript IDs
+    transIDs = None
+    if options.input is not None:
+        transIDs = readTranscriptIDs(options.input)
+        print('\nOnly ' + str(len(transIDs)) + ' transcripts read from ' + options.input + ' are considered\n')
+    else:
+        print('\nAll transcripts from the Ensembl release are considered\n')
+
+    # Load candidate and CCDS data for Ensembl <75
+    candidates = dict()
+    if int(options.ensembl) < 75:
+        datadir = os.path.dirname(os.path.realpath(__file__)) + '/data'
+        for line in open(datadir + '/info' + options.ensembl + '.txt'):
+            line = line.strip()
+            if line == '': continue
+            cols = line.split('\t')
+            if cols[0] not in list(candidates.keys()): candidates[cols[0]] = dict()
+            candidates[cols[0]][cols[1]] = int(cols[2])
+
+    ######################################################################
+
+    # Download Ensembl data if necessary
+    source_compressed_gtf = 'Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz'
+    source_compressed_gtf = os.path.join('data', source_compressed_gtf)
+    if not os.path.exists(source_compressed_gtf):
+        sys.stdout.write('Downloading Ensembl database... ')
+        sys.stdout.flush()
+
+        url = 'ftp://ftp.ensembl.org/pub/release-' + options.ensembl + '/gtf/homo_sapiens/Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz'
+        try:
+            wget.download(url)
+            os.rename('Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz', source_compressed_gtf)
+        except Exception as e:
+            print('\n\nCannot connect to Ensembl FTP site. No internet connection?\n')
+            print(f'{e}\n{url}')
+            quit()
+
+    ################################################################
+    # Use crossmap to get hg19 if desired
+    #################################################################
+    if options.no_hg19 is not False:
+        requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'  # Needed for UCSC
+        # only download if necessary
+        if not os.path.exists(os.path.join('data','hg38ToHg19.over.chain.gz')):
+            sys.stdout.write('Downloading UCSC database... ')
+            sys.stdout.flush()
+            url = 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/hg38ToHg19.over.chain.gz'
+            try:
+                p = requests.get(url, verify=False)
+                with open(os.path.join('data','hg38ToHg19.over.chain.gz'), 'wb') as o:
+                    o.write(p.content)
+
+            except Exception as e:
+                print('\n\nCannot connect to UCSC FTP site. No internet connection?\n')
+                print(f'Exception: {e}')
+                quit()
+
+        sys.stdout.write('\nMaking a hg19-conveterted GTF file\n')
+        mapTree, targetChromSizes, sourceChromSizes = read_chain_file(os.path.join('data','hg38ToHg19.over.chain.gz'))
+        converted_gtf = os.path.join('data','Homo_sapiens.hg19_converted' + options.ensembl + '.gtf')
+        crossmap_gff_file(mapTree, source_compressed_gtf, converted_gtf)
+
+        # Note this file is not sorted!
+        a = pybedtools.BedTool(converted_gtf)
+        a.sort().remove_invalid().saveas('tmp.txt')
+        os.rename('tmp.txt', converted_gtf)
+
+    ################################################################
+    #
+    #################################################################
+    # Iterate through the lines in the ensembl data file
+    sys.stdout.write('Extracting transcript data from Ensembl...')
+
+
+    transcript, prevenst, first, genesdata = parse_GTF(filename=source_compressed_gtf,
+                                                       options=options,
+                                                       genesdata=genesdata,
+                                                       transIDs=transIDs)
+
+    sys.stdout.write('Done\n')
+    sys.stdout.flush()
 
     # Finalize last transcript and add to Gene object if candidate
     if transcript is not None:
@@ -430,69 +527,81 @@ def process_data(options, genome_build, version):
         print('\n\nNo transcripts from ' + options.input + ' found in Ensembl release.')
         print('\nNo transcript database created.')
         print("-----------------------------------------------------------------\n")
-        os.remove('ensembl_data.gz')
         quit()
 
-    # Initialize temporary output file
-    outfile = open('temp.txt', 'w')
+    write_temp(os.path.join(options.output_dir, options.output + '.txt'), options, transIDs, genesdata)
+    enst_records = sort_tmpfile('temp.txt')
+    assert(len(enst_records) > 0 )
+    writeToFile(enst_records, os.path.join(options.output_dir, options.output))
 
-    # Initialize output list file if needed
-    outfile_list = open(options.output + '.txt', 'w')
-    outfile_list.write(
-        '# Created by CAVA ensembl_db ' + version + ' based on Ensembl release ' + options.ensembl + ' (genome build ' + genome_build + ')\n')
-    outfile_list.write('ENSG\tGENE\tENST\n')
+    failed_conversions['GENE'] = set()
+    failed_conversions['GENETYPE'] = set()
+    failed_conversions['TRANSTYPE'] = set()
+    failed_conversions['ENST'] = set()
+    # ################################################################
+    # Begin converted GTF conversion
+    # ################################################################
+    hg19_records = []
+    if options.no_hg19 is not False:
+        sys.stdout.write('Extracting transcript data for hg19 version...')
+        sys.stdout.flush()
+        transcript, prevenst, first, genesdata = parse_GTF(filename=converted_gtf,
+                                                           options=options,
+                                                           genesdata=genesdata,
+                                                            transIDs=transIDs)
 
-    # Output transcripts of each gene
-    for ensg, gene in genesdata.items(): gene.output(outfile, outfile_list, options.select, mcg_transcripts)
+        # Finalize last transcript and add to Gene object if candidate
+        if transcript is not None:
+            try:
+                transcript.finalize()
+            except:
+                warn(transcript)
 
-    # Close temporary output files
-    outfile.close()
-    outfile_list.close()
+            if transcript.isCandidate():
+                if transcript.ENSG not in list(genesdata.keys()): genesdata[transcript.ENSG] = Gene(transcript.GENE,
+                                                                                                    transcript.ENSG)
+                genesdata[transcript.ENSG].TRANSCRIPTS[transcript.ENST] = transcript
 
-    # Sort temporary output file
-    data = dict()
-    counter = 0
-    for line in open('temp.txt'):
-        if not line.startswith('ENST'): continue
-        counter += 1
-        line.rstrip()
-        record = line.split('\t')
-        record[6] = int(record[6])
-        if record[4] in list(data.keys()):
-            data[record[4]].append(record)
-        else:
-            data[record[4]] = []
-            data[record[4]].append(record)
+        # If no transcript ID from the input file was found in the Ensembl release
+        if len(genesdata) == 0:
+            print('\n\nNo transcripts from ' + options.input + ' found in Ensembl release.')
+            print('\nNo transcript database created.')
+            print("-----------------------------------------------------------------\n")
+            quit()
 
-    sys.stdout.write('OK\n')
-    sys.stdout.write('Sorting transcripts... ')
-    sys.stdout.flush()
-    sortedRecords = sortRecords(data, 6, 7)
-    writeToFile(sortedRecords, options.output)
+        write_temp(os.path.join(options.output_dir, options.output + '.hg19_converted.txt'), options, transIDs, genesdata)
+        sortedRecords = sort_tmpfile('temp.txt')
+        writeToFile(sortedRecords, os.path.join(options.output_dir, options.output + '.hg19_converted'))
+        sys.stdout.write('Completed hg19 version...')
+        sys.stdout.flush()
+        pickle.dump(failed_conversions, open(os.path.join(options.output_dir, options.output + '_failed_conversions.pkl'), 'wb'))
+        hg19_records = sortedRecords
+    # ################################################################
+    # END converted GTF conversion
+    # ################################################################
 
     # Remove temporary files
     sys.stdout.write('OK\n')
     sys.stdout.write('Removing temporary files... ')
     sys.stdout.flush()
     os.remove('temp.txt')
-    os.remove('ensembl_data.gz')
-    sys.stdout.write('OK\n')
+    #os.remove(source_compressed_gtf)
+
+    print(f"Failed {failed_conversions['GENE'].__len__()} Genes and {failed_conversions['ENST'].__len__()} transcripts")
 
     # Return sorted records
-    return len(sortedRecords)
-
+    return len(enst_records), len(hg19_records)
 
 # Use Tabix to index output file
-def indexFile(options):
-    sys.stdout.write('Compressing output file... ')
+def indexFile(f, options):
+    sys.stdout.write(f'Compressing output file {f}... ')
     sys.stdout.flush()
-    pysam.tabix_compress(options.output, options.output + '.gz', force=True)
+    pysam.tabix_compress(os.path.join(options.output_dir, f), os.path.join(options.output_dir, f + '.gz'), force=True)
     sys.stdout.write('OK\n')
-    sys.stdout.write('Indexing output file... ')
+    sys.stdout.write(f'Indexing output file {f}... ')
     sys.stdout.flush()
-    pysam.tabix_index(options.output + '.gz', seq_col=4, start_col=6, end_col=7, meta_char='#', force=True)
+    pysam.tabix_index(os.path.join(options.output_dir, f + '.gz'), seq_col=4, start_col=6, end_col=7, meta_char='#', force=True)
     sys.stdout.write('OK\n')
-
 
 # CHeck if string is a number (integer)
 def is_number(s):
@@ -502,8 +611,7 @@ def is_number(s):
     except ValueError:
         return False
 
-
-def run(options, version):
+def run(options):
     # Checking if all required options specified
     if options.ensembl is None:
         print('\nError: no Ensembl release specified. Use option -h to get help!\n')
@@ -517,32 +625,27 @@ def run(options, version):
 
     # Must use Ensembl release >= 70
     if not (int(options.ensembl) >= 70 or int(options.ensembl) == 65):
-        print('\nError: This version works with Ensembl v65 or >= v70.\n')
+        print('\nError: This version.py works with Ensembl v65 or >= v70.\n')
         quit()
 
     # Genome build
     # genome_build = options.genome
     genome_build = 'GRCh37' if int(options.ensembl) <= 75 else 'GRCh38'
 
-    # Printing out version information
+    # Printing out version.py information
     print("\n---------------------------------------------------------------------------------------")
-    print('CAVA ' + version + ' transcript database preparation tool (ensembl_db) is now running')
+    print('CAVA ' + options.version + ' transcript database preparation tool (ensembl_db) is now running')
     print('Started: ', datetime.datetime.now(), '\n')
 
     # Print info
-    print('Ensembl version:  ' + options.ensembl)
+    print('Ensembl version.py:  ' + options.ensembl)
     print('Reference genome: ' + genome_build)
 
     # Creating compressed output file
-    Nretrieved = process_data(options, genome_build, version)
-    print('\nA total of ' + str(Nretrieved) + ' transcripts have been retrieved\n')
-
+    enst_parsed, ens_lifted = process_data(options, genome_build)
+    print('\nA total of ' + str(enst_parsed) + ' transcripts have been retrieved\n')
     # Indexing output file with Tabix
-    indexFile(options)
-
-    # Removing uncompressed output file
-    os.remove(options.output)
-
+    indexFile(options.output, options)
     # Printing out summary information
     print('')
     print('---------------------')
@@ -551,6 +654,24 @@ def run(options, version):
     print(options.output + '.gz (transcript database)')
     print(options.output + '.gz.tbi (index file)')
     print(options.output + '.txt (list of transcripts)')
+
+
+    if ens_lifted:
+        print('\nA total of ' + str(ens_lifted) + ' transcripts have been lifted over\n')
+        # Indexing output file with Tabix
+        indexFile(options.output + '.hg19_converted', options)
+        # Printing out summary information
+        print('')
+        print('---------------------')
+        print('Output files created:')
+        print('---------------------')
+        print(options.output + '.hg19_converted' + '.gz (transcript database)')
+        print(options.output + '.hg19_converted' + '.gz.tbi (index file)')
+        print(options.output + '.hg19_converted' + '.txt (list of transcripts)')
+        os.remove(os.path.join(options.output_dir, options.output + '.hg19_converted'))
+
+    # Removing uncompressed output file
+    os.remove(os.path.join(options.output_dir, options.output))
 
     print('')
     print('CAVA ensembl_db successfully finished: ', datetime.datetime.now())

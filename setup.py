@@ -1,8 +1,12 @@
 from setuptools import setup
+with open('VERSION') as version_file:
+    version = version_file.read().strip()
+with open('requirements.txt') as requires_file:
+    requires = requires_file.read().split('\n')
 
 setup(
     name='CAVA',
-    version='2.0.0',
+    version=version,
     description='CAVA (Clinical Annotation of VAriants)',
     url='https://github.com/Steven-N-Hart/CAVA',
     author='Steven-N-Hart',
@@ -17,6 +21,7 @@ setup(
         'bin/dbSNPDB.py',
         'bin/dbsnp_db'
     ],
+    install_requires = requires,
     zip_safe=False,
     include_package_data=True
 )

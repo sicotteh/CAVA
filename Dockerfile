@@ -27,11 +27,15 @@ RUN apt-get install -y \
     python3-distutils \
     git \
     libcurl4-nss-dev \
-    zlib1g-dev
+    zlib1g-dev \
+    bedtools \
+    samtools
 
-
+#Needed to download UCUSC librarires
+RUN echo -e "[system_default_sect]\nMinProtocol = TLSv1.2\nCipherString = DEFAULT@SECLEVEL=2" >> etc/ssl/openssl.cnf
 RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python3 get-pip.py
 RUN pip install appdirs Cython flake8 packaging py pylint pyparsing pysam pytest pytest-cov radon six sphinx gevent CrossMap
 
-RUN git clone https://github.com/Steven-N-Hart/CAVA.git
-RUN cd CAVA && python3 setup.py install && cd /
+RUN mkdir /CAVA/
+ADD . CAVA/
+RUN cd CAVA/ && python3 setup.py install
