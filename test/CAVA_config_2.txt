@@ -1,3 +1,6 @@
+
+### This is a template of the configuration file for CAVA v1.2.3 ###
+
 # Input file format
 # Possible values: VCF or TXT | Optional: yes | Default value: VCF
 @inputformat = VCF
@@ -8,15 +11,15 @@
 
 # Absolute path to reference genome file
 # Possible values: string | Optional: no
-@reference = test/tmp.hg38.fa
+@reference = test/tmp.GRCh38.fa
 
 # Absolute path to Ensembl transcript database file
 # Possible values: string | Optional: yes (if not specified, default transcript database will be used)
-@ensembl = test/tmp.db.gz
+@ensembl = data/ENST101_test_small.gz
 
 # Absolute path to dbSNP database file
 # Possible values: string | Optional: yes
-##@dbsnp = absolute/path/to/dbsnp/database
+@dbsnp = .
 
 # Are variants with neither transcript nor dbSNP annotation to be included in the output?
 # Possible values: TRUE or FALSE | Optional: yes | Default value: TRUE
@@ -32,22 +35,22 @@
 
 # Name of compressed BED file specifying genomic regions variant annotation is restricted to
 # Possible values: string | Optional: yes
-##@target = .
+@target = .
 
 # Name of file providing a list of the gene identifiers variant annotation is restricted to
 # Note: gene identifiers need to be given on separate lines in the file
-# Possible values: string | Optional: yes  
-##@genelist = .
+# Possible values: string | Optional: yes
+@genelist = .
 
-# Name of file providing a list of transcript identifiers variant annotation is restricted to 
+# Name of file providing a list of transcript identifiers variant annotation is restricted to
 # Note: transcript identifiers need to be given on separate lines in the file
-# Possible values: string | Optional: yes 
-##@transcriptlist = .
+# Possible values: string | Optional: yes
+@transcriptlist = .
 
 # Name of file providing a list of the dbSNP identifiers variant annotation is restricted to
 # Note: dbSNP identifiers need to be given on separate lines in the file
-# Possible values: string | Optional: yes  
-##@snplist = .
+# Possible values: string | Optional: yes
+@snplist = .
 
 # Is a log file to be written?
 # Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
@@ -58,7 +61,7 @@
 @ontology = BOTH
 
 # Definition of variant impact levels (reported by the IMPACT annotation flag)
-# Different impact levels are separated by | and a comma-separated list of CLASS terms must be given for each level 
+# Different impact levels are separated by | and a comma-separated list of CLASS terms must be given for each level
 # Possible values: string | Optional: yes
 # Default value: SG,ESS,FS | SS5,IM,SL,EE,IF,NSY | SY,SS,INT,5PU,3PU
 @impactdef = SG,ESS,FS | SS5,IM,SL,EE,IF,NSY | SY,SS,INT,5PU,3PU
@@ -68,10 +71,22 @@
 # Possible values: TRUE or FALSE | Optional: yes | Default value: TRUE
 @givealt = TRUE
 
-# Number of bases into the intron used as the splice site region 
+# Number of bases into the intron used as the splice site region
 # Possible values: integer >= 6 | Optional: yes | Default value: 8
 @ssrange = 8
 
 # Is the prefix CAVA_ added to annotation flag names in VCF output?
 # Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
-@prefix = FALSE
+@prefix = TRUE
+
+# Name of chromosomes you want to run on
+# Default = 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,18,20,21,22,X,Y,MT
+@chrom = 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,18,20,21,22,X,Y,MT
+
+# Which Codon table should be used?
+# 1 = {'ATA': 'I'}   This is the default
+# 3 = {'ATA': 'Ile'} This uses the 3 letter code instead
+# 4 = {'AGA':'X'} Mitochondrial Code: changes RAGAX, RAGGX, IAUAM, XUGAW (used if chr == M or MT)
+# 5 = {'ATA': 'I'} Bacterial code
+# Default = 1
+@codon_usage = 1

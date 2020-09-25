@@ -1,4 +1,3 @@
-appdirs=>
 Cython>=0.25.2
 flake8>=3.3.0
 packaging>=16.8
@@ -6,6 +5,7 @@ pep8==1.7.0
 py>=1.4.32
 pylint>=1.7.2
 pyparsing>=2.2.0
+pybedtools==0.8.1
 pysam>=0.15.0
 pytest>=3.0.7
 pytest-cov>=2.2.0
@@ -13,3 +13,4 @@ radon>=2.0.2
 six>=1.10.0
 sphinx>=1.6.3
 gevent>=1.2.2
+wget>=3.2
