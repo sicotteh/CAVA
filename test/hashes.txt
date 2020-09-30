@@ -1,0 +1,8 @@
+c8c9240de200b6cad76cf9a535582d8c  test/tmp1.vcf
+05ef58a261cb004b5a008f4a7623bf0f  test/tmp2.vcf
+20ea31c6a966eef29bec1c8e81ed581c  test/tmp3.vcf
+624bf7a1fc0b7080848aedff8392768d  test/tmp4.vcf
+6de35ab4ad723d7a7c720228633edc7d  test/tmpA.vcf
+c3c2df7cac6d292f63968249168ba03f  test/tmpB.vcf
+82564e15856d16adeec06d4043982602  test/tmpC.vcf
+82564e15856d16adeec06d4043982602  test/tmpD.vcf
