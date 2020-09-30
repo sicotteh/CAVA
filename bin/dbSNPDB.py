@@ -108,14 +108,14 @@ parser = OptionParser(usage='CAVA-{}/dbsnp_db <options>'.format(version), versio
                       epilog=epilog)
 parser.add_option('-i', "--in", default=None, dest='input', action='store', help="Input filename (list of dbSNP IDs)")
 parser.add_option('-o', "--out", default='output', dest='output', action='store', help="Output filename prefix")
-parser.add_option('-s', "--snp", default=None, dest='release', action='store', help="dbSNP release version")
+parser.add_option('-s', "--snp", default=None, dest='release', action='store', help="dbSNP release version.py")
 parser.add_option('-d', "--data", default=None, dest='data', action='store', help="Data file (00-All.vcf.gz)")
 (options, args) = parser.parse_args()
 
 # Check options
 if options.release is None:
     print('\nError: no dbSNP release specified')
-    print('Please use option -s to specify dbSNP release version\n')
+    print('Please use option -s to specify dbSNP release version.py\n')
     quit()
 if options.data is None:
     print('\nError: no 00-All.vcf.gz data file specified')
@@ -125,7 +125,7 @@ if not os.path.isfile(options.data):
     print('\nError: 00-All.vcf.gz file (' + options.data + ') cannot be found.\n')
     quit()
 
-# Print out version information
+# Print out version.py information
 print("\n---------------------------------------------------------------------------------------")
 print('CAVA ' + version + ' dbSNP database preparation tool (dbsnp_db) is now running.')
 print('Started: ', datetime.datetime.now(), '\n')

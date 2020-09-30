@@ -6,20 +6,30 @@
     * [3 DEPENDENCIES](#3-dependencies)
     * [4 INSTALLATION ON LINUX OR MAC](#4-installation-on-linux-or-mac)
     * [5 RUNNING CAVA](#5-running-cava)
-    * [6 DOCUMENTATION](#6-documentation)
-    * [7 LICENCE](#7-licence)
+    * [6 LICENCE](#7-licence)
 
 <!-- vim-markdown-toc -->
 
-CAVA v1.2.3 README
+CAVA README
 ==================
 
 1 INTRODUCTION
 --------------
 
-CAVA (Clinical Annotation of VAriants) is a lightweight, fast, flexible and easy-to-use Next Generation Sequencing (NGS) variant annotation tool. It implements a clinical sequencing nomenclature (CSN), a fixed variant annotation consistent with the principles of the Human Genome Variation Society (HGVS) guidelines, optimised for automated clinical variant annotation of NGS data. 
+CAVA (Clinical Annotation of VAriants) is a lightweight, fast, flexible 
+and easy-to-use Next Generation Sequencing (NGS) variant annotation tool. 
+It implements a clinical sequencing nomenclature (CSN), a fixed variant 
+annotation consistent with the principles of the Human Genome Variation 
+Society (HGVS) guidelines, optimised for automated clinical variant 
+annotation of NGS data. 
 
-CAVA has been extensively tested on exome data and is being used in the Mainstreaming Cancer Genetics (MCG) programme which applies NGS to increase the availability and affordability of clinical testing of cancer predisposition genes.
+CAVA has been extensively tested on exome data and is being used in the 
+Mainstreaming Cancer Genetics (MCG) programme which applies NGS to 
+increase the availability and affordability of clinical testing of 
+cancer predisposition genes.
+
+*UPDATE* CAVA is no longer being supported by the Rahman Team. This fork
+is used by the Mayo Clinic to annotate our research and clinical samples.
 
 
 2 PUBLICATION
@@ -27,49 +37,52 @@ CAVA has been extensively tested on exome data and is being used in the Mainstre
 
 If you use CAVA, please cite:
 
-Márton Münz, Elise Ruark, Anthony Renwick, Emma Ramsay, Matthew Clarke, Shazia Mahamdallie, Victoria Cloke, Sheila Seal, Ann Strydom, Gerton Lunter, Nazneen Rahman. CSN and CAVA: variant annotation tools for rapid, robust next-generation sequencing analysis in the clinical setting. Genome Medicine 7:76, doi:10.1186/s13073-015-0195-6 (2015).
+Márton Münz, Elise Ruark, Anthony Renwick, Emma Ramsay, Matthew Clarke, 
+Shazia Mahamdallie, Victoria Cloke, Sheila Seal, Ann Strydom, 
+Gerton Lunter, Nazneen Rahman. CSN and CAVA: variant annotation tools 
+for rapid, robust next-generation sequencing analysis in the clinical 
+setting. Genome Medicine 7:76, doi:10.1186/s13073-015-0195-6 (2015).
 
 
 3 DEPENDENCIES
 --------------
 
-To install and run CAVA v1.2.3 you will need the following dependencies installed:
+To install and run CAVA you will need the following dependencies installed:
 - Python 3
 - GCC and GNU make
 - virtualenv
 
-If your system is missing GCC and GNU make, these can be installed as follows:
+If your system is missing GCC and GNU make, these can be installed as 
 
 On a Mac, the easiest way to set them up is to install Xcode Command Line Tools.
-
 On a Debian or Ubuntu Linux, they can be set up by installing the build-essential package:
-sudo apt-get install build-essential
+
+`bash sudo apt-get install build-essential`
 
 If not already installed on your system, virtualenv can be set up by:
-pip install virtualenv
 
+`bash 
+pip install virtualenv
+`
 
 4 INSTALLATION ON LINUX OR MAC
 ------------------------------
 
-CAVA v1.2.3 can be downloaded from https://github.com/RahmanTeam/CAVA/releases/tag/v1.2.3
-in either .zip or .tar.gz format.
-
-To unpack these run one of the following commands:
-
-unzip CAVA-1.2.3.zip
-
-or:
-
-tar -xvzf CAVA-1.2.3.tar.gz
-
-and then you can install CAVA with the following command from the CAVA-1.2.3 directory:
-
+```bash 
+git clone https://github.com/Steven-N-Hart/dicom_wsi.git
+# optional to checkout release
+# e.g. git checkout v.1.2.4
 ./install.sh
+```
 
-CAVA uses virtualenv and pip to manage all its extra dependencies, which means that it will not clutter up your system by installing things globally. Everything it installs will go into a sub-directory in the CAVA-1.2.3 directory. If you delete CAVA then everything it has installed will also be deleted.
+CAVA uses virtualenv and pip to manage all its extra dependencies, 
+which means that it will not clutter up your system by installing 
+things globally. Everything it installs will go into a sub-directory 
+in the CAVA directory. If you delete CAVA then everything it has 
+installed will also be deleted.
 
-Once the installation script has finished successfully, CAVA is ready for use.
+Once the installation script has finished successfully, CAVA is ready 
+for use.
 
 
 5 RUNNING CAVA
@@ -77,19 +90,15 @@ Once the installation script has finished successfully, CAVA is ready for use.
 
 CAVA can be run with the following simple command:
 
-CAVA-1.2.3/cava -c config.txt -i input.vcf -o output
+```bash
+cava -c config.txt -i input.vcf -o output
+```
 
 It requires three command line arguments: 
-the name of the configuration file (-c), the name of the input file (-i) and the prefix of the output file name (-o). 
+the name of the configuration file (-c), the name of the input file (-i) 
+and the prefix of the output file name (-o). 
 
-
-6 DOCUMENTATION
----------------
-
-See CAVA-v1.2,3_doc.pdf for detailed documentation and examples.
-
-
-7 LICENCE
+6 LICENCE
 ---------
 
 CAVA is released under MIT licence (see the LICENCE file).

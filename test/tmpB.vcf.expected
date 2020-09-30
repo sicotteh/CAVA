@@ -1,0 +1,40 @@
+##fileformat=VCFv4.1
+##INFO=<ID=CAVA_TYPE,Number=.,Type=String,Description="Variant type: Substitution, Insertion, Deletion or Complex",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_GENE,Number=.,Type=String,Description="HGNC gene symbol",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_TRANSCRIPT,Number=.,Type=String,Description="Transcript identifier",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_GENEID,Number=.,Type=String,Description="Gene identifier",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_TRINFO,Number=.,Type=String,Description="Transcript information: Strand/Length of transcript/Number of exons/Length of coding DNA + UTR/Protein length",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_LOC,Number=.,Type=String,Description="Location of variant in transcript",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_CSN,Number=.,Type=String,Description="CSN annotation",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_PROTPOS,Number=.,Type=String,Description="Protein position",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_PROTREF,Number=.,Type=String,Description="Reference amino acids",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_PROTALT,Number=.,Type=String,Description="Alternate amino acids",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_CLASS,Number=.,Type=String,Description="5PU: Variant in 5 prime untranslated region, 3PU: Variant in 3 prime untranslated region, INT: Intronic variant that does not alter splice site bases, SS: Intronic variant that alters a splice site base but not an ESS or SS5 base, ESS: Variant that alters essential splice site base (+1,+2,-1,-2), SS5: Variant that alters the +5 splice site base, but not an ESS base, SY: Synonymous change caused by a base substitution (i.e. does not alter amino acid), NSY: Nonsynonymous change (missense) caused by a base substitution (i.e. alters amino acid), IF: Inframe insertion and/or deletion (variant alters the length of coding sequence but not the frame), IM: Variant that alters the start codon, SG: Variant resulting in stop-gain (nonsense) mutation, SL: Variant resulting in stop-loss mutation, FS: Frameshifting insertion and/or deletion (variant alters the length and frame of coding sequence), EE: Inframe deletion, insertion or base substitution which affects the first or last three bases of the exon",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_SO,Number=.,Type=String,Description="Sequence Ontology term",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_ALTFLAG,Number=.,Type=String,Description="None: variant has the same CSN annotation regardless of its left or right-alignment, AnnNotClass/AnnNotSO/AnnNotClassNotSO: indel has an alternative CSN but the same CLASS and/or SO, AnnAndClass/AnnAndSO/AnnAndClassNotSO/AnnAndSONotClass/AnnAndClassAndSO: Multiple CSN with different CLASS and/or SO annotations",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_ALTANN,Number=.,Type=String,Description="Alternate CSN annotation",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_ALTCLASS,Number=.,Type=String,Description="Alternate CLASS annotation",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_ALTSO,Number=.,Type=String,Description="Alternate SO annotation",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_IMPACT,Number=.,Type=String,Description="Impact group the variant is stratified into",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_DBSNP,Number=.,Type=String,Description="rsID from dbSNP",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_HGVSc,Number=.,Type=String,Description="Nomenclature for cDNA changes",Source="CAVA",Version="1.2.4">
+##source=bior_tjson_to_vcf
+##BIOR=<ID="bior.dbSNP_142_GRCh38",Operation="bior_lookup",DataType="JSON",ShortUniqueName="dbSNP_142_GRCh38",Source="dbSNP",Description="NCBI's	dbSNP	Variant	Database",Version="142",Build="GRCh38",Path="/research/bsi/data/refdata/catalogs/bior/v1/dbSNP/142_GRCh38/variants_nodups.v1/00-All.vcf.tsv.bgz">
+##INFO=<ID=ASP,Number=0,Type=Flag,Description="">
+##INFO=<ID=dbSNPBuildID,Number=1,Type=Integer,Description="">
+##INFO=<ID=GENEINFO,Number=1,Type=String,Description="">
+##INFO=<ID=LSD,Number=0,Type=Flag,Description="">
+##INFO=<ID=NSN,Number=0,Type=Flag,Description="">
+##INFO=<ID=PM,Number=0,Type=Flag,Description="">
+##INFO=<ID=REF,Number=0,Type=Flag,Description="">
+##INFO=<ID=RS,Number=1,Type=Integer,Description="">
+##INFO=<ID=RSPOS,Number=1,Type=Integer,Description="">
+##INFO=<ID=SAO,Number=1,Type=Integer,Description="">
+##INFO=<ID=SLO,Number=0,Type=Flag,Description="">
+##INFO=<ID=SSR,Number=1,Type=Integer,Description="">
+##INFO=<ID=VC,Number=1,Type=String,Description="">
+##INFO=<ID=VP,Number=1,Type=String,Description="">
+##INFO=<ID=WGT,Number=1,Type=Integer,Description="">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
+13	32319154	rs80358435	G	T	.	.	RS=80358435;RSPOS=32319154;dbSNPBuildID=132;SSR=0;SAO=0;VP=0x050160000605000002100100;GENEINFO=BRCA2:675;WGT=1;VC=SNV;PM;SLO;NSN;REF;ASP;LSD;CAVA_TYPE=Substitution;CAVA_TRANSCRIPT=NM_000059.4;CAVA_GENE=BRCA2;CAVA_GENEID=BRCA2;CAVA_TRINFO=+/84762bp/27/11954bp/3418;CAVA_LOC=Ex3;CAVA_CSN=c.145G>T_p.Glu49X;CAVA_PROTPOS=49;CAVA_PROTREF=E;CAVA_PROTALT=X;CAVA_CLASS=SG;CAVA_SO=stop_gained;CAVA_IMPACT=1;CAVA_ALTANN=.;CAVA_ALTCLASS=.;CAVA_ALTSO=.;CAVA_HGVSc=NM_000059.4(BRCA2):c.145G>T	GT	0/1
+17	43045712	rs80357258	T	C	.	.	RS=80357258;RSPOS=43045712;RV;dbSNPBuildID=132;SSR=0;SAO=0;VP=0x050360800a05000002100100;GENEINFO=BRCA1:672;WGT=1;VC=SNV;PM;S3D;SLO;NSM;REF;U3;ASP;LSD;CAVA_TYPE=Substitution;CAVA_TRANSCRIPT=NM_007294.4;CAVA_GENE=BRCA1;CAVA_GENEID=BRCA1;CAVA_TRINFO=-/81071bp/23/7088bp/1863;CAVA_LOC=Ex23;CAVA_CSN=c.5558A>G_p.Tyr1853Cys;CAVA_PROTPOS=1853;CAVA_PROTREF=Y;CAVA_PROTALT=C;CAVA_CLASS=NSY;CAVA_SO=missense_variant;CAVA_IMPACT=2;CAVA_ALTANN=.;CAVA_ALTCLASS=.;CAVA_ALTSO=.;CAVA_HGVSc=NM_007294.4(BRCA1):c.5558A>G	GT	0/1

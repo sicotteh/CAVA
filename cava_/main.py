@@ -316,14 +316,10 @@ class SingleJob(multiprocessing.Process):
             finalizeProgressInfo()
 
 
-def run(copts, version, default_config_file):
+def run(copts, version):
     copts.threads = int(copts.threads)
     if copts.threads > 1:
         copts.stdout = False
-
-    # Use default path read from the default_config_path file, if -c is not used
-    if copts.conf is None:
-        copts.conf = default_config_file
 
     # Check if input and configuration files exist
     if copts.conf is None:
@@ -345,7 +341,7 @@ def run(copts, version, default_config_file):
         logging.basicConfig(filename=copts.output + '.log', filemode='w',
                             format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
 
-    # Printing out version information and start time
+    # Printing out version.py information and start time
     if not copts.stdout: starttime = printStartInfo(version)
     if options.args['logfile']:
         logging.info('CAVA ' + version + ' started.')
