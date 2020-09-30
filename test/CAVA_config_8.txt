@@ -11,11 +11,11 @@
 
 # Absolute path to reference genome file
 # Possible values: string | Optional: no
-@reference = data/tmp.hg38.fa
+@reference = test/tmp.hg19.fa
 
 # Absolute path to Ensembl transcript database file
 # Possible values: string | Optional: yes (if not specified, default transcript database will be used)
-@ensembl = /data5/bsi/epibreast/m087494.couch/Scripts/Progams/CAVA/defaultdb/ensembl75s.gz
+@ensembl = data/RefSeq_small.hg19_converted.gz
 
 # Absolute path to dbSNP database file
 # Possible values: string | Optional: yes
