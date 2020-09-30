@@ -17,7 +17,6 @@ setup(
         'bin/CAVA.py',
         'bin/cava',
         'bin/EnsemblDB.py',
-        'bin/ensembl_db',
         'bin/dbSNPDB.py',
         'bin/dbsnp_db'
     ],

@@ -21,3 +21,4 @@ doc/sphinx/_build
 dist/
 build/
 CAVA.egg-info/
+test/tmp.*fa*

@@ -40,9 +40,33 @@ python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmp3 -c test/CAVA_config_3.t
 # build 37 test small
 python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmp4 -c test/CAVA_config_4.txt
 
-tail -n2 test/tmp*vcf # None should have '.' in CSN
 
-# Tear down
+# ########################################################################################
+# Test RefSeq
+# ########################################################################################
+
+# Test: prepare database
+python3 bin/RefSeqDB.py -r GCF_000001405.39_GRCh38.p13 -o RefSeq
+python3 bin/RefSeqDB.py -r GCF_000001405.39_GRCh38.p13 -o RefSeq_small -i test/CustomTX2.txt
+
+# Test: annotate
+# build 38 test full
+python3 bin/CAVA.py -i test/test.GRCh38.vcf -o test/tmpA -c test/CAVA_config_5.txt
+# build 38 test small
+python3 bin/CAVA.py -i test/test.GRCh38.vcf -o test/tmpB -c test/CAVA_config_6.txt
+# build 37 test full
+python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmpC -c test/CAVA_config_7.txt
+# build 37 test small
+python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmpD -c test/CAVA_config_8.txt
+
+
+# Test: verify correct results
 # =========
+# Before comparing outputs, we have to remove the date from the VCFs, otherwise the md5sums won't match
+for x in test/tmp[0-9A-Z].vcf
+do
+  grep -v fileDate $x > tmp.txt
+  mv tmp.txt ${x}
+done
 
-#rm test/tmp.*
+md5sum --check test/hashes.txt
