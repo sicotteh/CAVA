@@ -10,10 +10,12 @@ In this case, we will use release 0.91
 
 ```
 # Download file
-wget -O data/MANE.txt ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_0.91/MANE.GRCh38.v0.91.summary.txt.gz
+wget -O data/ENST.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_0.91/MANE.GRCh38.v0.91.select_ensembl_genomic.gtf.gz and
+wget -O data/RefSeq.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_0.91/MANE.GRCh38.v0.91.select_refseq_genomic.gtf.gz
+
 # Seperate into ENST and NM Transcripts
-zcat data/MANE.txt |awk -F"\t" '{print $2}' > data/ENST.txt
-zcat data/MANE.txt |awk -F"\t" '{print $6}' > data/RefSeq.txt
+zcat data/ENST.gtf.gz |cut -f9|cut -f4 -d' '|grep ENST|sed 's/;//;s/\"//g'|sort -u > data/ENST.txt
+zcat data/RefSeq.gtf.gz |cut -f9|cut -f4 -d' '|grep "NM_"|sed 's/;//;s/\"//g'|sort -u > data/RefSeq.txt
 ```
 
 ## Step 2. Make an Ensembl Database
