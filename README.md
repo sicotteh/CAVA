@@ -1,6 +1,6 @@
 <!-- vim-markdown-toc GFM -->
 
-* [CAVA v1.2.3 README](#cava-v123-readme)
+* [CAVA README](#cava-readme)
     * [1 INTRODUCTION](#1-introduction)
     * [2 PUBLICATION](#2-publication)
     * [3 DEPENDENCIES](#3-dependencies)
