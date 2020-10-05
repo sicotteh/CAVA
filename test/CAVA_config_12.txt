@@ -11,11 +11,11 @@
 
 # Absolute path to reference genome file
 # Possible values: string | Optional: no
-@reference = test/tmp.GRCh38.fa
+@reference = test/tmp.hg19.fa
 
 # Absolute path to Ensembl transcript database file
 # Possible values: string | Optional: yes (if not specified, default transcript database will be used)
-@ensembl = data/MANE.GRCh38.v0.91.select_refseq_genomic.db.gz
+@ensembl = data/MANE.GRCh38.v0.91.select_refseq_genomic.hg19_converted.db.gz
 
 # Absolute path to dbSNP database file
 # Possible values: string | Optional: yes
