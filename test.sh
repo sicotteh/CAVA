@@ -60,10 +60,25 @@ python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmpC -c test/CAVA_config_7.t
 python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmpD -c test/CAVA_config_8.txt
 
 
+# ########################################################################################
+# Test MANE
+# ########################################################################################
+
+python3 bin/MANE.py -e 0.91
+# build 38 MANE ENST
+python3 bin/CAVA.py -i test/test.GRCh38.vcf -o test/tmp_a -c test/CAVA_config_9.txt
+# build 38 MANE REFSEQ
+python3 bin/CAVA.py -i test/test.GRCh38.vcf -o test/tmp_b -c test/CAVA_config_10.txt
+# build 37 MANE converted ENST
+python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmp_c -c test/CAVA_config_11.txt
+# build 37 MANE Converted hg19
+python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmp_d -c test/CAVA_config_12.txt
+
+
 # Test: verify correct results
 # =========
 # Before comparing outputs, we have to remove the date from the VCFs, otherwise the md5sums won't match
-for x in test/tmp[0-9A-Z].vcf
+for x in test/tmp*.vcf
 do
   grep -v fileDate $x > tmp.txt
   mv tmp.txt ${x}
