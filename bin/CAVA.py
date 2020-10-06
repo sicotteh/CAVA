@@ -2,17 +2,9 @@
 
 from optparse import OptionParser
 
-from cava_ import helper
 from cava_ import main
-
-# Version
-version = 'v1.2.4'
-
-# Read default configuration file name from the default_config_path file
-try:
-    default_config_file = helper.defaultConfigPath()
-except:
-    default_config_file = None
+with open('/CAVA/VERSION') as version_file:
+    version = version_file.read().strip()
 
 descr = 'CAVA (Clinical Annotation of VAriants) is a lightweight, fast and flexible NGS variant annotation tool that provides consistent transcript-level annotation.'
 epilog = '\nExample usage: CAVA-{}/cava -c config.txt -i input.vcf -o output\n\n'.format(version)
@@ -22,7 +14,7 @@ parser.add_option('-i', "--input", default='input.vcf', dest='input', action='st
                   help="Input file name [default value: %default]")
 parser.add_option('-o', "--output", default='output', dest='output', action='store',
                   help="Output file name prefix [default value: %default]")
-parser.add_option('-c', "--config", default=default_config_file, dest='conf', action='store',
+parser.add_option('-c', "--config", default='config_template.txt', dest='conf', action='store',
                   help="Configuration file name [default value: %default]")
 parser.add_option('-s', "--stdout", default=False, dest='stdout', action='store_true',
                   help="Write output to standard output [default value: %default]")
@@ -30,4 +22,4 @@ parser.add_option('-t', "--threads", default=1, dest='threads', action='store',
                   help="Number of threads [default value: %default]")
 (copts, args) = parser.parse_args()
 
-main.run(copts, version, default_config_file)
+main.run(copts, version)

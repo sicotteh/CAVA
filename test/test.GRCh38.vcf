@@ -1,0 +1,23 @@
+##fileformat=VCFv4.1
+##fileDate=20200924
+##source=bior_tjson_to_vcf
+##BIOR=<ID="bior.dbSNP_142_GRCh38",Operation="bior_lookup",DataType="JSON",ShortUniqueName="dbSNP_142_GRCh38",Source="dbSNP",Description="NCBI's	dbSNP	Variant	Database",Version="142",Build="GRCh38",Path="/research/bsi/data/refdata/catalogs/bior/v1/dbSNP/142_GRCh38/variants_nodups.v1/00-All.vcf.tsv.bgz">
+##INFO=<ID=ASP,Number=0,Type=Flag,Description="">
+##INFO=<ID=dbSNPBuildID,Number=1,Type=Integer,Description="">
+##INFO=<ID=GENEINFO,Number=1,Type=String,Description="">
+##INFO=<ID=LSD,Number=0,Type=Flag,Description="">
+##INFO=<ID=NSN,Number=0,Type=Flag,Description="">
+##INFO=<ID=PM,Number=0,Type=Flag,Description="">
+##INFO=<ID=REF,Number=0,Type=Flag,Description="">
+##INFO=<ID=RS,Number=1,Type=Integer,Description="">
+##INFO=<ID=RSPOS,Number=1,Type=Integer,Description="">
+##INFO=<ID=SAO,Number=1,Type=Integer,Description="">
+##INFO=<ID=SLO,Number=0,Type=Flag,Description="">
+##INFO=<ID=SSR,Number=1,Type=Integer,Description="">
+##INFO=<ID=VC,Number=1,Type=String,Description="">
+##INFO=<ID=VP,Number=1,Type=String,Description="">
+##INFO=<ID=WGT,Number=1,Type=Integer,Description="">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
+1	45331556	rs36053993	C	T	.	.	.	GT	0/1
+13	32319154	rs80358435	G	T	.	.	RS=80358435;RSPOS=32319154;dbSNPBuildID=132;SSR=0;SAO=0;VP=0x050160000605000002100100;GENEINFO=BRCA2:675;WGT=1;VC=SNV;PM;SLO;NSN;REF;ASP;LSD	GT	0/1
+17	43045712	rs80357258	T	C	.	.	RS=80357258;RSPOS=43045712;RV;dbSNPBuildID=132;SSR=0;SAO=0;VP=0x050360800a05000002100100;GENEINFO=BRCA1:672;WGT=1;VC=SNV;PM;S3D;SLO;NSM;REF;U3;ASP;LSD	GT	0/1
