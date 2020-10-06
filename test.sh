@@ -81,6 +81,7 @@ python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmp_d -c test/CAVA_config_12
 for x in test/tmp*.vcf
 do
   grep -v fileDate $x > tmp.txt
+  #cp tmp.txt ${x}.expected
   mv tmp.txt ${x}
 done
 
