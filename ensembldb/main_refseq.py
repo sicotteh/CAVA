@@ -26,7 +26,25 @@ def warn(transcript):
     failed_conversions['GENETYPE'].add(transcript.GENETYPE)
     failed_conversions['TRANSTYPE'].add(transcript.TRANSTYPE)
     failed_conversions['ENST'].add(transcript.ENST)
-    #raise Exception(f"Messed up: {transcript.GENE}")
+    #print(f"Messed up: {transcript.ENST} {transcript.GENE}")
+
+
+def replace_chrom_names(line):
+    chrom = line.split('\t')
+    if line.startswith('NC_0000'):
+        base, v = chrom[0].split('.')
+        base = int(base.replace('NC_0000',''))
+        if base == 23:
+            base = 'X'
+        if base == 24:
+            base = 'Y'
+        chrom[0] = base
+        res = '\t'.join(str(x) for x in chrom)
+        return res
+    elif line.startswith('NC_012920'):
+        base, v = chrom[0].split('.')
+        chrom[0] = 'MT'
+        return '\t'.join(str(x) for x in chrom)
 
 # Class representing a transcript
 class Transcript(object):
@@ -101,13 +119,14 @@ class Transcript(object):
 
     # Check if it is a candidate transcript
     def isCandidate(self):
-        if not (self.GENETYPE == 'protein_coding' and self.TRANSTYPE == 'protein_coding'):
-            return False
-        # return (self.CODING_START is not None and self.CODING_END is not None) and self.isComplete
-        return (self.CODING_START > -1 and self.CODING_END > -1) and self.isComplete
+        return (self.CODING_START > -1 and self.CODING_END > -1)
+        #if not (self.GENETYPE == 'protein_coding' and self.TRANSTYPE == 'protein_coding'):
+        #    return False
+        #return (self.CODING_START > -1 and self.CODING_END > -1) and self.isComplete
 
     # Output transcript
     def output(self, outfile, outfile_list):
+        self.ENSG = self.GENE
         out = self.ENST + '\t' + self.GENE + '\t' + self.ENSG + '\t' + self.getInfoString() + '\t' + \
               self.CHROM + '\t' + self.STRAND + '\t' + str(self.POS)
         out += '\t' + str(self.POSEND) + '\t' + str(self.CODING_START_RELATIVE) + '\t' + str(self.CODING_START)
@@ -217,7 +236,7 @@ def write_temp(output_name, options, candidates, genesdata):
     outfile_list = open(output_name, 'w')
 
     outfile_list.write(
-        '# Created by CAVA ensembl_db ' + options.version + ' based on Ensembl release ' + options.ensembl + '\n')
+        '# Created by CAVA refseq_db ' + options.version + ' based on Ensembl release ' + options.refseq + '\n')
     outfile_list.write('ENSG\tGENE\tENST\n')
 
     # Output transcripts of each gene
@@ -249,8 +268,8 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
         cols = line.split('\t')
 
         # Only consider transcripts on the following chromosomes
-        if cols[0] not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17',
-                           '18', '19', '20', '21', '22', '23', 'MT', 'X', 'Y']: continue
+        #if cols[0] not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17',
+        #                   '18', '19', '20', '21', '22', '23', 'MT', 'X', 'Y']: continue
 
         # Consider only certain types of lines
         if cols[2] not in ['exon', 'transcript', 'start_codon', 'stop_codon']: continue
@@ -259,9 +278,10 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
         tags = cols[8].split(';')
         # Retrieve transcript ID
         enst = getValue(tags, 'transcript_id')
-
         # Do not consider transcript if it is not on the custom transcript list
         if options.input is not None and enst not in transIDs: continue
+        # Exclude non-NM transcripts
+        if options.nm_only and 'NM' not in enst: continue
 
         # Finalize and output transcript object
         if not enst == prevenst:
@@ -281,20 +301,13 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
             # Initialize new Transcript object
             transcript = Transcript()
             transcript.ENST = enst
-            transcript.GENE = getValue(tags, 'gene_name')
-            transcript.ENSG = getValue(tags, 'gene_id')
+            transcript.GENE = getValue(tags, 'gene')
+            transcript.ENSG = getValue(tags, 'gene')
             transcript.CHROM = cols[0]
             if cols[6] == '+':
                 transcript.STRAND = '1'
             else:
                 transcript.STRAND = '-1'
-
-            # Retrieve gene biotype and transcript biotype
-            transcript.GENETYPE = getValue(tags, 'gene_type')
-            if transcript.GENETYPE is None: transcript.GENETYPE = getValue(tags, 'gene_biotype')
-            transcript.TRANSTYPE = getValue(tags, 'transcript_type')
-            if transcript.TRANSTYPE is None: transcript.TRANSTYPE = getValue(tags, 'transcript_biotype')
-            if transcript.TRANSTYPE is None: transcript.TRANSTYPE = cols[1]
 
         # If line represents an exon
         if cols[2] == 'exon':
@@ -329,8 +342,13 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
 
         # Check if transcript is complete and is a CCDS transcript
         if transcript.isComplete is None:
-            transcript.isComplete = True
-            transcript.CCDS = True
+            transcript.isComplete = not (
+                    getBooleanValue(tags, 'cds_start_NF') or getBooleanValue(tags, 'cds_end_NF'))
+            if getValue(tags, 'ccds_id') is not None:
+                transcript.CCDS = True
+            else:
+                transcript.CCDS = False
+
         prevenst = enst
         if first: first = False
     return transcript, prevenst, first, genesdata
@@ -340,7 +358,7 @@ def sort_tmpfile(f):
     data = dict()
     counter = 0
     for line in open(f, 'r'):
-        if not line.startswith('ENST'): continue
+        if not line.startswith('N'): continue
         counter += 1
         line.rstrip()
         record = line.split('\t')
@@ -388,7 +406,7 @@ def readTranscriptIDs(inputfn):
 def sortRecords(records, idx1, idx2):
     ret = []
     chroms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19',
-              '20', '21', '22', '23', 'M', 'MT', 'X', 'Y']
+              '20', '21', '22', '23', 'MT', 'X', 'Y']
     for i in range(len(chroms)):
         chrom = chroms[i]
         if chrom in list(records.keys()):
@@ -426,37 +444,51 @@ def process_data(options, genome_build):
         transIDs = readTranscriptIDs(options.input)
         print('\nOnly ' + str(len(transIDs)) + ' transcripts read from ' + options.input + ' are considered\n')
     else:
-        print('\nAll transcripts from the Ensembl release are considered\n')
+        nm = 'All transcripts from the release are considered'
+        if options.nm_only: nm = 'All NM transcripts from the release are considered'
+        print(f'\n{nm}\n')
 
     # Load candidate and CCDS data for Ensembl <75
     candidates = dict()
-    if int(options.ensembl) < 75:
-        datadir = os.path.dirname(os.path.realpath(__file__)) + '/data'
-        for line in open(datadir + '/info' + options.ensembl + '.txt'):
-            line = line.strip()
-            if line == '': continue
-            cols = line.split('\t')
-            if cols[0] not in list(candidates.keys()): candidates[cols[0]] = dict()
-            candidates[cols[0]][cols[1]] = int(cols[2])
 
     ######################################################################
-
-    # Download Ensembl data if necessary
-    source_compressed_gtf = 'Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz'
+    # Download RefSeq data if necessary
+    source_compressed_gtf = options.refseq + '_genomic.gtf.gz'
+    #https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/reference/GCF_000001405.39_GRCh38.p13/GCF_000001405.39_GRCh38.p13_genomic.gtf.gz
     source_compressed_gtf = os.path.join('data', source_compressed_gtf)
-    if not os.path.exists(source_compressed_gtf):
-        sys.stdout.write('Downloading Ensembl database... ')
-        sys.stdout.flush()
 
-        url = 'ftp://ftp.ensembl.org/pub/release-' + options.ensembl + '/gtf/homo_sapiens/Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz'
+    if not os.path.exists(source_compressed_gtf):
+        sys.stdout.write('Downloading RefSeq database... ')
+        sys.stdout.flush()
+        url = 'https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/reference/' + options.refseq + '/' + options.refseq + '_genomic.gtf.gz'
         try:
             wget.download(url)
-            os.rename('Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz', source_compressed_gtf)
+            sys.stdout.flush()
+            # Convert chromosome names #Note we will lose unmapped transcripts here!
+            print(f'\nUnzipping {options.refseq + "_genomic.gtf.gz"}')
+            cmd = 'bgzip -d ' + options.refseq + '_genomic.gtf.gz'
+            os.system(cmd)
+            out = open('temp.txt', 'w')
+            print(f'Parsing {options.refseq + "_genomic.gtf"}')
+            with open(options.refseq + '_genomic.gtf', 'r') as g:
+                for line in g:
+                    if line.startswith('#'): continue
+                    try:
+                        new_line = replace_chrom_names(line)
+                    except:
+                        print(f'Failed: {line}')
+                        exit()
+                    if new_line:
+                        out.write(new_line)
+            out.close()
+            print(f'Compressing the GTF into: {source_compressed_gtf}')
+            cmd = 'bgzip -c temp.txt > ' + source_compressed_gtf
+            os.system(cmd)
+            os.remove('temp.txt')
         except Exception as e:
-            print('\n\nCannot connect to Ensembl FTP site. No internet connection?\n')
+            print('\n\nCannot connect to RefSeq FTP site. No internet connection?\n')
             print(f'{e}\n{url}')
             quit()
-
     ################################################################
     # Use crossmap to get hg19 if desired
     #################################################################
@@ -477,22 +509,22 @@ def process_data(options, genome_build):
                 print(f'Exception: {e}')
                 quit()
 
-        sys.stdout.write('\nMaking a hg19-conveterted GTF file\n')
-        mapTree, targetChromSizes, sourceChromSizes = read_chain_file(os.path.join('data','hg38ToHg19.over.chain.gz'))
-        converted_gtf = os.path.join('data','Homo_sapiens.hg19_converted' + options.ensembl + '.gtf')
-        crossmap_gff_file(mapTree, source_compressed_gtf, converted_gtf)
+        converted_gtf = os.path.join('data','Homo_sapiens.RefSeq.hg19_converted.' + options.refseq + '.gtf')
+        if not os.path.exists(converted_gtf):
+            sys.stdout.write('\nMaking a hg19-conveterted GTF file\n')
+            mapTree, targetChromSizes, sourceChromSizes = read_chain_file(os.path.join('data','hg38ToHg19.over.chain.gz'))
+            crossmap_gff_file(mapTree, source_compressed_gtf, converted_gtf)
 
-        # Note this file is not sorted!
-        a = pybedtools.BedTool(converted_gtf)
-        a.sort().remove_invalid().saveas('tmp.txt')
-        os.rename('tmp.txt', converted_gtf)
+            # Note this file is not sorted!
+            a = pybedtools.BedTool(converted_gtf)
+            a.sort().remove_invalid().saveas('tmp.txt')
+            os.rename('tmp.txt', converted_gtf)
 
     ################################################################
     #
     #################################################################
-    # Iterate through the lines in the ensembl data file
-    sys.stdout.write('Extracting transcript data from Ensembl...')
-
+    # Iterate through the lines in the refseq data file
+    sys.stdout.write('Extracting transcript data from RefSeq...')
 
     transcript, prevenst, first, genesdata = parse_GTF(filename=source_compressed_gtf,
                                                        options=options,
@@ -501,7 +533,6 @@ def process_data(options, genome_build):
 
     sys.stdout.write('Done\n')
     sys.stdout.flush()
-
     # Finalize last transcript and add to Gene object if candidate
     if transcript is not None:
         transcript.finalize()
@@ -512,7 +543,7 @@ def process_data(options, genome_build):
 
     # If no transcript ID from the input file was found in the Ensembl release
     if len(genesdata) == 0:
-        print('\n\nNo transcripts from ' + options.input + ' found in Ensembl release.')
+        print('\n\nNo transcripts found in this release.')
         print('\nNo transcript database created.')
         print("-----------------------------------------------------------------\n")
         quit()
@@ -550,9 +581,9 @@ def process_data(options, genome_build):
                                                                                                     transcript.ENSG)
                 genesdata[transcript.ENSG].TRANSCRIPTS[transcript.ENST] = transcript
 
-        # If no transcript ID from the input file was found in the Ensembl release
+        # If no transcript ID from the input file was found in the release
         if len(genesdata) == 0:
-            print('\n\nNo transcripts from ' + options.input + ' found in Ensembl release.')
+            print('\n\nNo transcripts from ' + options.input + ' found in the release.')
             print('\nNo transcript database created.')
             print("-----------------------------------------------------------------\n")
             quit()
@@ -601,32 +632,24 @@ def is_number(s):
 
 def run(options):
     # Checking if all required options specified
-    if options.ensembl is None:
-        print('\nError: no Ensembl release specified. Use option -h to get help!\n')
-        quit()
-    if not is_number(options.ensembl):
-        print('\nError: Ensembl release specified is not an integer. Use option -h to get help!\n')
+    if options.refseq is None:
+        print('\nError: no release specified. Use option -h to get help!\n')
         quit()
     if options.output is None:
         print('\nError: no output file name specified. Use option -h to get help!\n')
         quit()
 
-    # Must use Ensembl release >= 70
-    if not (int(options.ensembl) >= 70 or int(options.ensembl) == 65):
-        print('\nError: This version.py works with Ensembl v65 or >= v70.\n')
-        quit()
-
     # Genome build
     # genome_build = options.genome
-    genome_build = 'GRCh37' if int(options.ensembl) <= 75 else 'GRCh38'
+    genome_build = 'GRCh37' if  'GRCh37' in options.refseq else 'GRCh38'
 
     # Printing out version.py information
     print("\n---------------------------------------------------------------------------------------")
-    print('CAVA ' + options.version + ' transcript database preparation tool (ensembl_db) is now running')
+    print('CAVA ' + options.version + ' transcript database preparation tool (refseq_db) is now running')
     print('Started: ', datetime.datetime.now(), '\n')
 
     # Print info
-    print('Ensembl version.py:  ' + options.ensembl)
+    print('RefSeq version:  ' + options.refseq)
     print('Reference genome: ' + genome_build)
 
     # Creating compressed output file
@@ -662,5 +685,5 @@ def run(options):
     os.remove(os.path.join(options.output_dir, options.output))
 
     print('')
-    print('CAVA ensembl_db successfully finished: ', datetime.datetime.now())
+    print('CAVA refseq_db successfully finished: ', datetime.datetime.now())
     print("---------------------------------------------------------------------------------------\n")
