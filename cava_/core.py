@@ -209,13 +209,13 @@ class Record(object):
         for alt in alts:
             # Initializing each Variant object with different alt allele
             var = Variant(self.chrom, self.pos, self.ref, alt)
+            # DO  NOT FILTER
+            """
             if 'N' in self.ref or 'N' in alt:
                 logging.info('Variant ignored as allele contains unknown base (\'N\'): ' + self.chrom + ':' + str(
                     self.pos) + ' ' + self.ref + '>' + alt)
                 continue
-
-            # DO  NOT FILTER
-            """
+           
             if alt == '.':
                 logging.info("Variant ignored because it is monomorphic reference: " + self.chrom + ':' + str(
                     self.pos) + ' ' + self.ref + '>' + alt)
