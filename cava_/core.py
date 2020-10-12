@@ -215,7 +215,7 @@ class Record(object):
                 logging.info('Variant ignored as allele contains unknown base (\'N\'): ' + self.chrom + ':' + str(
                     self.pos) + ' ' + self.ref + '>' + alt)
                 continue
-
+           
             if alt == '.':
                 logging.info("Variant ignored because it is monomorphic reference: " + self.chrom + ':' + str(
                     self.pos) + ' ' + self.ref + '>' + alt)
@@ -386,6 +386,19 @@ class Record(object):
             # Iterating through variants
             c = 0
             for variant in outvariants:
+
+                # Standardize chromosome M notation if options specify
+                if options.args['normalized_mitochondrial_chrom'] == 'MT':
+                    if self.chrom == 'chrM':
+                        self.chrom = 'chrMT'
+                    if self.chrom == 'M':
+                        self.chrom = 'MT'
+                if options.args['normalized_mitochondrial_chrom'] == 'M':
+                    if self.chrom == 'chrMT':
+                        self.chrom = 'chrM'
+                    if self.chrom == 'MT':
+                        self.chrom = 'M'
+
                 # Creating first part of the TSV record (up to FILTER field)
                 record = self.id + '\t' + self.chrom + '\t' + str(self.pos) + '\t' + self.ref + '\t' + outalts[
                     c] + '\t' + self.qual + '\t' + self.filter
@@ -814,6 +827,7 @@ class Options(object):
         self.defs['impactdef'] = ('string', 'SG,ESS,FS|SS5,IM,SL,EE,IF,NSY|SY,SS,INT,5PU,3PU')
         self.defs['prefix'] = ('boolean', False)
         self.defs['codon_usage'] = ('string', '1')
+        self.defs['normalized_mitochondrial_chrom'] = ('string', 'not_normalized')
 
         # Reading options from file
         self.read()
@@ -1132,5 +1146,18 @@ def checkOptions(options):
             logging.error('The file given as @snplist does not exist.')
             logging.info('No output file written. CAVA quit.')
         quit()
+
+    # Checking if @normalized_mitochondrial_chrom was given correct value
+    str = options.args['normalized_mitochondrial_chrom']
+    if str is not 'not_normalized' and not (str == 'M' or str == 'MT'):
+        print('ERROR: incorrect value of the tag @normalized_mitochondrial_chrom.')
+        print('(Allowed values: \'M\' or \'MT\')')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
+        if options.args['logfile']:
+            logging.error('Incorrect value of the tag @normalized_mitochondrial_chrom.')
+            logging.info('No output file written. CAVA quit.')
+        quit()
+
 
 #######################################################################################################################
