@@ -780,7 +780,8 @@ class Sequence(str):
         index = 0
         while index + 3 <= len(self):
             codon = self[index:index + 3].upper()
-            if 'N' in codon:
+            if codon.replace('A','').replace('C','').replace('G','').replace('T',''):
+            #if 'N' in codon:
                 ret += '?'
                 index += 3
                 continue
@@ -791,7 +792,7 @@ class Sequence(str):
     # Getting reverse complement sequence
     def reverseComplement(self):
         complement = {"A": "T", "T": "A", "C": "G", "G": "C", "N": "N", "a": "t", "t": "a", "c": "g", "g": "c",
-                      "n": "n"}
+                      "n": "n", "*": "*"}
         ret = ''
         for base in self[::-1]: ret += complement[base]
         return ret
