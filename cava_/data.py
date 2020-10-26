@@ -479,7 +479,7 @@ class Ensembl(object):
                 else:
                     ALTSOstring += '.'
 
-            else:
+            if (not self.options.args['givealt']) or self.options.args['givealtflag']:
                 # Creating the ALTFLAG annotation
 
                 if self.options.args['ontology'].upper() == 'CLASS':
@@ -535,7 +535,8 @@ class Ensembl(object):
             variant.addFlag('ALTANN', ALTANNstring)
             if self.options.args['ontology'].upper() in ['CLASS', 'BOTH']: variant.addFlag('ALTCLASS', ALTCLASSstring)
             if self.options.args['ontology'].upper() in ['SO', 'BOTH']: variant.addFlag('ALTSO', ALTSOstring)
-        else:
+
+        if (not self.options.args['givealt']) or self.options.args['givealtflag']:
             variant.addFlag('ALTFLAG', ALTFLAGstring)
 
         return variant
