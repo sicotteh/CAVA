@@ -71,6 +71,11 @@
 # Possible values: TRUE or FALSE | Optional: yes | Default value: TRUE
 @givealt = TRUE
 
+# Always provide the ALTFLAG output
+# If TRUE, the ALTFLAG will always be reported, regardless of the @givalt setting
+# Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
+@givealtflag = FALSE
+
 # Number of bases into the intron used as the splice site region
 # Possible values: integer >= 6 | Optional: yes | Default value: 8
 @ssrange = 8

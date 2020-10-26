@@ -823,6 +823,7 @@ class Options(object):
         self.defs['snplist'] = ('string', '.')
         self.defs['nonannot'] = ('boolean', True)
         self.defs['givealt'] = ('boolean', True)
+        self.defs['givealtflag'] = ('boolean', False)
         self.defs['ssrange'] = ('string', '8')
         self.defs['ontology'] = ('string', 'both')
         self.defs['impactdef'] = ('string', 'SG,ESS,FS|SS5,IM,SL,EE,IF,NSY|SY,SS,INT,5PU,3PU')
@@ -942,7 +943,8 @@ def writeHeader(options, header, outfile, stdout):
                 if options.args['ontology'].upper() == 'CLASS': str += '\tALTANN\tALTCLASS'
                 if options.args['ontology'].upper() == 'SO': str += '\tALTANN\tALTSO'
                 if options.args['ontology'].upper() == 'BOTH': str += '\tALTANN\tALTCLASS\tALTSO'
-            else:
+
+            if (not options.args['givealt']) or options.args['givealtflag']:
                 str += '\tALTFLAG'
 
         if (not options.args['dbsnp'] == '.') and (not options.args['dbsnp'] == ''):
