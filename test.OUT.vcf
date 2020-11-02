@@ -1,0 +1,85 @@
+##fileformat=VCFv4.2
+##fileDate=2020-10-01
+##INFO=<ID=CAVA_TYPE,Number=.,Type=String,Description="Variant type: Substitution, Insertion, Deletion or Complex",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_GENE,Number=.,Type=String,Description="HGNC gene symbol",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_TRANSCRIPT,Number=.,Type=String,Description="Transcript identifier",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_GENEID,Number=.,Type=String,Description="Gene identifier",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_TRINFO,Number=.,Type=String,Description="Transcript information: Strand/Length of transcript/Number of exons/Length of coding DNA + UTR/Protein length",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_LOC,Number=.,Type=String,Description="Location of variant in transcript",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_CSN,Number=.,Type=String,Description="CSN annotation",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_PROTPOS,Number=.,Type=String,Description="Protein position",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_PROTREF,Number=.,Type=String,Description="Reference amino acids",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_PROTALT,Number=.,Type=String,Description="Alternate amino acids",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_CLASS,Number=.,Type=String,Description="5PU: Variant in 5 prime untranslated region, 3PU: Variant in 3 prime untranslated region, INT: Intronic variant that does not alter splice site bases, SS: Intronic variant that alters a splice site base but not an ESS or SS5 base, ESS: Variant that alters essential splice site base (+1,+2,-1,-2), SS5: Variant that alters the +5 splice site base, but not an ESS base, SY: Synonymous change caused by a base substitution (i.e. does not alter amino acid), NSY: Nonsynonymous change (missense) caused by a base substitution (i.e. alters amino acid), IF: Inframe insertion and/or deletion (variant alters the length of coding sequence but not the frame), IM: Variant that alters the start codon, SG: Variant resulting in stop-gain (nonsense) mutation, SL: Variant resulting in stop-loss mutation, FS: Frameshifting insertion and/or deletion (variant alters the length and frame of coding sequence), EE: Inframe deletion, insertion or base substitution which affects the first or last three bases of the exon",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_SO,Number=.,Type=String,Description="Sequence Ontology term",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_ALTFLAG,Number=.,Type=String,Description="None: variant has the same CSN annotation regardless of its left or right-alignment, AnnNotClass/AnnNotSO/AnnNotClassNotSO: indel has an alternative CSN but the same CLASS and/or SO, AnnAndClass/AnnAndSO/AnnAndClassNotSO/AnnAndSONotClass/AnnAndClassAndSO: Multiple CSN with different CLASS and/or SO annotations",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_ALTANN,Number=.,Type=String,Description="Alternate CSN annotation",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_ALTCLASS,Number=.,Type=String,Description="Alternate CLASS annotation",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_ALTSO,Number=.,Type=String,Description="Alternate SO annotation",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_IMPACT,Number=.,Type=String,Description="Impact group the variant is stratified into",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_DBSNP,Number=.,Type=String,Description="rsID from dbSNP",Source="CAVA",Version="1.2.4">
+##INFO=<ID=CAVA_HGVSc,Number=.,Type=String,Description="Nomenclature for cDNA changes",Source="CAVA",Version="1.2.4">
+##reference=GCF_000001405.39
+##batch=nobatch
+##handle=SSMP
+##FILTER=<ID=PASS,Description="All filters passed">
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=ClippingRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref number of hard clipped bases">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##contig=<ID=1,length=248956422,assembly=hg38>
+##contig=<ID=2,length=242193529,assembly=hg38>
+##contig=<ID=3,length=198295559,assembly=hg38>
+##contig=<ID=4,length=190214555,assembly=hg38>
+##contig=<ID=5,length=181538259,assembly=hg38>
+##contig=<ID=6,length=170805979,assembly=hg38>
+##contig=<ID=7,length=159345973,assembly=hg38>
+##contig=<ID=8,length=145138636,assembly=hg38>
+##contig=<ID=9,length=138394717,assembly=hg38>
+##contig=<ID=10,length=133797422,assembly=hg38>
+##contig=<ID=11,length=135086622,assembly=hg38>
+##contig=<ID=12,length=133275309,assembly=hg38>
+##contig=<ID=13,length=114364328,assembly=hg38>
+##contig=<ID=14,length=107043718,assembly=hg38>
+##contig=<ID=15,length=101991189,assembly=hg38>
+##contig=<ID=16,length=90338345,assembly=hg38>
+##contig=<ID=17,length=83257441,assembly=hg38>
+##contig=<ID=18,length=80373285,assembly=hg38>
+##contig=<ID=19,length=58617616,assembly=hg38>
+##contig=<ID=20,length=64444167,assembly=hg38>
+##contig=<ID=21,length=46709983,assembly=hg38>
+##contig=<ID=22,length=50818468,assembly=hg38>
+##contig=<ID=X,length=156040895,assembly=hg38>
+##contig=<ID=Y,length=57227415,assembly=hg38>
+##contig=<ID=M,length=16569,assembly=hg38>
+##contig=<ID=M_rsrs,length=16569,assembly=hg38>
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS mapping quality">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
+##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phaseset ID">
+##FILTER=<ID=ANEUPLOID,Description="Called genotype does not agree with expected ploidy">
+##FILTER=<ID=HETEROPLASMY,Description="Called heterozygous genotype on mitochondrial contig">
+##FORMAT=<ID=GP,Number=G,Type=Float,Description="Estimated Genotype Probability">
+##FILTER=<ID=BOOSTED,Description="Low quality observed genotype that has been boosted by imputation">
+##FILTER=<ID=IMP,Description="Set if true: IMP==1">
+##FILTER=<ID=LOWDP,Description="Set if GQ>20 and 5*ploidy<=DP<10*ploidy and filter is not set to (BOOSTED or IMP)">
+##FILTER=<ID=LOWQ,Description="Set if (GQ<=20 or DP<5*ploidy) and filter is not set to (BOOSTED or IMP)">
+##FILTER=<ID=NOTVALIDATED,Description="Set if variant falls outside of analytic range">
+##FORMAT=<ID=GL,Number=G,Type=Float,Description="Genotype likelihoods">
+##FORMAT=<ID=VAR_TYPE,Number=.,Type=String,Description="Variant type: SNV, INSERTION, DELETION, SUBSTITUTION, MNV, COMPLEX">
+##FORMAT=<ID=VAR_CONTEXT,Number=.,Type=String,Description="Variant genomic context: STR-expansion, STR-contraction, STR-proximal">
+##FORMAT=<ID=STR_MAX_LEN,Number=1,Type=Integer,Description="Maximum observed STR sequence length">
+##FORMAT=<ID=STR_PERIOD,Number=1,Type=Integer,Description="Repetition period for STR variants">
+##FORMAT=<ID=STR_TIMES,Number=1,Type=Float,Description="Number of repetition for STR variants">
+##pipeline=helix-v4.0.1
+##assay_version=v1
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	VALIDATION
+2	21009931	133	TG	CG	40	PASS	CAVA_TYPE=Substitution;CAVA_TRANSCRIPT=NM_000384.2;CAVA_GENE=APOB;CAVA_GENEID=338;CAVA_TRINFO=-/42.6kb/29/14.1kb/4563;CAVA_LOC=Ex26;CAVA_CSN=c.6937A>G_p.Ile2313Val;CAVA_PROTPOS=2313;CAVA_PROTREF=I;CAVA_PROTALT=V;CAVA_CLASS=NSY;CAVA_SO=missense_variant;CAVA_IMPACT=2;CAVA_ALTANN=.;CAVA_ALTCLASS=.;CAVA_ALTSO=.;CAVA_HGVSc=NM_000384.2(APOB):c.6937A>G	GT:AD:DP	0/1:50,50:100

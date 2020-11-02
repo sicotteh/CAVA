@@ -1,0 +1,1772 @@
+<?xml version="1.0" encoding="UTF-8"  ?>
+<!DOCTYPE INSDSet PUBLIC "-//NCBI//INSD INSDSeq/EN" "https://www.ncbi.nlm.nih.gov/dtd/INSD_INSDSeq.dtd">
+<INSDSet>
+  <INSDSeq>
+
+    <INSDSeq_locus>NM_000014</INSDSeq_locus>
+    <INSDSeq_length>4945</INSDSeq_length>
+    <INSDSeq_strandedness>single</INSDSeq_strandedness>
+    <INSDSeq_moltype>mRNA</INSDSeq_moltype>
+    <INSDSeq_topology>linear</INSDSeq_topology>
+    <INSDSeq_division>PRI</INSDSeq_division>
+    <INSDSeq_update-date>16-AUG-2019</INSDSeq_update-date>
+    <INSDSeq_create-date>01-APR-1999</INSDSeq_create-date>
+    <INSDSeq_definition>Homo sapiens alpha-2-macroglobulin (A2M), transcript variant 1, mRNA</INSDSeq_definition>
+    <INSDSeq_primary-accession>NM_000014</INSDSeq_primary-accession>
+    <INSDSeq_accession-version>NM_000014.5</INSDSeq_accession-version>
+    <INSDSeq_other-seqids>
+      <INSDSeqid>ref|NM_000014.5|</INSDSeqid>
+      <INSDSeqid>gi|1105531500</INSDSeqid>
+    </INSDSeq_other-seqids>
+    <INSDSeq_keywords>
+      <INSDKeyword>RefSeq</INSDKeyword>
+      <INSDKeyword>RefSeq Select</INSDKeyword>
+    </INSDSeq_keywords>
+    <INSDSeq_source>Homo sapiens (human)</INSDSeq_source>
+    <INSDSeq_organism>Homo sapiens</INSDSeq_organism>
+    <INSDSeq_taxonomy>Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi; Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini; Catarrhini; Hominidae; Homo</INSDSeq_taxonomy>
+    <INSDSeq_references>
+      <INSDReference>
+        <INSDReference_reference>1</INSDReference_reference>
+        <INSDReference_position>1..4945</INSDReference_position>
+        <INSDReference_authors>
+          <INSDAuthor>Sunderic M</INSDAuthor>
+          <INSDAuthor>Krizakova M</INSDAuthor>
+          <INSDAuthor>Malenkovic V</INSDAuthor>
+          <INSDAuthor>Cujic D</INSDAuthor>
+          <INSDAuthor>Katrlik J</INSDAuthor>
+          <INSDAuthor>Nedic O</INSDAuthor>
+        </INSDReference_authors>
+        <INSDReference_title>Changes Due to Ageing in the Glycan Structure of Alpha-2-Macroglobulin and Its Reactivity with Ligands</INSDReference_title>
+        <INSDReference_journal>Protein J 38 (1), 23-29 (2019)</INSDReference_journal>
+        <INSDReference_xref>
+          <INSDXref>
+            <INSDXref_dbname>doi</INSDXref_dbname>
+            <INSDXref_id>10.1007/s10930-018-9806-6</INSDXref_id>
+          </INSDXref>
+        </INSDReference_xref>
+        <INSDReference_pubmed>30564965</INSDReference_pubmed>
+        <INSDReference_remark>GeneRIF: the binding of IGFBP-2 to alpha2M seems to be related to structural changes in the glycan moieties of alpha2M, whereas binding of Zn ions, most likely, is not.</INSDReference_remark>
+      </INSDReference>
+      <INSDReference>
+        <INSDReference_reference>2</INSDReference_reference>
+        <INSDReference_position>1..4945</INSDReference_position>
+        <INSDReference_authors>
+          <INSDAuthor>Kostova MB</INSDAuthor>
+          <INSDAuthor>Brennen WN</INSDAuthor>
+          <INSDAuthor>Lopez D</INSDAuthor>
+          <INSDAuthor>Anthony L</INSDAuthor>
+          <INSDAuthor>Wang H</INSDAuthor>
+          <INSDAuthor>Platz E</INSDAuthor>
+          <INSDAuthor>Denmeade SR</INSDAuthor>
+        </INSDReference_authors>
+        <INSDReference_title>PSA-alpha-2-macroglobulin complex is enzymatically active in the serum of patients with advanced prostate cancer and can degrade circulating peptide hormones</INSDReference_title>
+        <INSDReference_journal>Prostate 78 (11), 819-829 (2018)</INSDReference_journal>
+        <INSDReference_xref>
+          <INSDXref>
+            <INSDXref_dbname>doi</INSDXref_dbname>
+            <INSDXref_id>10.1002/pros.23539</INSDXref_id>
+          </INSDXref>
+        </INSDReference_xref>
+        <INSDReference_pubmed>29659051</INSDReference_pubmed>
+        <INSDReference_remark>GeneRIF: In advanced prostate cancer with PSA levels &gt;1000 ng/mL, sufficient PSA-A2M is present in circulation to produce enzymatic activity against circulating small peptide hormones.</INSDReference_remark>
+      </INSDReference>
+      <INSDReference>
+        <INSDReference_reference>3</INSDReference_reference>
+        <INSDReference_position>1..4945</INSDReference_position>
+        <INSDReference_authors>
+          <INSDAuthor>Shimomura R</INSDAuthor>
+          <INSDAuthor>Nezu T</INSDAuthor>
+          <INSDAuthor>Hosomi N</INSDAuthor>
+          <INSDAuthor>Aoki S</INSDAuthor>
+          <INSDAuthor>Sugimoto T</INSDAuthor>
+          <INSDAuthor>Kinoshita N</INSDAuthor>
+          <INSDAuthor>Araki M</INSDAuthor>
+          <INSDAuthor>Takahashi T</INSDAuthor>
+          <INSDAuthor>Maruyama H</INSDAuthor>
+          <INSDAuthor>Matsumoto M</INSDAuthor>
+        </INSDReference_authors>
+        <INSDReference_title>Alpha-2-macroglobulin as a Promising Biological Marker of Endothelial Function</INSDReference_title>
+        <INSDReference_journal>J Atheroscler Thromb 25 (4), 350-358 (2018)</INSDReference_journal>
+        <INSDReference_xref>
+          <INSDXref>
+            <INSDXref_dbname>doi</INSDXref_dbname>
+            <INSDXref_id>10.5551/jat.41335</INSDXref_id>
+          </INSDXref>
+        </INSDReference_xref>
+        <INSDReference_pubmed>29093276</INSDReference_pubmed>
+        <INSDReference_remark>GeneRIF: Serum alpha2MG levels might reflect endothelial dysfunction evaluated by flow-mediated dilation in patients with chronic stroke or cardiovascular risk factors</INSDReference_remark>
+      </INSDReference>
+      <INSDReference>
+        <INSDReference_reference>4</INSDReference_reference>
+        <INSDReference_position>1..4945</INSDReference_position>
+        <INSDReference_authors>
+          <INSDAuthor>Asano T</INSDAuthor>
+          <INSDAuthor>Ito H</INSDAuthor>
+          <INSDAuthor>Kariya Y</INSDAuthor>
+          <INSDAuthor>Hoshi K</INSDAuthor>
+          <INSDAuthor>Yoshihara A</INSDAuthor>
+          <INSDAuthor>Ugawa Y</INSDAuthor>
+          <INSDAuthor>Sekine H</INSDAuthor>
+          <INSDAuthor>Hirohata S</INSDAuthor>
+          <INSDAuthor>Yamaguchi Y</INSDAuthor>
+          <INSDAuthor>Sato S</INSDAuthor>
+          <INSDAuthor>Kobayashi H</INSDAuthor>
+          <INSDAuthor>Migita K</INSDAuthor>
+          <INSDAuthor>Ohira H</INSDAuthor>
+          <INSDAuthor>Hashimoto Y</INSDAuthor>
+          <INSDAuthor>Watanabe H</INSDAuthor>
+        </INSDReference_authors>
+        <INSDReference_title>Evaluation of blood-brain barrier function by quotient alpha2 macroglobulin and its relationship with interleukin-6 and complement component 3 levels in neuropsychiatric systemic lupus erythematosus</INSDReference_title>
+        <INSDReference_journal>PLoS One 12 (10), e0186414 (2017)</INSDReference_journal>
+        <INSDReference_xref>
+          <INSDXref>
+            <INSDXref_dbname>doi</INSDXref_dbname>
+            <INSDXref_id>10.1371/journal.pone.0186414</INSDXref_id>
+          </INSDXref>
+        </INSDReference_xref>
+        <INSDReference_pubmed>29036223</INSDReference_pubmed>
+        <INSDReference_remark>GeneRIF: BBB disruption is present in ACS, and elevated levels of IL-6 and C3 in CSF in diffuse NPSLE; Publication Status: Online-Only</INSDReference_remark>
+      </INSDReference>
+      <INSDReference>
+        <INSDReference_reference>5</INSDReference_reference>
+        <INSDReference_position>1..4945</INSDReference_position>
+        <INSDReference_authors>
+          <INSDAuthor>Borth W</INSDAuthor>
+        </INSDReference_authors>
+        <INSDReference_title>Alpha 2-macroglobulin, a multifunctional binding protein with targeting characteristics</INSDReference_title>
+        <INSDReference_journal>FASEB J 6 (15), 3345-3353 (1992)</INSDReference_journal>
+        <INSDReference_xref>
+          <INSDXref>
+            <INSDXref_dbname>doi</INSDXref_dbname>
+            <INSDXref_id>10.1096/fasebj.6.15.1281457</INSDXref_id>
+          </INSDXref>
+        </INSDReference_xref>
+        <INSDReference_pubmed>1281457</INSDReference_pubmed>
+        <INSDReference_remark>Review article</INSDReference_remark>
+      </INSDReference>
+      <INSDReference>
+        <INSDReference_reference>6</INSDReference_reference>
+        <INSDReference_position>1..4945</INSDReference_position>
+        <INSDReference_authors>
+          <INSDAuthor>Matthijs G</INSDAuthor>
+          <INSDAuthor>Devriendt K</INSDAuthor>
+          <INSDAuthor>Cassiman JJ</INSDAuthor>
+          <INSDAuthor>Van den Berghe H</INSDAuthor>
+          <INSDAuthor>Marynen P</INSDAuthor>
+        </INSDReference_authors>
+        <INSDReference_title>Structure of the human alpha-2 macroglobulin gene and its promotor</INSDReference_title>
+        <INSDReference_journal>Biochem Biophys Res Commun 184 (2), 596-603 (1992)</INSDReference_journal>
+        <INSDReference_xref>
+          <INSDXref>
+            <INSDXref_dbname>doi</INSDXref_dbname>
+            <INSDXref_id>10.1016/0006-291x(92)90631-t</INSDXref_id>
+          </INSDXref>
+        </INSDReference_xref>
+        <INSDReference_pubmed>1374237</INSDReference_pubmed>
+      </INSDReference>
+      <INSDReference>
+        <INSDReference_reference>7</INSDReference_reference>
+        <INSDReference_position>1..4945</INSDReference_position>
+        <INSDReference_authors>
+          <INSDAuthor>Poller W</INSDAuthor>
+          <INSDAuthor>Faber JP</INSDAuthor>
+          <INSDAuthor>Klobeck G</INSDAuthor>
+          <INSDAuthor>Olek K</INSDAuthor>
+        </INSDReference_authors>
+        <INSDReference_title>Cloning of the human alpha 2-macroglobulin gene and detection of mutations in two functional domains: the bait region and the thiolester site</INSDReference_title>
+        <INSDReference_journal>Hum Genet 88 (3), 313-319 (1992)</INSDReference_journal>
+        <INSDReference_xref>
+          <INSDXref>
+            <INSDXref_dbname>doi</INSDXref_dbname>
+            <INSDXref_id>10.1007/bf00197266</INSDXref_id>
+          </INSDXref>
+        </INSDReference_xref>
+        <INSDReference_pubmed>1370808</INSDReference_pubmed>
+      </INSDReference>
+      <INSDReference>
+        <INSDReference_reference>8</INSDReference_reference>
+        <INSDReference_position>1..4945</INSDReference_position>
+        <INSDReference_authors>
+          <INSDAuthor>Marynen P</INSDAuthor>
+          <INSDAuthor>Devriendt K</INSDAuthor>
+          <INSDAuthor>Van den Berghe H</INSDAuthor>
+          <INSDAuthor>Cassiman JJ</INSDAuthor>
+        </INSDReference_authors>
+        <INSDReference_title>A genetic polymorphism in a functional domain of human pregnancy zone protein: the bait region. Genomic structure of the bait domains of human pregnancy zone protein and alpha 2 macroglobulin</INSDReference_title>
+        <INSDReference_journal>FEBS Lett 262 (2), 349-352 (1990)</INSDReference_journal>
+        <INSDReference_xref>
+          <INSDXref>
+            <INSDXref_dbname>doi</INSDXref_dbname>
+            <INSDXref_id>10.1016/0014-5793(90)80226-9</INSDXref_id>
+          </INSDXref>
+        </INSDReference_xref>
+        <INSDReference_pubmed>1692292</INSDReference_pubmed>
+        <INSDReference_remark>Erratum:[FEBS Lett 1990 Jun 18;266(1-2):195]</INSDReference_remark>
+      </INSDReference>
+      <INSDReference>
+        <INSDReference_reference>9</INSDReference_reference>
+        <INSDReference_position>1..4945</INSDReference_position>
+        <INSDReference_authors>
+          <INSDAuthor>Jensen,P.E.</INSDAuthor>
+          <INSDAuthor>Sottrup-Jensen,L.</INSDAuthor>
+        </INSDReference_authors>
+        <INSDReference_title>Primary structure of human alpha 2-macroglobulin. Complete disulfide bridge assignment and localization of two interchain bridges in the dimeric proteinase binding unit</INSDReference_title>
+        <INSDReference_journal>J Biol Chem 261 (34), 15863-15869 (1986)</INSDReference_journal>
+        <INSDReference_pubmed>2430963</INSDReference_pubmed>
+      </INSDReference>
+      <INSDReference>
+        <INSDReference_reference>10</INSDReference_reference>
+        <INSDReference_position>1..4945</INSDReference_position>
+        <INSDReference_authors>
+          <INSDAuthor>Nachman,R.L.</INSDAuthor>
+          <INSDAuthor>Harpel,P.C.</INSDAuthor>
+        </INSDReference_authors>
+        <INSDReference_title>Platelet alpha2-macroglobulin and alpha1-antitrypsin</INSDReference_title>
+        <INSDReference_journal>J Biol Chem 251 (15), 4512-4521 (1976)</INSDReference_journal>
+        <INSDReference_pubmed>59727</INSDReference_pubmed>
+      </INSDReference>
+    </INSDSeq_references>
+    <INSDSeq_comment>REVIEWED REFSEQ: This record has been curated by NCBI staff. The reference sequence was derived from DC334781.1, DC402196.1, BC040071.1 and AB209614.2.~This sequence is a reference standard in the RefSeqGene project.; [WARNING] On Nov 30, 2019 this sequence was replaced by NM_000014.6.; On Nov 26, 2016 this sequence version replaced NM_000014.4.; ~Summary: The protein encoded by this gene is a protease inhibitor and cytokine transporter. It uses a bait-and-trap mechanism to inhibit a broad spectrum of proteases, including trypsin, thrombin and collagenase. It can also inhibit inflammatory cytokines, and it thus disrupts inflammatory cascades. Mutations in this gene are a cause of alpha-2-macroglobulin deficiency. This gene is implicated in Alzheimer&apos;s disease (AD) due to its ability to mediate the clearance and degradation of A-beta, the major component of beta-amyloid deposits. A related pseudogene, which is also located on the p arm of chromosome 12, has been identified. [provided by RefSeq, Nov 2016].; ~Transcript Variant: This variant (1) encodes the longest isoform (a). Both variants 1 and 2 encode isoform a.; ~Publication Note: This RefSeq record includes a subset of the publications that are available for this gene. Please see the Gene record to access additional publications.; ; ##Evidence-Data-START## ; Transcript exon combination :: BC040071.1, SRR1660809.61793.1 [ECO:0000332] ; RNAseq introns :: mixed/partial sample support SAMEA1965299, SAMEA1966682 [ECO:0000350] ; ##Evidence-Data-END##; ; ##RefSeq-Attributes-START## ; RefSeq Select criteria :: based on conservation, expression ; ##RefSeq-Attributes-END##; COMPLETENESS: complete on the 3&apos; end.</INSDSeq_comment>
+    <INSDSeq_primary>REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP~1-73                DC334781.1         1-73~74-353              DC402196.1         3-282~354-3377            BC040071.1         26-3049~3378-3411           AB209614.2         3022-3055~3412-4945           BC040071.1         3084-4617</INSDSeq_primary>
+    <INSDSeq_feature-table>
+      <INSDFeature>
+        <INSDFeature_key>source</INSDFeature_key>
+        <INSDFeature_location>1..4945</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1</INSDInterval_from>
+            <INSDInterval_to>4945</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>organism</INSDQualifier_name>
+            <INSDQualifier_value>Homo sapiens</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>mol_type</INSDQualifier_name>
+            <INSDQualifier_value>mRNA</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>db_xref</INSDQualifier_name>
+            <INSDQualifier_value>taxon:9606</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>chromosome</INSDQualifier_name>
+            <INSDQualifier_value>12</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>map</INSDQualifier_name>
+            <INSDQualifier_value>12p13.31</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>gene</INSDFeature_key>
+        <INSDFeature_location>1..4945</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1</INSDInterval_from>
+            <INSDInterval_to>4945</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>alpha-2-macroglobulin</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>db_xref</INSDQualifier_name>
+            <INSDQualifier_value>GeneID:2</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>db_xref</INSDQualifier_name>
+            <INSDQualifier_value>HGNC:HGNC:7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>db_xref</INSDQualifier_name>
+            <INSDQualifier_value>MIM:103950</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>1..466</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1</INSDInterval_from>
+            <INSDInterval_to>466</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>327..329</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>327</INSDInterval_from>
+            <INSDInterval_to>329</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>upstream in-frame stop codon</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>CDS</INSDFeature_key>
+        <INSDFeature_location>381..4805</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>381</INSDInterval_from>
+            <INSDInterval_to>4805</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>isoform a precursor is encoded by transcript variant 1; alpha-2-M; C3 and PZP-like alpha-2-macroglobulin domain-containing protein 5</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>codon_start</INSDQualifier_name>
+            <INSDQualifier_value>1</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>transl_table</INSDQualifier_name>
+            <INSDQualifier_value>1</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>product</INSDQualifier_name>
+            <INSDQualifier_value>alpha-2-macroglobulin isoform a precursor</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>protein_id</INSDQualifier_name>
+            <INSDQualifier_value>NP_000005.2</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>db_xref</INSDQualifier_name>
+            <INSDQualifier_value>CCDS:CCDS44827.1</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>db_xref</INSDQualifier_name>
+            <INSDQualifier_value>GeneID:2</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>db_xref</INSDQualifier_name>
+            <INSDQualifier_value>HGNC:HGNC:7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>db_xref</INSDQualifier_name>
+            <INSDQualifier_value>MIM:103950</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>translation</INSDQualifier_name>
+            <INSDQualifier_value>MGKNKLLHPSLVLLLLVLLPTDASVSGKPQYMVLVPSLLHTETTEKGCVLLSYLNETVTVSASLESVRGNRSLFTDLEAENDVLHCVAFAVPKSSSNEEVMFLTVQVKGPTQEFKKRTTVMVKNEDSLVFVQTDKSIYKPGQTVKFRVVSMDENFHPLNELIPLVYIQDPKGNRIAQWQSFQLEGGLKQFSFPLSSEPFQGSYKVVVQKKSGGRTEHPFTVEEFVLPKFEVQVTVPKIITILEEEMNVSVCGLYTYGKPVPGHVTVSICRKYSDASDCHGEDSQAFCEKFSGQLNSHGCFYQQVKTKVFQLKRKEYEMKLHTEAQIQEEGTVVELTGRQSSEITRTITKLSFVKVDSHFRQGIPFFGQVRLVDGKGVPIPNKVIFIRGNEANYYSNATTDEHGLVQFSINTTNVMGTSLTVRVNYKDRSPCYGYQWVSEEHEEAHHTAYLVFSPSKSFVHLEPMSHELPCGHTQTVQAHYILNGGTLLGLKKLSFYYLIMAKGGIVRTGTHGLLVKQEDMKGHFSISIPVKSDIAPVARLLIYAVLPTGDVIGDSAKYDVENCLANKVDLSFSPSQSLPASHAHLRVTAAPQSVCALRAVDQSVLLMKPDAELSASSVYNLLPEKDLTGFPGPLNDQDDEDCINRHNVYINGITYTPVSSTNEKDMYSFLEDMGLKAFTNSKIRKPKMCPQLQQYEMHGPEGLRVGFYESDVMGRGHARLVHVEEPHTETVRKYFPETWIWDLVVVNSAGVAEVGVTVPDTITEWKAGAFCLSEDAGLGISSTASLRAFQPFFVELTMPYSVIRGEAFTLKATVLNYLPKCIRVSVQLEASPAFLAVPVEKEQAPHCICANGRQTVSWAVTPKSLGNVNFTVSAEALESQELCGTEVPSVPEHGRKDTVIKPLLVEPEGLEKETTFNSLLCPSGGEVSEELSLKLPPNVVEESARASVSVLGDILGSAMQNTQNLLQMPYGCGEQNMVLFAPNIYVLDYLNETQQLTPEIKSKAIGYLNTGYQRQLNYKHYDGSYSTFGERYGRNQGNTWLTAFVLKTFAQARAYIFIDEAHITQALIWLSQRQKDNGCFRSSGSLLNNAIKGGVEDEVTLSAYITIALLEIPLTVTHPVVRNALFCLESAWKTAQEGDHGSHVYTKALLAYAFALAGNQDKRKEVLKSLNEEAVKKDNSVHWERPQKPKAPVGHFYEPQAPSAEVEMTSYVLLAYLTAQPAPTSEDLTSATNIVKWITKQQNAQGGFSSTQDTVVALHALSKYGAATFTRTGKAAQVTIQSSGTFSSKFQVDNNNRLLLQQVSLPELPGEYSMKVTGEGCVYLQTSLKYNILPEKEEFPFALGVQTLPQTCDEPKAHTSFQISLSVSYTGSRSASNMAIVDVKMVSGFIPLKPTVKMLERSNHVSRTEVSSNHVLIYLDKVSNQTLSLFFTVLQDVPVRDLKPAIVKVYDYYETDEFAIAEYNAPCSKDLGNA</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>sig_peptide</INSDFeature_key>
+        <INSDFeature_location>381..449</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>381</INSDInterval_from>
+            <INSDInterval_to>449</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>COORDINATES: ab initio prediction:SignalP:4.0</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>peptide</INSDQualifier_name>
+            <INSDQualifier_value>MGKNKLLHPSLVLLLLVLLPTDA</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>mat_peptide</INSDFeature_key>
+        <INSDFeature_location>450..4802</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>450</INSDInterval_from>
+            <INSDInterval_to>4802</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>product</INSDQualifier_name>
+            <INSDQualifier_value>Alpha-2-macroglobulin. {ECO:0000269|PubMed:6203908}</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>propagated from UniProtKB/Swiss-Prot (P01023.3)</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>peptide</INSDQualifier_name>
+            <INSDQualifier_value>SVSGKPQYMVLVPSLLHTETTEKGCVLLSYLNETVTVSASLESVRGNRSLFTDLEAENDVLHCVAFAVPKSSSNEEVMFLTVQVKGPTQEFKKRTTVMVKNEDSLVFVQTDKSIYKPGQTVKFRVVSMDENFHPLNELIPLVYIQDPKGNRIAQWQSFQLEGGLKQFSFPLSSEPFQGSYKVVVQKKSGGRTEHPFTVEEFVLPKFEVQVTVPKIITILEEEMNVSVCGLYTYGKPVPGHVTVSICRKYSDASDCHGEDSQAFCEKFSGQLNSHGCFYQQVKTKVFQLKRKEYEMKLHTEAQIQEEGTVVELTGRQSSEITRTITKLSFVKVDSHFRQGIPFFGQVRLVDGKGVPIPNKVIFIRGNEANYYSNATTDEHGLVQFSINTTNVMGTSLTVRVNYKDRSPCYGYQWVSEEHEEAHHTAYLVFSPSKSFVHLEPMSHELPCGHTQTVQAHYILNGGTLLGLKKLSFYYLIMAKGGIVRTGTHGLLVKQEDMKGHFSISIPVKSDIAPVARLLIYAVLPTGDVIGDSAKYDVENCLANKVDLSFSPSQSLPASHAHLRVTAAPQSVCALRAVDQSVLLMKPDAELSASSVYNLLPEKDLTGFPGPLNDQDDEDCINRHNVYINGITYTPVSSTNEKDMYSFLEDMGLKAFTNSKIRKPKMCPQLQQYEMHGPEGLRVGFYESDVMGRGHARLVHVEEPHTETVRKYFPETWIWDLVVVNSAGVAEVGVTVPDTITEWKAGAFCLSEDAGLGISSTASLRAFQPFFVELTMPYSVIRGEAFTLKATVLNYLPKCIRVSVQLEASPAFLAVPVEKEQAPHCICANGRQTVSWAVTPKSLGNVNFTVSAEALESQELCGTEVPSVPEHGRKDTVIKPLLVEPEGLEKETTFNSLLCPSGGEVSEELSLKLPPNVVEESARASVSVLGDILGSAMQNTQNLLQMPYGCGEQNMVLFAPNIYVLDYLNETQQLTPEIKSKAIGYLNTGYQRQLNYKHYDGSYSTFGERYGRNQGNTWLTAFVLKTFAQARAYIFIDEAHITQALIWLSQRQKDNGCFRSSGSLLNNAIKGGVEDEVTLSAYITIALLEIPLTVTHPVVRNALFCLESAWKTAQEGDHGSHVYTKALLAYAFALAGNQDKRKEVLKSLNEEAVKKDNSVHWERPQKPKAPVGHFYEPQAPSAEVEMTSYVLLAYLTAQPAPTSEDLTSATNIVKWITKQQNAQGGFSSTQDTVVALHALSKYGAATFTRTGKAAQVTIQSSGTFSSKFQVDNNNRLLLQQVSLPELPGEYSMKVTGEGCVYLQTSLKYNILPEKEEFPFALGVQTLPQTCDEPKAHTSFQISLSVSYTGSRSASNMAIVDVKMVSGFIPLKPTVKMLERSNHVSRTEVSSNHVLIYLDKVSNQTLSLFFTVLQDVPVRDLKPAIVKVYDYYETDEFAIAEYNAPCSKDLGNA</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>543..545</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>543</INSDInterval_from>
+            <INSDInterval_to>545</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>N-linked (GlcNAc...) (complex) asparagine. {ECO:0000269|PubMed:16335952, ECO:0000269|PubMed:19139490}; propagated from UniProtKB/Swiss-Prot (P01023.3); glycosylation site</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>588..590</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>588</INSDInterval_from>
+            <INSDInterval_to>590</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>N-linked (GlcNAc...) asparagine. {ECO:0000269|PubMed:6203908}; propagated from UniProtKB/Swiss-Prot (P01023.3); glycosylation site</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>1119..1121</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1119</INSDInterval_from>
+            <INSDInterval_to>1121</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>N-linked (GlcNAc...) asparagine. {ECO:0000269|PubMed:16335952, ECO:0000269|PubMed:6203908}; propagated from UniProtKB/Swiss-Prot (P01023.3); glycosylation site</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>1566..1568</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1566</INSDInterval_from>
+            <INSDInterval_to>1568</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>N-linked (GlcNAc...) asparagine. {ECO:0000269|PubMed:16335952, ECO:0000269|PubMed:19159218, ECO:0000269|PubMed:6203908}; propagated from UniProtKB/Swiss-Prot (P01023.3); glycosylation site</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>1608..1610</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1608</INSDInterval_from>
+            <INSDInterval_to>1610</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>N-linked (GlcNAc...) asparagine. {ECO:0000269|PubMed:16335952, ECO:0000269|PubMed:6203908}; propagated from UniProtKB/Swiss-Prot (P01023.3); glycosylation site</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>2448..2564</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2448</INSDInterval_from>
+            <INSDInterval_to>2564</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>propagated from UniProtKB/Swiss-Prot (P01023.3); Region: Bait region</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>2490..2507</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2490</INSDInterval_from>
+            <INSDInterval_to>2507</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>propagated from UniProtKB/Swiss-Prot (P01023.3); Region: Inhibitory</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>2535..2549</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2535</INSDInterval_from>
+            <INSDInterval_to>2549</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>propagated from UniProtKB/Swiss-Prot (P01023.3); Region: Inhibitory</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>2568..2585</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2568</INSDInterval_from>
+            <INSDInterval_to>2585</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>propagated from UniProtKB/Swiss-Prot (P01023.3); Region: Inhibitory</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>2985..2987</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2985</INSDInterval_from>
+            <INSDInterval_to>2987</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>N-linked (GlcNAc...) asparagine. {ECO:0000269|PubMed:14760718, ECO:0000269|PubMed:16335952}; propagated from UniProtKB/Swiss-Prot (P01023.3); glycosylation site</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>3351..3353</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>3351</INSDInterval_from>
+            <INSDInterval_to>3353</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>N-linked (GlcNAc...) asparagine. {ECO:0000269|PubMed:12754519, ECO:0000269|PubMed:16335952, ECO:0000269|PubMed:19159218, ECO:0000269|PubMed:6203908}; propagated from UniProtKB/Swiss-Prot (P01023.3); glycosylation site</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>misc_feature</INSDFeature_key>
+        <INSDFeature_location>4650..4652</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>4650</INSDInterval_from>
+            <INSDInterval_to>4652</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>experiment</INSDQualifier_name>
+            <INSDQualifier_value>experimental evidence, no additional details recorded</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>note</INSDQualifier_name>
+            <INSDQualifier_value>N-linked (GlcNAc...) (complex) asparagine. {ECO:0000269|PubMed:14760718, ECO:0000269|PubMed:16335952, ECO:0000269|PubMed:19139490, ECO:0000269|PubMed:19159218}; propagated from UniProtKB/Swiss-Prot (P01023.3); glycosylation site</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>467..650</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>467</INSDInterval_from>
+            <INSDInterval_to>650</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>651..810</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>651</INSDInterval_from>
+            <INSDInterval_to>810</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>811..863</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>811</INSDInterval_from>
+            <INSDInterval_to>863</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>864..884</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>864</INSDInterval_from>
+            <INSDInterval_to>884</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>885..1053</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>885</INSDInterval_from>
+            <INSDInterval_to>1053</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>1054..1138</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1054</INSDInterval_from>
+            <INSDInterval_to>1138</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>1139..1259</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1139</INSDInterval_from>
+            <INSDInterval_to>1259</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>1260..1374</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1260</INSDInterval_from>
+            <INSDInterval_to>1374</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>1375..1484</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1375</INSDInterval_from>
+            <INSDInterval_to>1484</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>1485..1646</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1485</INSDInterval_from>
+            <INSDInterval_to>1646</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>1647..1874</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1647</INSDInterval_from>
+            <INSDInterval_to>1874</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>1875..1938</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1875</INSDInterval_from>
+            <INSDInterval_to>1938</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>1939..2081</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>1939</INSDInterval_from>
+            <INSDInterval_to>2081</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>2082..2231</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2082</INSDInterval_from>
+            <INSDInterval_to>2231</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>2232..2393</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2232</INSDInterval_from>
+            <INSDInterval_to>2393</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>2394..2505</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2394</INSDInterval_from>
+            <INSDInterval_to>2505</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>2506..2620</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2506</INSDInterval_from>
+            <INSDInterval_to>2620</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>2621..2849</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2621</INSDInterval_from>
+            <INSDInterval_to>2849</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>2850..2976</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2850</INSDInterval_from>
+            <INSDInterval_to>2976</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>2977..3098</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>2977</INSDInterval_from>
+            <INSDInterval_to>3098</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>3099..3150</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>3099</INSDInterval_from>
+            <INSDInterval_to>3150</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>3151..3234</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>3151</INSDInterval_from>
+            <INSDInterval_to>3234</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>3235..3411</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>3235</INSDInterval_from>
+            <INSDInterval_to>3411</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>3412..3499</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>3412</INSDInterval_from>
+            <INSDInterval_to>3499</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>3500..3656</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>3500</INSDInterval_from>
+            <INSDInterval_to>3656</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>3657..3731</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>3657</INSDInterval_from>
+            <INSDInterval_to>3731</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>3732..3912</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>3732</INSDInterval_from>
+            <INSDInterval_to>3912</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>3913..4136</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>3913</INSDInterval_from>
+            <INSDInterval_to>4136</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>4137..4355</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>4137</INSDInterval_from>
+            <INSDInterval_to>4355</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>4356..4483</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>4356</INSDInterval_from>
+            <INSDInterval_to>4483</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>4484..4574</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>4484</INSDInterval_from>
+            <INSDInterval_to>4574</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>4575..4643</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>4575</INSDInterval_from>
+            <INSDInterval_to>4643</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>4644..4746</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>4644</INSDInterval_from>
+            <INSDInterval_to>4746</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>4747..4788</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>4747</INSDInterval_from>
+            <INSDInterval_to>4788</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>exon</INSDFeature_key>
+        <INSDFeature_location>4789..4920</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>4789</INSDInterval_from>
+            <INSDInterval_to>4920</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>inference</INSDQualifier_name>
+            <INSDQualifier_value>alignment:Splign:2.1.0</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>regulatory</INSDFeature_key>
+        <INSDFeature_location>4895..4900</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_from>4895</INSDInterval_from>
+            <INSDInterval_to>4900</INSDInterval_to>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>regulatory_class</INSDQualifier_name>
+            <INSDQualifier_value>polyA_signal_sequence</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>polyA_site</INSDFeature_key>
+        <INSDFeature_location>4916</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_point>4916</INSDInterval_point>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+      <INSDFeature>
+        <INSDFeature_key>polyA_site</INSDFeature_key>
+        <INSDFeature_location>4920</INSDFeature_location>
+        <INSDFeature_intervals>
+          <INSDInterval>
+            <INSDInterval_point>4920</INSDInterval_point>
+            <INSDInterval_accession>NM_000014.5</INSDInterval_accession>
+          </INSDInterval>
+        </INSDFeature_intervals>
+        <INSDFeature_quals>
+          <INSDQualifier>
+            <INSDQualifier_name>gene</INSDQualifier_name>
+            <INSDQualifier_value>A2M</INSDQualifier_value>
+          </INSDQualifier>
+          <INSDQualifier>
+            <INSDQualifier_name>gene_synonym</INSDQualifier_name>
+            <INSDQualifier_value>A2MD; CPAMD5; FWP007; S863-7</INSDQualifier_value>
+          </INSDQualifier>
+        </INSDFeature_quals>
+      </INSDFeature>
+    </INSDSeq_feature-table>
+    <INSDSeq_sequence>atacaagagatgtgagaagcaccataaaaggcgttgtgaggagttgtgggggagtgagggagagaagaggttgaaaagcttattagctgctgtacggtaaaagtgagctcttacgggaatgggaatgtagttttagccctccagggattctatttagcccgccaggaattaaccttgactataaataggccatcaatgacctttccagagaatgttcagagacctcaactttgtttagagatcttgtgtgggtggaacttcctgtttgcacacagagcagcataaagcccagttgctttgggaagtgtttgggaccagatggattgtagggagtagggtacaatacagtctgttctcctccagctccttctttctgcaacatggggaagaacaaactccttcatccaagtctggttcttctcctcttggtcctcctgcccacagacgcctcagtctctggaaaaccgcagtatatggttctggtcccctccctgctccacactgagaccactgagaagggctgtgtccttctgagctacctgaatgagacagtgactgtaagtgcttccttggagtctgtcaggggaaacaggagcctcttcactgacctggaggcggagaatgacgtactccactgtgtcgccttcgctgtcccaaagtcttcatccaatgaggaggtaatgttcctcactgtccaagtgaaaggaccaacccaagaatttaagaagcggaccacagtgatggttaagaacgaggacagtctggtctttgtccagacagacaaatcaatctacaaaccagggcagacagtgaaatttcgtgttgtctccatggatgaaaactttcaccccctgaatgagttgattccactagtatacattcaggatcccaaaggaaatcgcatcgcacaatggcagagtttccagttagagggtggcctcaagcaattttcttttcccctctcatcagagcccttccagggctcctacaaggtggtggtacagaagaaatcaggtggaaggacagagcaccctttcaccgtggaggaatttgttcttcccaagtttgaagtacaagtaacagtgccaaagataatcaccatcttggaagaagagatgaatgtatcagtgtgtggcctatacacatatgggaagcctgtccctggacatgtgactgtgagcatttgcagaaagtatagtgacgcttccgactgccacggtgaagattcacaggctttctgtgagaaattcagtggacagctaaacagccatggctgcttctatcagcaagtaaaaaccaaggtcttccagctgaagaggaaggagtatgaaatgaaacttcacactgaggcccagatccaagaagaaggaacagtggtggaattgactggaaggcagtccagtgaaatcacaagaaccataaccaaactctcatttgtgaaagtggactcacactttcgacagggaattcccttctttgggcaggtgcgcctagtagatgggaaaggcgtccctataccaaataaagtcatattcatcagaggaaatgaagcaaactattactccaatgctaccacggatgagcatggccttgtacagttctctatcaacaccaccaatgttatgggtacctctcttactgttagggtcaattacaaggatcgtagtccctgttacggctaccagtgggtgtcagaagaacacgaagaggcacatcacactgcttatcttgtgttctccccaagcaagagctttgtccaccttgagcccatgtctcatgaactaccctgtggccatactcagacagtccaggcacattatattctgaatggaggcaccctgctggggctgaagaagctctccttctattatctgataatggcaaagggaggcattgtccgaactgggactcatggactgcttgtgaagcaggaagacatgaagggccatttttccatctcaatccctgtgaagtcagacattgctcctgtcgctcggttgctcatctatgctgttttacctaccggggacgtgattggggattctgcaaaatatgatgttgaaaattgtctggccaacaaggtggatttgagcttcagcccatcacaaagtctcccagcctcacacgcccacctgcgagtcacagcggctcctcagtccgtctgcgccctccgtgctgtggaccaaagcgtgctgctcatgaagcctgatgctgagctctcggcgtcctcggtttacaacctgctaccagaaaaggacctcactggcttccctgggcctttgaatgaccaggacgatgaagactgcatcaatcgtcataatgtctatattaatggaatcacatatactccagtatcaagtacaaatgaaaaggatatgtacagcttcctagaggacatgggcttaaaggcattcaccaactcaaagattcgtaaacccaaaatgtgtccacagcttcaacagtatgaaatgcatggacctgaaggtctacgtgtaggtttttatgagtcagatgtaatgggaagaggccatgcacgcctggtgcatgttgaagagcctcacacggagaccgtacgaaagtacttccctgagacatggatctgggatttggtggtggtaaactcagcaggtgtggctgaggtaggagtaacagtccctgacaccatcaccgagtggaaggcaggggccttctgcctgtctgaagatgctggacttggtatctcttccactgcctctctccgagccttccagcccttctttgtggagctcacaatgccttactctgtgattcgtggagaggccttcacactcaaggccacggtcctaaactaccttcccaaatgcatccgggtcagtgtgcagctggaagcctctcccgccttcctagctgtcccagtggagaaggaacaagcgcctcactgcatctgtgcaaacgggcggcaaactgtgtcctgggcagtaaccccaaagtcattaggaaatgtgaatttcactgtgagcgcagaggcactagagtctcaagagctgtgtgggactgaggtgccttcagttcctgaacacggaaggaaagacacagtcatcaagcctctgttggttgaacctgaaggactagagaaggaaacaacattcaactccctactttgtccatcaggtggtgaggtttctgaagaattatccctgaaactgccaccaaatgtggtagaagaatctgcccgagcttctgtctcagttttgggagacatattaggctctgccatgcaaaacacacaaaatcttctccagatgccctatggctgtggagagcagaatatggtcctctttgctcctaacatctatgtactggattatctaaatgaaacacagcagcttactccagagatcaagtccaaggccattggctatctcaacactggttaccagagacagttgaactacaaacactatgatggctcctacagcacctttggggagcgatatggcaggaaccagggcaacacctggctcacagcctttgttctgaagacttttgcccaagctcgagcctacatcttcatcgatgaagcacacattacccaagccctcatatggctctcccagaggcagaaggacaatggctgtttcaggagctctgggtcactgctcaacaatgccataaagggaggagtagaagatgaagtgaccctctccgcctatatcaccatcgcccttctggagattcctctcacagtcactcaccctgttgtccgcaatgccctgttttgcctggagtcagcctggaagacagcacaagaaggggaccatggcagccatgtatataccaaagcactgctggcctatgcttttgccctggcaggtaaccaggacaagaggaaggaagtactcaagtcacttaatgaggaagctgtgaagaaagacaactctgtccattgggagcgccctcagaaacccaaggcaccagtggggcatttttacgaaccccaggctccctctgctgaggtggagatgacatcctatgtgctcctcgcttatctcacggcccagccagccccaacctcggaggacctgacctctgcaaccaacatcgtgaagtggatcacgaagcagcagaatgcccagggcggtttctcctccacccaggacacagtggtggctctccatgctctgtccaaatatggagcagccacatttaccaggactgggaaggctgcacaggtgactatccagtcttcagggacattttccagcaaattccaagtggacaacaacaaccgcctgttactgcagcaggtctcattgccagagctgcctggggaatacagcatgaaagtgacaggagaaggatgtgtctacctccagacatccttgaaatacaatattctcccagaaaaggaagagttcccctttgctttaggagtgcagactctgcctcaaacttgtgatgaacccaaagcccacaccagcttccaaatctccctaagtgtcagttacacagggagccgctctgcctccaacatggcgatcgttgatgtgaagatggtctctggcttcattcccctgaagccaacagtgaaaatgcttgaaagatctaaccatgtgagccggacagaagtcagcagcaaccatgtcttgatttaccttgataaggtgtcaaatcagacactgagcttgttcttcacggttctgcaagatgtcccagtaagagatctgaaaccagccatagtgaaagtctatgattactacgagacggatgagtttgcaattgctgagtacaatgctccttgcagcaaagatcttggaaatgcttgaagaccacaaggctgaaaagtgctttgctggagtcctgttctcagagctccacagaagacacgtgtttttgtatctttaaagacttgatgaataaacactttttctggtcaatgtcaaaaaaaaaaaaaaaaaaaaaaaaa</INSDSeq_sequence>
+  </INSDSeq>
+
+</INSDSet>
