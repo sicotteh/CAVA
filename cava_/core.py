@@ -780,7 +780,8 @@ class Sequence(str):
         index = 0
         while index + 3 <= len(self):
             codon = self[index:index + 3].upper()
-            if 'N' in codon:
+            if codon.replace('A','').replace('C','').replace('G','').replace('T',''):
+            #if 'N' in codon:
                 ret += '?'
                 index += 3
                 continue
@@ -791,7 +792,7 @@ class Sequence(str):
     # Getting reverse complement sequence
     def reverseComplement(self):
         complement = {"A": "T", "T": "A", "C": "G", "G": "C", "N": "N", "a": "t", "t": "a", "c": "g", "g": "c",
-                      "n": "n"}
+                      "n": "n", "*": "*"}
         ret = ''
         for base in self[::-1]: ret += complement[base]
         return ret
@@ -822,6 +823,7 @@ class Options(object):
         self.defs['snplist'] = ('string', '.')
         self.defs['nonannot'] = ('boolean', True)
         self.defs['givealt'] = ('boolean', True)
+        self.defs['givealtflag'] = ('boolean', False)
         self.defs['ssrange'] = ('string', '8')
         self.defs['ontology'] = ('string', 'both')
         self.defs['impactdef'] = ('string', 'SG,ESS,FS|SS5,IM,SL,EE,IF,NSY|SY,SS,INT,5PU,3PU')
@@ -941,7 +943,8 @@ def writeHeader(options, header, outfile, stdout):
                 if options.args['ontology'].upper() == 'CLASS': str += '\tALTANN\tALTCLASS'
                 if options.args['ontology'].upper() == 'SO': str += '\tALTANN\tALTSO'
                 if options.args['ontology'].upper() == 'BOTH': str += '\tALTANN\tALTCLASS\tALTSO'
-            else:
+
+            if (not options.args['givealt']) or options.args['givealtflag']:
                 str += '\tALTFLAG'
 
         if (not options.args['dbsnp'] == '.') and (not options.args['dbsnp'] == ''):
