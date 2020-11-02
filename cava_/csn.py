@@ -426,7 +426,7 @@ def changeTo3letters(aas):
         'P': 'Pro', 'H': 'His', 'Q': 'Gln', 'V': 'Val',
         'A': 'Ala', 'D': 'Asp', 'E': 'Glu', 'G': 'Gly',
         'F': 'Phe', 'Y': 'Tyr', 'C': 'Cys', 'W': 'Trp',
-        '*': 'X', 'X': 'X', 'x': 'X'}
+        '*': 'X', 'X': 'X', 'x': 'X', '?': '?'}
     for aa in aas: ret += codes[aa]
     return ret
 
