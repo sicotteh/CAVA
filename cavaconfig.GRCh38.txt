@@ -1,0 +1,93 @@
+# Input file format
+# Possible values: VCF or TXT | Optional: yes | Default value: VCF
+@inputformat = VCF
+
+# Output file format
+# Possible values: VCF or CSV | Optional: yes | Default value: VCF
+@outputformat = VCF
+
+# Name of reference genome file (should not matter if with or without "chr")
+# Possible values: string | Optional: no
+# version with "chr"
+#@reference = /research/bsi/data/refdata/grc/human/GRCh38/processed/2015_04_04/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa
+# version without "chr"
+@reference=/research/bsi/projects/PI/tertiary/Kocher_Jean-Pierre_m026645/s211036.Tapestry/processing/hg38.nochr.fa
+# Name of Ensembl transcript database file
+# Possible values: string | Optional: yes (if not given, no transcript-based annotations are reported)
+#@ensembl = /research/bsi/projects/staff_analysis/m037385/tapestry/ensembl96.gz
+#@ensembl=/research/bsi/projects/staff_analysis/m037385/tapestry/GRCh38/cava_db.gz
+# this transcript database uses without "chr"
+@ensembl=/research/bsi/projects/staff_analysis/m037385/tapestry/cava/GRCh38/cava_db.gz
+# Name of dbSNP database file. 
+# Possible values: string | Optional: yes (if not given, no SNP-based annotations are reported)
+@dbsnp = .
+
+# Are variants with neither transcript nor dbSNP annotations to be included in the output?
+# Possible values: TRUE or FALSE | Optional: yes | Default value: TRUE
+@nonannot = TRUE
+
+# Are only records with PASS filter value included in the output?
+# Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
+@filter = FALSE
+
+# Types of variants to be annotated and outputted
+# Possible values: ALL, SNP, INDEL, INSERTION, DELETION or COMPLEX | Optional: yes | Default value: ALL
+@type = ALL
+
+# Name of compressed BED file specifying genomic regions variant annotation is restricted to
+# Possible values: string | Optional: yes
+@target = .
+
+# Name of file providing a list of the gene identifiers variant annotation is restricted to
+# Note: gene identifiers need to be given on separate lines in the file
+# Possible values: string | Optional: yes  
+@genelist = .
+
+# Name of file providing a list of transcript identifiers variant annotation is restricted to 
+# Note: transcript identifiers need to be given on separate lines in the file. If provided, will filter out any other line.
+# Possible values: string | Optional: yes 
+#
+@transcriptlist = .
+#@transcriptlist = /research/bsi/projects/staff_analysis/m037385/tapestry/configs/acmg59_ref_transcripts.txt
+
+
+# Name of file providing a list of the dbSNP identifiers variant annotation is restricted to
+# Note: dbSNP identifiers need to be given on separate lines in the file
+# Possible values: string | Optional: yes 
+@snplist = .
+
+# Is a log file to be written?
+# Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
+@logfile = TRUE
+
+# Which ontology is used for reporting functional class assignment?
+# Possible values: CLASS, SO or BOTH | Optional: yes | Default value: BOTH
+@ontology = BOTH
+
+# Definition of variant impact levels (reported by the IMPACT annotation flag)
+# Different impact levels are separated by | and a comma-separated list of CLASS terms must be given for each level 
+# Possible values: string | Optional: yes
+# Default value: SG,ESS,FS | SS5,IM,SL,EE,IF,NSY | SY,SS,INT,5PU,3PU
+@impactdef = SG,ESS,FS | SS5,IM,SL,EE,IF,NSY | SY,SS,INT,5PU,3PU
+
+# Are alternative CSN and CLASS annotations outputted?
+# If TRUE, the ALTCSN and ALTCLASS/ALTSO annotation flags are reported instead of the ALTANN flag
+# Possible values: TRUE or FALSE | Optional: yes | Default value: TRUE
+@givealt = TRUE
+
+# Number of bases into the intron used as the splice site region 
+# Possible values: integer >= 6 | Optional: yes | Default value: 8
+@ssrange = 8
+
+# Is the prefix CAVA_ added to annotation flag names in VCF output?
+# Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
+# XXX-HS Changes to default, to make it easier to parse
+@prefix = TRUE
+
+#
+# List allowed chromosomes to annotate
+# (default (with .) is 1-22,X,Y,MT
+#@chrom = .
+#@chrom = chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX,chrY,chrM
+@chrom = 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,X,Y,M,chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX,chrY,chrM,MT,chrMT
+@transcript2protein = /research/bsi/projects/staff_analysis/m037385/CAVA/cava.ids.2NP.txt
