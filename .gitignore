@@ -1,3 +1,5 @@
+data/
+temp.txt
 /env
 /.cache
 /.idea
@@ -16,3 +18,7 @@ doc/sphinx/_build
 /test/tmp.*
 /test/hg38.fa
 /test/hg38.fa.fai
+dist/
+build/
+CAVA.egg-info/
+test/tmp.*fa*
