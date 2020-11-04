@@ -215,7 +215,7 @@ class Record(object):
                 logging.info('Variant ignored as allele contains unknown base (\'N\'): ' + self.chrom + ':' + str(
                     self.pos) + ' ' + self.ref + '>' + alt)
                 continue
-
+           
             if alt == '.':
                 logging.info("Variant ignored because it is monomorphic reference: " + self.chrom + ':' + str(
                     self.pos) + ' ' + self.ref + '>' + alt)
@@ -455,7 +455,20 @@ class Record(object):
             # Iterating through variants 
             #   Print one line for each alt-allele*Variant Combination
             c = 0
-            for variant in outvariants: # Iterate through the alt-alleles
+            for variant in outvariants:
+
+                # Standardize chromosome M notation if options specify
+                if options.args['normalized_mitochondrial_chrom'] == 'MT':
+                    if self.chrom == 'chrM':
+                        self.chrom = 'chrMT'
+                    if self.chrom == 'M':
+                        self.chrom = 'MT'
+                if options.args['normalized_mitochondrial_chrom'] == 'M':
+                    if self.chrom == 'chrMT':
+                        self.chrom = 'chrM'
+                    if self.chrom == 'MT':
+                        self.chrom = 'M'
+
                 # Creating first part of the TSV record (up to FILTER field)
                 # Common to all transcripts for that variant
                 record = self.id + '\t' + self.chrom + '\t' + str(self.pos) + '\t' + self.ref + '\t' + outalts[
@@ -887,7 +900,8 @@ class Sequence(str):
         index = 0
         while index + 3 <= len(self):
             codon = self[index:index + 3].upper()
-            if 'N' in codon:
+            if codon.replace('A','').replace('C','').replace('G','').replace('T',''):
+            #if 'N' in codon:
                 ret += '?'
                 index += 3
                 continue
@@ -898,7 +912,7 @@ class Sequence(str):
     # Getting reverse complement sequence
     def reverseComplement(self):
         complement = {"A": "T", "T": "A", "C": "G", "G": "C", "N": "N", "a": "t", "t": "a", "c": "g", "g": "c",
-                      "n": "n"}
+                      "n": "n", "*": "*"}
         ret = ''
         for base in self[::-1]: ret += complement[base]
         return ret
@@ -930,11 +944,13 @@ class Options(object):
         self.defs['snplist'] = ('string', '.')
         self.defs['nonannot'] = ('boolean', True)
         self.defs['givealt'] = ('boolean', True)
+        self.defs['givealtflag'] = ('boolean', False)
         self.defs['ssrange'] = ('string', '8')
         self.defs['ontology'] = ('string', 'both')
         self.defs['impactdef'] = ('string', 'SG,ESS,FS|SS5,IM,SL,EE,IF,NSY|SY,SS,INT,5PU,3PU')
         self.defs['prefix'] = ('boolean', False)
         self.defs['codon_usage'] = ('string', '1')
+        self.defs['normalized_mitochondrial_chrom'] = ('string', 'not_normalized')
 
         self.defs['transcript2protein'] = ('string', '.')
  
@@ -1071,7 +1087,8 @@ def writeHeader(options, header, outfile, stdout):
                 if options.args['ontology'].upper() == 'CLASS': str += '\tALTANN\tALTCLASS'
                 if options.args['ontology'].upper() == 'SO': str += '\tALTANN\tALTSO'
                 if options.args['ontology'].upper() == 'BOTH': str += '\tALTANN\tALTCLASS\tALTSO'
-            else:
+
+            if (not options.args['givealt']) or options.args['givealtflag']:
                 str += '\tALTFLAG'
 
         if (not options.args['dbsnp'] == '.') and (not options.args['dbsnp'] == ''):
@@ -1277,14 +1294,25 @@ def checkOptions(options):
             logging.info('No output file written. CAVA quit.')
         quit()
 
-
     # Checking if @transcript2protein file exists
-    if not (options.args['transcript2protein'] == '.' or options.args['transcript2protein'] == '') and not os.path.isfile(options.args['transcript2protein']):
+    #  
+    if not (('transcripts2protein' not in options.args) or options.args['transcript2protein'] == '.' or options.args['transcript2protein'] == '') and not os.path.isfile(options.args['transcript2protein']):
         print('ERROR: the file given as @transcript2protein does not exist.')
         print('\nNo output file written. CAVA quit.')
         print("--------------------------------------------------------------------\n")
         quit()
 
+    # Checking if @normalized_mitochondrial_chrom was given correct value
+    str = options.args['normalized_mitochondrial_chrom']
+    if str is not 'not_normalized' and not (str == 'M' or str == 'MT'):
+        print('ERROR: incorrect value of the tag @normalized_mitochondrial_chrom.')
+        print('(Allowed values: \'M\' or \'MT\')')
+        print('\nNo output file written. CAVA quit.')
+        print("--------------------------------------------------------------------\n")
+        if options.args['logfile']:
+            logging.error('Incorrect value of the tag @normalized_mitochondrial_chrom.')
+            logging.info('No output file written. CAVA quit.')
+        quit()
 
 
 #######################################################################################################################

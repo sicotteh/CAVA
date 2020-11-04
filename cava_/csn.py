@@ -237,7 +237,7 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
 
 # Any mutation where the first different AA is a Stop is a nonsense mut (wether insertion of deletion or frameshift)
     if mutprot[0]=='X' and prot[0]!='X':
-        return '_p.' + changeTo3letters(prot[0]) + str(leftindex) + changeTo3lettersTer(mutprot[0]), (str(leftindex), prot[0], 'X')
+        return '_p.' + changeTo3lettersTer(prot[0]) + str(leftindex) + changeTo3lettersTer(mutprot[0]), (str(leftindex), prot[0], 'X')
 
     # Trimming common ending substring
     trim_prot=prot
@@ -291,9 +291,9 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
         else: # Incomplete reference protein without a Methionine at the Start
             if mutprot[0]=='M': # Incomplete reference protein without start becoming a start
                if len(trim_prot)==1:
-                    return '_p.' + changeTo3letters(prot[0]) + '1' + changeTo3lettersTer(mutprot[0]) , ('1', trim_prot, trim_mutprot)
+                    return '_p.' + changeTo3lettersTer(prot[0]) + '1' + changeTo3lettersTer(mutprot[0]) , ('1', trim_prot, trim_mutprot)
                else:
-                    return '_p.' + changeTo3letters(prot[0]) + '1' + changeTo3lettersTer(mutprot[0]) , ('1-'+str(len(trim_prot)), trim_prot, trim_mutprot)
+                    return '_p.' + changeTo3lettersTer(prot[0]) + '1' + changeTo3lettersTer(mutprot[0]) , ('1-'+str(len(trim_prot)), trim_prot, trim_mutprot)
             else: 
                 if len(trim_prot)==1:
                     return '_p.?', ('1', trim_prot, trim_mutprot)
@@ -308,7 +308,7 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
 
 # Any mutation where the first different AA is a new Stop ==> priority as nonsense mut (wether ins, del or fs, or complex )
     if mutprot[0]=='X' and prot[0]!='X':
-        return '_p.' + changeTo3letters(prot[0]) + str(leftindex) + changeTo3lettersTer(mutprot[0]), (str(leftindex), prot[0], 'X')
+        return '_p.' + changeTo3lettersTer(prot[0]) + str(leftindex) + changeTo3lettersTer(mutprot[0]), (str(leftindex), prot[0], 'X')
 
 # Checking if the first base altered results in a stop lost mutation
     if prot[0] == 'X': # Don't have to check for frameshift or SSR if stop codon is first mutated.
@@ -318,10 +318,10 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
             nextstop = mutprot.find('X')
 # HS: Changed CSN extX to ext*
             if nextstop != -1:
-                return '_p.Ter' + str(leftindex) + changeTo3letters(mutprot[0]) + 'extTer' + str(nextstop+1), (
+                return '_p.Ter' + str(leftindex) + changeTo3lettersTer(mutprot[0]) + 'extTer' + str(nextstop+1), (
                     str(leftindex), 'X', mutprot[0:(nextstop+1)])
             else:
-                return '_p.Ter' + str(leftindex) + changeTo3letters(mutprot[0]) + 'ext*?', (str(leftindex), 'X', mutprot)
+                return '_p.Ter' + str(leftindex) + changeTo3lettersTer(mutprot[0]) + 'ext*?', (str(leftindex), 'X', mutprot)
 
 # 
 # note that HGVS says "deletions starting N-terminal of and including the translation termination (stop) codon are described as Frame shift. .. "
@@ -398,9 +398,9 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
 
         if nDup==0: # No Repeats .. straight Deletion .. not frameshift .. not ins or complex
             if len(trim_prot)==1:
-                return '_p.'+changeTo3letters(trim_prot[0])+str(leftindex)+"del", (str(leftindex), trim_prot, '-')
+                return '_p.'+changeTo3lettersTer(trim_prot[0])+str(leftindex)+"del", (str(leftindex), trim_prot, '-')
             else:
-                return '_p.'+changeTo3letters(trim_prot[0])+str(leftindex)+"_"+changeTo3lettersTer(trim_prot[len(trim_prot)-1])+str(rightindex)+"del", (str(leftindex)+'-'+str(leftindex+len(trim_prot)-1),trim_prot,'-')
+                return '_p.'+changeTo3lettersTer(trim_prot[0])+str(leftindex)+"_"+changeTo3lettersTer(trim_prot[len(trim_prot)-1])+str(rightindex)+"del", (str(leftindex)+'-'+str(leftindex+len(trim_prot)-1),trim_prot,'-')
         else:
             if SSRlen==1: # Repeat unit of 1 base.
                 if nMatch_ref==0: # Multiple >1 copies are deleted, leaving empty sequence. Guaranteed to be an interval of at least 2 AA positions to be called SSR
@@ -413,9 +413,9 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
 
             else: # Multi base repeat
                 if nMatch_ref==0: # Deletion of repeats leaving no copies
-                    return '_p.'+changeTo3letters(protcopy[lowerlim])+str(lowerlim+1)+"_"+changeTo3lettersTer(protcopy[upperlim-1])+str(upperlim)+"["+str(nMatch_ref+nMatch_del)+"];["+str(nMatch_ref) + "]",(str(leftindex)+"-"+str(rightindex),trim_prot,'-')
+                    return '_p.'+changeTo3lettersTer(protcopy[lowerlim])+str(lowerlim+1)+"_"+changeTo3lettersTer(protcopy[upperlim-1])+str(upperlim)+"["+str(nMatch_ref+nMatch_del)+"];["+str(nMatch_ref) + "]",(str(leftindex)+"-"+str(rightindex),trim_prot,'-')
                 else:
-                    return '_p.'+changeTo3letters(protcopy[lowerlim])+str(lowerlim+1)+"_"+changeTo3lettersTer(protcopy[upperlim-1])+str(upperlim)+"["+str(nMatch_ref+nMatch_del)+"];["+str(nMatch_ref) + "]",(str(leftindex)+'-'+str(rightindex),trim_prot,'-')
+                    return '_p.'+changeTo3lettersTer(protcopy[lowerlim])+str(lowerlim+1)+"_"+changeTo3lettersTer(protcopy[upperlim-1])+str(upperlim)+"["+str(nMatch_ref+nMatch_del)+"];["+str(nMatch_ref) + "]",(str(leftindex)+'-'+str(rightindex),trim_prot,'-')
 
 #
 # Pure insertion/Repeat/Dup .. not frameshift Extension
@@ -459,10 +459,10 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
                                   # insertion sequence include 1 AA  before.(leftindex is guaranteed to be 2 or more)
                                   # Make sure inserted sequence does not include a Stop codon.
             if xindex==-1:
-                return '_p.'+changeTo3letters(protcopy[leftindex-2])+str(leftindex-1)+'_'+changeTo3lettersTer(protcopy[leftindex-1])+str(leftindex)+"ins"+changeTo3lettersTer(trim_mutprot), (str(leftindex-1)+"-"+str(rightindex+1),'-',trim_mutprot)
+                return '_p.'+changeTo3lettersTer(protcopy[leftindex-2])+str(leftindex-1)+'_'+changeTo3lettersTer(protcopy[leftindex-1])+str(leftindex)+"ins"+changeTo3lettersTer(trim_mutprot), (str(leftindex-1)+"-"+str(rightindex+1),'-',trim_mutprot)
             else: # Inserted protein includes a Stop (but not as first sequence ... that would have been caught earlier)
                   # also, because rightindex<len(protcopy) .. we know last Ter matches.
-                return '_p.'+changeTo3letters(protcopy[leftindex-2])+str(leftindex-1)+'_'+changeTo3lettersTer(protcopy[rightindex])+str(rightindex+1)+"ins"+changeTo3lettersTer(trim_mutprot[0:(xindex+1)]), (str(leftindex-1)+'-'+str(rightindex+1),'-',trim_mutprot[0:(xindex+1)])
+                return '_p.'+changeTo3lettersTer(protcopy[leftindex-2])+str(leftindex-1)+'_'+changeTo3lettersTer(protcopy[rightindex])+str(rightindex+1)+"ins"+changeTo3lettersTer(trim_mutprot[0:(xindex+1)]), (str(leftindex-1)+'-'+str(rightindex+1),'-',trim_mutprot[0:(xindex+1)])
         else: # Single and Multi-base repeat insertion
             if nDup==1 and nMatch_ref==1: # Duplications, special treatment
                 if SSRlen==1:
@@ -491,9 +491,9 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
 #         Since len(prot)>0, then the variant is a deletion (could NOT be a frameshift that causes an early Stop .. because len(mutprot)==0
 #         It is possible that the DNA variant is a complex variant and not a del, but that is OK (protein annotations should not consider DNA).
             if len(prot)==1: # Unless last AA is not Ter .. then this should have been dealth with by Code above
-                return '_p.',changeTo3letters(prot[0])+str(leftindex)+"del", (str(leftindex), prot, '-')
+                return '_p.',changeTo3lettersTer(prot[0])+str(leftindex)+"del", (str(leftindex), prot, '-')
             else:
-                return '_p.',changeTo3letters(prot[0])+str(leftindex)+"_"+changeTo3lettersTer(prot[len(prot)-1])+str(rightindex)+"del", (str(leftindex)+'-'+str(rightindex), prot, '-')
+                return '_p.',changeTo3lettersTer(prot[0])+str(leftindex)+"_"+changeTo3lettersTer(prot[len(prot)-1])+str(rightindex)+"del", (str(leftindex)+'-'+str(rightindex), prot, '-')
         else:
             xindex=mutprot.find("X")
             if xindex!=-1: #  p.(Arg123LysfsTer34)
@@ -503,11 +503,11 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
 # Check to see if new Stop is a 3' extension.. can only occur if last AA is the first one changed.
                 if leftindex==len(protcopy): # last AA of protein is first mutated ==> Extensions
                     if xindex+1>len(prot) : # extension, at or past end of current protein. do not check to see if last original codon is X,x,* .. to allow partial reference.
-                        return '_p.'+changeTo3lettersTer(prot[0])+str(len(protcopy))+changeTo3letters(mutprot[0])+'extTer'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
+                        return '_p.'+changeTo3lettersTer(prot[0])+str(len(protcopy))+changeTo3lettersTer(mutprot[0])+'extTer'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
                     # else xindex+1<=len(prot) .. only xindex+1==len(prot) possible .. which would mean that the new Ter is at the end of the protein.(only possible is original protein is partial .. considered below)
                 if xindex+1== len(prot): # Stop codon in mutprot at end of original protein .. either no change to original stop codon, or original prot did not have a stop codon there.
                     if len(prot)==1: # Extension original prot did not have Stop there.. but mutated one does
-                        return '_p.'+changeTo3lettersTer(prot[0])+str(len(protcopy))+changeTo3letters(mutprot[0])+'extTer'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
+                        return '_p.'+changeTo3lettersTer(prot[0])+str(len(protcopy))+changeTo3lettersTer(mutprot[0])+'extTer'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
                     # else Frameshift occuring before the end of the protein with the Ter occuring a few AA later at the original prot position (will be dealt below)
                 if xindex==0 and len(prot)>1  : #First Modified Base is a stop codon before end (Independent wether mutation is deletion or insertion
                     return '_p.'+changeTo3lettersTer(prot[0])+str(leftindex)+'Ter',(str(leftindex),prot[0],mut[0])
@@ -519,17 +519,17 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
 #         also note that anything more than a Dup .. was dealt before
                         if len(trim_mutprot)>0  and (leftindex - len(trim_mutprot)) >0 and protcopy[leftindex - len(trim_mutprot) - 1:leftindex - 1] == trim_mutprot:
                             if len(trim_mutprot) == 1:
-                                return '_p.' + changeTo3letters(protcopy[leftindex - len(trim_mutprot) - 1]) + str(
+                                return '_p.' + changeTo3lettersTer(protcopy[leftindex - len(trim_mutprot) - 1]) + str(
                                         leftindex - len(trim_mutprot)) + 'dup', (str(leftindex - 1) + '-' + str(rightindex + 1), '-', trim_mutprot)
                             else:
-                                return '_p.' + changeTo3letters(protcopy[leftindex - len(trim_mutprot) - 1]) + str(
-                                        leftindex - len(trim_mutprot)) + '_' + changeTo3letters(protcopy[leftindex - 2]) + str(
+                                return '_p.' + changeTo3lettersTer(protcopy[leftindex - len(trim_mutprot) - 1]) + str(
+                                        leftindex - len(trim_mutprot)) + '_' + changeTo3lettersTer(protcopy[leftindex - 2]) + str(
                                         leftindex - 1) + 'dup', (str(leftindex - 1) + '-' + str(rightindex + 1), '-', trim_mutprot)
 
                     # insertion or deletion frameshift starting and ending before the original protein end.
-                    return '_p.' + changeTo3letters(prot[0])+str(leftindex)+changeTo3letters(mutprot[0])+'fsTer'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
+                    return '_p.' + changeTo3lettersTer(prot[0])+str(leftindex)+changeTo3lettersTer(mutprot[0])+'fsTer'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
                 else: # xindex+1 > len(prot) .. so new protein past end .. and since  extension already returned above, so leftindex<len(protcopy).
-                    return '_p.' + changeTo3letters(prot[0])+str(leftindex)+changeTo3letters(mutprot[0])+'fsTer'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
+                    return '_p.' + changeTo3lettersTer(prot[0])+str(leftindex)+changeTo3lettersTer(mutprot[0])+'fsTer'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
             else: # No Stop codon until the end of the transcript.. Nevertheless Need to supply the protein, so we can test if nonsense Mediated Decay occurs.
                 if leftindex==len(protcopy) : # Extension without predicted Ter
                     return '_p.(' + changeTo3lettersTer(prot[0])+str(leftindex)+changeTo3lettersTer(mutprot[0])+'ext*?', (str(leftindex),prot[0],mutprot)
@@ -554,10 +554,10 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
     # deletion at the ends (Already checked for "Internal deletions" and deleted first base Methionine earlier)
     if len(trim_mutprot) == 0: 
         if len(trim_prot) == 1: 
-            return '_p.' + changeTo3letters(trim_prot) + str(leftindex) + 'del', (str(leftindex), trim_prot, '-')
+            return '_p.' + changeTo3lettersTer(trim_prot) + str(leftindex) + 'del', (str(leftindex), trim_prot, '-')
         else:
             protpos = str(leftindex) + '-' + str(rightindex)
-            return '_p.' + changeTo3letters(trim_prot[0]) + str(leftindex) + '_' + changeTo3letters(trim_prot[-1]) + str(
+            return '_p.' + changeTo3lettersTer(trim_prot[0]) + str(leftindex) + '_' + changeTo3lettersTer(trim_prot[-1]) + str(
                 rightindex) + 'del', (protpos, trim_prot, '-')
 
 # Insertion-like, but affecting first or last.
@@ -566,8 +566,8 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
         if leftindex==1: # Inserted sequences before the Original Methionine
             if trim_mutprot[0]=='M': # Extension 
                 if protcopy[0]=='M': # insertion e.g. MA-> MRMA : M1_A2insRM (prot="" -> trim_mutprot=MR)  .. Only this one is realistic.
-                    return '_p.' + changeTo3letters(protcopy[0]) + '1_' + changeTo3letters(
-                        protcopy[1]) + '2ins' + changeTo3letters(trim_mutprot[1:])+changeTo3letters('M'), (
+                    return '_p.' + changeTo3lettersTer(protcopy[0]) + '1_' + changeTo3lettersTer(
+                        protcopy[1]) + '2ins' + changeTo3lettersTer(trim_mutprot[1:])+changeTo3lettersTer('M'), (
                             '1-2', 'M', trim_mutprot+'M')
                 else: # e.g. A->MRA (prot="" --> trim_mutprot="MR")
                     return '_p.?',('1',protcopy[0],trim_mutprot+protcopy[0])
@@ -584,9 +584,9 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
             trim_mutprot=trim_mutprot[0:(xindex+1)]
         ret = '_p.'
         if len(trim_prot) == 1:
-            ret += changeTo3letters(trim_prot) + str(leftindex)
+            ret += changeTo3lettersTer(trim_prot) + str(leftindex)
         else:
-            ret += changeTo3letters(trim_prot[0]) + str(leftindex) + '_' + changeTo3letters(trim_prot[-1]) + str(rightindex)
+            ret += changeTo3lettersTer(trim_prot[0]) + str(leftindex) + '_' + changeTo3lettersTer(trim_prot[-1]) + str(rightindex)
         ret += 'delins'
         
         ret += changeTo3lettersTer(trim_mutprot)
@@ -752,7 +752,7 @@ def changeTo3letters(aas):
         'P': 'Pro', 'H': 'His', 'Q': 'Gln', 'V': 'Val',
         'A': 'Ala', 'D': 'Asp', 'E': 'Glu', 'G': 'Gly',
         'F': 'Phe', 'Y': 'Tyr', 'C': 'Cys', 'W': 'Trp',
-        '*': 'X', 'X': 'X', 'x': 'X'}
+        '*': 'X', 'X': 'X', 'x': 'X', '?': '?'}
     for aa in aas: ret += codes[aa]
     return ret
 

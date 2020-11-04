@@ -11,11 +11,11 @@
 
 # Absolute path to reference genome file
 # Possible values: string | Optional: no
-@reference = data/tmp.hg38.fa
+@reference = test/tmp.hg19.fa
 
 # Absolute path to Ensembl transcript database file
 # Possible values: string | Optional: yes (if not specified, default transcript database will be used)
-@ensembl = /data5/bsi/epibreast/m087494.couch/Scripts/Progams/CAVA/defaultdb/ensembl75s.gz
+@ensembl = data/ENST75_test.gz
 
 # Absolute path to dbSNP database file
 # Possible values: string | Optional: yes
@@ -70,11 +70,6 @@
 # If TRUE, the ALTANN and ALTCLASS/ALTSO annotation flags are reported instead of the ALTFLAG flag
 # Possible values: TRUE or FALSE | Optional: yes | Default value: TRUE
 @givealt = TRUE
-
-# Always provide the ALTFLAG output
-# If TRUE, the ALTFLAG will always be reported, regardless of the @givalt setting
-# Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
-@givealtflag = FALSE
 
 # Number of bases into the intron used as the splice site region
 # Possible values: integer >= 6 | Optional: yes | Default value: 8
