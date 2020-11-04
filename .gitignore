@@ -22,3 +22,5 @@ dist/
 build/
 CAVA.egg-info/
 test/tmp.*fa*
+test/test.input.vcf.gz
+test/test.input.vcf.gz.tbi

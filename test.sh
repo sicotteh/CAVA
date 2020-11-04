@@ -26,19 +26,27 @@ fi
 #
 if [ ! -f test/tmp.GRCh38.fa ]
 then
-    curl --cipher 'DEFAULT:!DH' http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz | gunzip > test/tmp.GRCh38.fa
+    curl  http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz | gunzip > test/tmp.GRCh38.fa
     samtools faidx test/tmp.GRCh38.fa
 fi
 
 if [ ! -f test/tmp.hg19.fa ]
 then
-    curl --cipher 'DEFAULT:!DH' https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz | gunzip > test/tmp.hg19.fa
+    curl  https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz | gunzip > test/tmp.hg19.fa
     samtools faidx test/tmp.hg19.fa
 fi
 
 
 # Install program
-python3 setup.py install
+
+
+ABSOLUTE_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+echo "ABSOLUTE_PATH=${ABSOLUTE_PATH}"
+unset PYTHONPATH
+export PYTHONPATH=${ABSOLUTE_PATH}/lib/python3.7/site-packages/
+python3 setup.py build -f 
+python3 setup.py install --prefix "${ABSOLUTE_PATH}"
+
 
 # Test: prepare database
 
