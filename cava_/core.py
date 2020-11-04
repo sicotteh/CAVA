@@ -383,7 +383,7 @@ class Record(object):
                                     tHGVSC += '(' + hggene + '):'
                                     try:
                                         cdna, prot = hgcsn.split('_p.')
-                                        prot = prot.replace('X', "Ter")
+                                        prot = prot.replace('extX', "extTer")
                                     except ValueError:  # Example c.802-51_802-14del38, splice
                                         cdna = hgcsn
                                         prot = '.'

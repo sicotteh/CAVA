@@ -191,7 +191,7 @@ def makeDNAannotation(variant, transcript, reference):
 #
 # Note: "reference" parameter is not actually used .. since HGVS doesn't allow looking at DNA to make a decision.
 #
-# HS: 11/02/2020 For Extensions, CSN returns  extX instead of extTer  .. changed it to HGVS compliant extTer
+# HS: CSN returns  extX instead of extTer, that has to be fixed for HGVSp
 # 
 # Coord1 is 1-based position in the CDS .. and is ONLY used to report Synonymous variants .. it is not used to locate deletions or frameshifts
 # 
@@ -318,7 +318,7 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
             nextstop = mutprot.find('X')
 # HS: Changed CSN extX to ext*
             if nextstop != -1:
-                return '_p.Ter' + str(leftindex) + changeTo3lettersTer(mutprot[0]) + 'extTer' + str(nextstop+1), (
+                return '_p.Ter' + str(leftindex) + changeTo3lettersTer(mutprot[0]) + 'extX' + str(nextstop+1), (
                     str(leftindex), 'X', mutprot[0:(nextstop+1)])
             else:
                 return '_p.Ter' + str(leftindex) + changeTo3lettersTer(mutprot[0]) + 'ext*?', (str(leftindex), 'X', mutprot)
@@ -503,11 +503,11 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
 # Check to see if new Stop is a 3' extension.. can only occur if last AA is the first one changed.
                 if leftindex==len(protcopy): # last AA of protein is first mutated ==> Extensions
                     if xindex+1>len(prot) : # extension, at or past end of current protein. do not check to see if last original codon is X,x,* .. to allow partial reference.
-                        return '_p.'+changeTo3lettersTer(prot[0])+str(len(protcopy))+changeTo3lettersTer(mutprot[0])+'extTer'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
+                        return '_p.'+changeTo3lettersTer(prot[0])+str(len(protcopy))+changeTo3lettersTer(mutprot[0])+'extX'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
                     # else xindex+1<=len(prot) .. only xindex+1==len(prot) possible .. which would mean that the new Ter is at the end of the protein.(only possible is original protein is partial .. considered below)
                 if xindex+1== len(prot): # Stop codon in mutprot at end of original protein .. either no change to original stop codon, or original prot did not have a stop codon there.
                     if len(prot)==1: # Extension original prot did not have Stop there.. but mutated one does
-                        return '_p.'+changeTo3lettersTer(prot[0])+str(len(protcopy))+changeTo3lettersTer(mutprot[0])+'extTer'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
+                        return '_p.'+changeTo3lettersTer(prot[0])+str(len(protcopy))+changeTo3lettersTer(mutprot[0])+'extX'+str(xindex+1),(str(leftindex),prot[0],mutprot[0:(xindex+1)])
                     # else Frameshift occuring before the end of the protein with the Ter occuring a few AA later at the original prot position (will be dealt below)
                 if xindex==0 and len(prot)>1  : #First Modified Base is a stop codon before end (Independent wether mutation is deletion or insertion
                     return '_p.'+changeTo3lettersTer(prot[0])+str(leftindex)+'Ter',(str(leftindex),prot[0],mut[0])
