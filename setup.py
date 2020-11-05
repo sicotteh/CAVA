@@ -1,6 +1,8 @@
 from setuptools import setup
-with open('VERSION') as version_file:
+import os
+with open(os.path.join('bin', 'VERSION')) as version_file:
     version = version_file.read().strip()
+
 with open('requirements.txt') as requires_file:
     requires = requires_file.read().split('\n')
 
