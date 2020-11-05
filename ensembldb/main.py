@@ -218,7 +218,7 @@ def write_temp(output_name, options, candidates, genesdata):
 
     outfile_list.write(
         '# Created by CAVA ensembl_db ' + options.version + ' based on Ensembl release ' + options.ensembl + '\n')
-    outfile_list.write('ENSG\tGENE\tENST\n')
+    outfile_list.write('GENEID\tSYMBOL\tTranscript\tProtein\n')
 
     # Output transcripts of each gene
     for ensg, gene in genesdata.items():
@@ -283,6 +283,8 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
             transcript.ENST = enst
             transcript.GENE = getValue(tags, 'gene_name')
             transcript.ENSG = getValue(tags, 'gene_id')
+            transcript.PROT = getValue(tags, 'protein_id')
+
             transcript.CHROM = cols[0]
             if cols[6] == '+':
                 transcript.STRAND = '1'
