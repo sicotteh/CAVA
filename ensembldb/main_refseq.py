@@ -237,7 +237,7 @@ def write_temp(output_name, options, candidates, genesdata):
 
     outfile_list.write(
         '# Created by CAVA refseq_db ' + options.version + ' based on refseq release ' + options.refseq + '\n')
-    outfile_list.write('GENE1\tGENE2\tTRANSCRIPT\tPROTEIN\n')
+    outfile_list.write('#GENE1\tGENE2\tTRANSCRIPT\tPROTEIN\n')
 
     # Output transcripts of each gene
     for ensg, gene in genesdata.items():
