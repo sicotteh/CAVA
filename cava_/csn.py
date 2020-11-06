@@ -548,7 +548,6 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
     prot=trim_prot
     mutprot=trim_mutprot
 
-
     #  (len(prot)==0 and len(mutprot)==0) should have been covered by  earlier cases
 
     # deletion at the ends (Already checked for "Internal deletions" and deleted first base Methionine earlier)
