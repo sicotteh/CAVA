@@ -95,4 +95,3 @@
 # 5 = {'ATA': 'I'} Bacterial code
 # Default = 1
 @codon_usage = 1
-@transcript2protein = .
