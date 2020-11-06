@@ -1315,7 +1315,7 @@ def checkOptions(options):
 
     # Checking if @normalized_mitochondrial_chrom was given correct value
     str = options.args['normalized_mitochondrial_chrom']
-    if str is not 'not_normalized' and not (str == 'M' or str == 'MT'):
+    if str != 'not_normalized' and not (str == 'M' or str == 'MT'):
         print('ERROR: incorrect value of the tag @normalized_mitochondrial_chrom.')
         print('(Allowed values: \'M\' or \'MT\')')
         print('\nNo output file written. CAVA quit.')
