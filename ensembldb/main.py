@@ -114,7 +114,7 @@ class Transcript(object):
         out += '\t' + str(self.CODING_END)
         for exondata in self.EXONS: out += '\t' + str(exondata.START) + '\t' + str(exondata.END)
         outfile.write(out + '\n')
-        outfile_list.write(self.ENSG + '\t' + self.GENE + '\t' + self.ENST + '\n')
+        outfile_list.write(self.ENSG + '\t' + self.GENE + '\t' + self.ENST + '\t' + self.PROT + '\n')
 
     # Finalize transcript
     def finalize(self):
@@ -218,7 +218,7 @@ def write_temp(output_name, options, candidates, genesdata):
 
     outfile_list.write(
         '# Created by CAVA ensembl_db ' + options.version + ' based on Ensembl release ' + options.ensembl + '\n')
-    outfile_list.write('GENEID\tSYMBOL\tTranscript\tProtein\n')
+    outfile_list.write('#GENEID\tSYMBOL\tTranscript\tProtein\n')
 
     # Output transcripts of each gene
     for ensg, gene in genesdata.items():
@@ -231,6 +231,21 @@ def write_temp(output_name, options, candidates, genesdata):
     outfile.close()
     outfile_list.close()
 
+
+def build_tx_to_prot_dict(opener, filename):
+    print(f'\nBuilding transcript to protein mapping')
+    tx_to_prot_dict = dict()
+    for line in opener(filename, 'rt'):
+        line = line.strip()
+        if line.startswith('#'): continue
+        cols = line.split('\t')
+        tags = cols[8].split(';')
+        enst_prot = getValue(tags, 'transcript_id')
+        prot = getValue(tags, 'protein_id')
+        if prot is not None:
+            tx_to_prot_dict[enst_prot] = prot
+    return tx_to_prot_dict
+
 def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
     first = True
     prevenst = ''
@@ -241,6 +256,7 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
     else:
         opener = open
     print(f'Parsing {filename}', end="...")
+    tx_to_prot_dict = build_tx_to_prot_dict(opener, filename)
 
     for line in opener(filename, 'rt'):
 
@@ -283,7 +299,11 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
             transcript.ENST = enst
             transcript.GENE = getValue(tags, 'gene_name')
             transcript.ENSG = getValue(tags, 'gene_id')
-            transcript.PROT = getValue(tags, 'protein_id')
+            try:
+                transcript.PROT = tx_to_prot_dict[enst]
+            except KeyError:
+                print(f'enst {enst} not in database ')
+                transcript.PROT = ''
 
             transcript.CHROM = cols[0]
             if cols[6] == '+':
