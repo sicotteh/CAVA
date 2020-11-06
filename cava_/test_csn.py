@@ -93,14 +93,14 @@ class TestmakeProteinString(unittest.TestCase):
         print("Testing checking extension")
         variant = Variant("chr1",1000,"C","T")
         actual = makeProteinString(variant,"NM","chr1","MLRX","MLRQX",12)
-        expected = ('_p.Ter4GlnextTer2', ('4', 'X', 'QX'))
+        expected = ('_p.Ter4GlnextX2', ('4', 'X', 'QX'))
         self.assertEqual(actual, expected)
 
     def test_makeProteinString_checkLongExtInPhase(self):
         print("Testing checking long extension in phase")
         variant = Variant("chr1",1000,"C","T")
         actual = makeProteinString(variant,"NM","chr1","MLRX","MLRQLVYX",12)
-        expected = ('_p.Ter4GlnextTer5', ('4', 'X', 'QLVYX'))
+        expected = ('_p.Ter4GlnextX5', ('4', 'X', 'QLVYX'))
         self.assertEqual(actual, expected)
 
 
@@ -108,7 +108,7 @@ class TestmakeProteinString(unittest.TestCase):
         print("Testing checking long extension not in phase")
         variant = Variant("chr1",1000,"C","T")
         actual = makeProteinString(variant,"NM","chr1","MLRX","MLRQLVYX",11)
-        expected = ('_p.Ter4GlnextTer5', ('4', 'X', 'QLVYX'))
+        expected = ('_p.Ter4GlnextX5', ('4', 'X', 'QLVYX'))
         self.assertEqual(actual, expected)
 
     def test_makeProteinString_checkShortFS(self):
