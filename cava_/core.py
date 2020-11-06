@@ -1015,7 +1015,7 @@ def readSet(options, tag):
 # Reading dictionary (from transcript -> Protein)
 def read_dict(options, tag):
     ret = dict()
-    tx_to_prot_source_file = options.args['ensembl'].replace('db.gz', 'txt')
+    tx_to_prot_source_file = options.args['ensembl'].replace('db.gz', 'txt').replace('.gz','.txt')
     print("Reading option file dictionary : " + tx_to_prot_source_file + "\n")
     with open(tx_to_prot_source_file, 'r') as f:
         for line in f:
