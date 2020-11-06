@@ -35,7 +35,8 @@ def printInputFileNames(copts, options):
     print('Configuration file:  ' + copts.conf)
     print('Input file (' + options.args['inputformat'] + '):    ' + copts.input)
     print('Output file (' + options.args['outputformat'] + '):   ' + outfn)
-    if options.args['logfile']:  print('Log file:            ' + copts.output + '.log')
+    if options.args['logfile']:  
+        print('Log file:            ' + copts.output + '.log')
     if copts.threads > 1:
         print('\nMultithreading:      ' + str(copts.threads) + ' threads')
 
@@ -258,6 +259,13 @@ class SingleJob(multiprocessing.Process):
 
         if not copts.stdout and threadidx == 1: initProgressInfo()
 
+# Reading (new) transcript2protein map for HGVSP annotation
+        if options.args['logfile'] and threadidx == 1:
+            logging.info("INFO: reading transcript2protein file\n")
+        options.transcript2protein=core.read_dict(options,'transcript2protein')
+        if options.args['logfile'] and threadidx==1:
+            logging.info("transcript2protein has "+str(len(options.transcript2protein))+" mappings\n")
+
     # Running process
     def run(self):
         if self.options.args['logfile']:
@@ -313,7 +321,7 @@ class SingleJob(multiprocessing.Process):
         # Closing output file
         self.outfile.close()
 
-        # Finalizing progreaa info
+        # Finalizing progress info
         if not self.copts.stdout and self.threadidx == 1:
             finalizeProgressInfo()
 
@@ -360,6 +368,10 @@ def run(copts, version):
     transcriptlist = core.readSet(options, 'transcriptlist')
     snplist = core.readSet(options, 'snplist')
 
+# Reading (new) transcript2protein map for HGVSP annotation
+    print("INFO: reading transcript2protein file\n")
+    options.transcript2protein=core.read_dict(options,'transcript2protein')
+    print("transcript2protein has "+str(len(options.transcript2protein))+" mappings\n")
     # Parsing @impactdef string
     if not (options.args['impactdef'] == '.' or options.args['impactdef'] == ''):
         impactdir = dict()
@@ -384,7 +396,7 @@ def run(copts, version):
     else:
         outfile = open(copts.output + '.txt', 'w')
     header = readHeader(copts.input)
-    core.writeHeader(options, '\n'.join(header), outfile, copts.stdout)
+    core.writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
     outfile.close()
 
     # Find break points in the input file

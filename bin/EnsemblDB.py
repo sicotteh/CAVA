@@ -2,7 +2,8 @@
 
 from optparse import OptionParser
 from ensembldb import main
-with open('/CAVA/VERSION') as version_file:
+import os
+with open(os.path.join('bin', 'VERSION')) as version_file:
     version = version_file.read().strip()
 
 
