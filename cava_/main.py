@@ -263,7 +263,7 @@ class SingleJob(multiprocessing.Process):
         if options.args['logfile'] and threadidx == 1:
             logging.info("INFO: reading transcript2protein file\n")
         options.transcript2protein=core.read_dict(options,'transcript2protein')
-        if options.args['logfile'] and threadidx==1:           
+        if options.args['logfile'] and threadidx==1:
             logging.info("transcript2protein has "+str(len(options.transcript2protein))+" mappings\n")
 
     # Running process
@@ -396,7 +396,7 @@ def run(copts, version):
     else:
         outfile = open(copts.output + '.txt', 'w')
     header = readHeader(copts.input)
-    core.writeHeader(options, '\n'.join(header), outfile, copts.stdout)
+    core.writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
     outfile.close()
 
     # Find break points in the input file
