@@ -1115,6 +1115,8 @@ def writeHeader(options, header, outfile, stdout, version):
         if (not options.args['dbsnp'] == '.') and (not options.args['dbsnp'] == ''):
             str += '\tDBSNP'
 
+        str += '\tHGVSC\tHGVSP'
+
         if stdout:
             print(str)
         else:
