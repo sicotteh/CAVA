@@ -463,7 +463,18 @@ class Record(object):
             # Iterating through variants 
             #   Print one line for each alt-allele*Variant Combination
             c = 0
+            flags = []
+            flagvalues = []
             for variant in outvariants:
+                for i in range(len(variant.flags)):
+                    key = variant.flags[i]
+                    value = variant.flagvalues[i]
+                    if value == '': value = '.'
+                    if key in flags:
+                        flagvalues[flags.index(key)].append(value)
+                    else:
+                        flags.append(key)
+                        flagvalues.append([value])
 
                 # Standardize chromosome M notation if options specify
                 if options.args['normalized_mitochondrial_chrom'] == 'MT':
