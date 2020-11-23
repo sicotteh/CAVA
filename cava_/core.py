@@ -571,12 +571,12 @@ class Record(object):
                                     if options.args['logfile']:
                                         logging.info(
                                             "WARNING: transcript " + hgtranscript + " not in transcript2protein file\n")
-                    record = record + "\t" + HGVSC + "\t" + HGVSP
+                    record = record + rest + "\t" + HGVSC + "\t" + HGVSP
                     # Writing record to the output file
                     if stdout:
-                        print(record + rest)
+                        print(record)
                     else:
-                        outfile.write(record + rest + '\n')
+                        outfile.write(record + '\n')
 
                 c += 1
 
