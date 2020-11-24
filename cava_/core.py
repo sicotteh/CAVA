@@ -551,7 +551,7 @@ class Record(object):
                             cdna = csn_list[i]
                             prot = '.'
                         HGVSC += cdna
-                        if HGVSC == '.(.):.':
+                        if HGVSC == '.(.):.' or HGVSC == '():':
                             HGVSC = '.'
                         if prot == '.' or prot == '':
                             HGVSP = '.'
