@@ -1031,7 +1031,10 @@ def read_dict(options, tag):
         for line in f:
             if line == '' or line == '.' or line.startswith("#"): continue
             linedat = line.strip().split("\t")
-            ret[linedat[2]] = linedat[3]
+            if len(linedat) == 3:
+                ret[linedat[2]] = '.'
+            else:
+                ret[linedat[2]] = linedat[3]
 
     if options.args['logfile']:
         txt = options.args[tag]
