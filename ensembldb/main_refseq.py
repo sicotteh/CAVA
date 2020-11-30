@@ -4,7 +4,6 @@ import os
 import sys
 import pybedtools
 import pickle
-
 from operator import itemgetter
 import wget
 import requests
@@ -133,7 +132,8 @@ class Transcript(object):
         out += '\t' + str(self.CODING_END)
         for exondata in self.EXONS: out += '\t' + str(exondata.START) + '\t' + str(exondata.END)
         outfile.write(out + '\n')
-        outfile_list.write(self.ENSG + '\t' + self.GENE + '\t' + self.ENST + '\n')
+
+        outfile_list.write(self.ENSG + '\t' + self.GENE + '\t' + self.ENST + '\t' + self.PROT + '\n')
 
     # Finalize transcript
     def finalize(self):
@@ -236,8 +236,8 @@ def write_temp(output_name, options, candidates, genesdata):
     outfile_list = open(output_name, 'w')
 
     outfile_list.write(
-        '# Created by CAVA refseq_db ' + options.version + ' based on Ensembl release ' + options.refseq + '\n')
-    outfile_list.write('ENSG\tGENE\tENST\n')
+        '# Created by CAVA refseq_db ' + options.version + ' based on refseq release ' + options.refseq + '\n')
+    outfile_list.write('#GENE1\tGENE2\tTRANSCRIPT\tPROTEIN\n')
 
     # Output transcripts of each gene
     for ensg, gene in genesdata.items():
@@ -245,10 +245,25 @@ def write_temp(output_name, options, candidates, genesdata):
             gene.output(outfile, outfile_list, options.select, candidates)
         except:
             print(f'Failed {gene.SYMBOL}, {gene.TRANSCRIPTS}')
-
     # Close temporary output files
     outfile.close()
     outfile_list.close()
+
+
+def build_tx_to_prot_dict(opener, filename):
+    print(f'\nBuilding transcript to protein mapping')
+    tx_to_prot_dict = dict()
+    for line in opener(filename, 'rt'):
+        line = line.strip()
+        if line.startswith('#'): continue
+        cols = line.split('\t')
+        tags = cols[8].split(';')
+        enst_prot = getValue(tags, 'transcript_id')
+        prot = getValue(tags, 'protein_id')
+        if prot is not None:
+            tx_to_prot_dict[enst_prot] = prot
+    return tx_to_prot_dict
+
 
 def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
     first = True
@@ -259,17 +274,15 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
         opener = gzip.open
     else:
         opener = open
+
+    tx_to_prot_dict = build_tx_to_prot_dict(opener, filename)
+
     print(f'Parsing {filename}', end="...")
 
     for line in opener(filename, 'rt'):
-
         line = line.strip()
         if line.startswith('#'): continue
         cols = line.split('\t')
-
-        # Only consider transcripts on the following chromosomes
-        #if cols[0] not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17',
-        #                   '18', '19', '20', '21', '22', '23', 'MT', 'X', 'Y']: continue
 
         # Consider only certain types of lines
         if cols[2] not in ['exon', 'transcript', 'start_codon', 'stop_codon']: continue
@@ -278,6 +291,7 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
         tags = cols[8].split(';')
         # Retrieve transcript ID
         enst = getValue(tags, 'transcript_id')
+
         # Do not consider transcript if it is not on the custom transcript list
         if options.input is not None and enst not in transIDs: continue
         # Exclude non-NM transcripts
@@ -302,7 +316,14 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
             transcript = Transcript()
             transcript.ENST = enst
             transcript.GENE = getValue(tags, 'gene')
-            transcript.ENSG = getValue(tags, 'gene')
+            transcript.ENSG = getValue(tags, 'gene_id')
+            try:
+                transcript.PROT = tx_to_prot_dict[enst]
+            except KeyError:
+                print(f'enst {enst} not in database ')
+                transcript.PROT = ''
+
+
             transcript.CHROM = cols[0]
             if cols[6] == '+':
                 transcript.STRAND = '1'
@@ -604,7 +625,7 @@ def process_data(options, genome_build):
     sys.stdout.write('Removing temporary files... ')
     sys.stdout.flush()
     os.remove('temp.txt')
-    #os.remove(source_compressed_gtf)
+    os.remove(source_compressed_gtf)
 
     print(f"Failed {failed_conversions['GENE'].__len__()} Genes and {failed_conversions['ENST'].__len__()} transcripts")
 
