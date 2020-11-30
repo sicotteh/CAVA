@@ -29,12 +29,13 @@ RUN apt-get install -y \
     libcurl4-nss-dev \
     zlib1g-dev \
     bedtools \
-    samtools
+    samtools \
+    tabix
 
 #Needed to download UCUSC librarires
 RUN echo -e "[system_default_sect]\nMinProtocol = TLSv1.2\nCipherString = DEFAULT@SECLEVEL=2" >> etc/ssl/openssl.cnf
 RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python3 get-pip.py
-RUN pip install appdirs Cython flake8 packaging py pylint pyparsing pysam pytest pytest-cov radon six sphinx gevent CrossMap
+RUN pip install appdirs Cython flake8 packaging py pylint pyparsing pysam pytest pytest-cov radon six sphinx gevent CrossMap bgzip
 
 RUN mkdir /CAVA/
 ADD . CAVA/

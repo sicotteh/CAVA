@@ -17,7 +17,7 @@ import pysam
 
 #######################################################################################################################
 
-# Class representing the Ensembl (transcript) dataset
+# Class representing the Ensembl (transcript) dataset ( can be any database)
 class Ensembl(object):
     # Constructor
     def __init__(self, options, genelist, transcriptlist, codon_usage):
@@ -29,6 +29,10 @@ class Ensembl(object):
         self.genelist = genelist
         self.transcriptlist = transcriptlist
         self.codon_usage = codon_usage
+        # Transcript to Protein Map for HGVSp protein
+        # copy it over to "self" in order to maintain the calling function signature of Record.annotate() called by run() (main.py)
+        self.transcript2protein=options.transcript2protein
+
 
     # Find transcripts overlapping with a variant
     def findTranscripts(self, variant, strand, reference):
@@ -70,6 +74,7 @@ class Ensembl(object):
                 hitdict2[transcript.TRANSCRIPT] = transcript
 
             # Find transcripts with which the variant fully or partially overlaps
+            # Does not support multi-transcripts wide deletion (only two adjacent ones)
             for key, transcript in hitdict1.items():
 
                 if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
@@ -88,7 +93,7 @@ class Ensembl(object):
                     if not key in list(hitdict1.keys()):
                         retOUT[key] = transcript
 
-        else:
+        else: # Variant is Substitution
             hits1 = self.tabixfile.fetch(region=reg2)
             for line in hits1:
                 transcript = core.Transcript(line, reference)
