@@ -369,9 +369,14 @@ def run(copts, version):
     snplist = core.readSet(options, 'snplist')
 
 # Reading (new) transcript2protein map for HGVSP annotation
-    print("INFO: reading transcript2protein file\n")
+    if options.args['logfile']:
+        logging.info("INFO: reading transcript2protein file\n")
+    
     options.transcript2protein=core.read_dict(options,'transcript2protein')
-    print("transcript2protein has "+str(len(options.transcript2protein))+" mappings\n")
+   
+    if options.args['logfile']:
+        logging.info("transcript2protein has "+str(len(options.transcript2protein))+" mappings\n")
+   
     # Parsing @impactdef string
     if not (options.args['impactdef'] == '.' or options.args['impactdef'] == ''):
         impactdir = dict()
