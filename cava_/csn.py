@@ -759,13 +759,14 @@ def changeTo3letters(aas):
 # Changing protein sequence of 1-letter amino acid code to 3-letter code, but with Stops changed to "Ter"
 def changeTo3lettersTer(aas):
     ret = ''
+    # 5/13/21 Updated to account for "?"
     codes = {
         'I': 'Ile', 'M': 'Met', 'T': 'Thr', 'N': 'Asn',
         'K': 'Lys', 'S': 'Ser', 'R': 'Arg', 'L': 'Leu',
         'P': 'Pro', 'H': 'His', 'Q': 'Gln', 'V': 'Val',
         'A': 'Ala', 'D': 'Asp', 'E': 'Glu', 'G': 'Gly',
         'F': 'Phe', 'Y': 'Tyr', 'C': 'Cys', 'W': 'Trp',
-        '*': 'Ter', 'X': 'Ter', 'x': 'Ter'}
+        '*': 'Ter', 'X': 'Ter', 'x': 'Ter', '?':'?'}
     for aa in aas: ret += codes[aa]
     return ret
 
