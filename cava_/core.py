@@ -934,8 +934,9 @@ class Sequence(str):
 
     # Getting reverse complement sequence
     def reverseComplement(self):
+        # 5/13/21 Added support for reverse complement of "."
         complement = {"A": "T", "T": "A", "C": "G", "G": "C", "N": "N", "a": "t", "t": "a", "c": "g", "g": "c",
-                      "n": "n", "*": "*"}
+                      "n": "n", "*": "*", ".": "."}
         ret = ''
         for base in self[::-1]: ret += complement[base]
         return ret

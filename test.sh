@@ -23,16 +23,16 @@ set -o pipefail
 #
 # Donload reference genomes
 #
-if [ ! -f test/tmp.GRCh38.fa ]
+if [ ! -f data/tmp.GRCh38.fa ]
 then
-    curl --cipher 'DEFAULT:!DH'  http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz | gunzip > test/tmp.GRCh38.fa
-    samtools faidx test/tmp.GRCh38.fa
+    curl --cipher 'DEFAULT:!DH'  http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz | gunzip > data/tmp.GRCh38.fa
+    samtools faidx data/tmp.GRCh38.fa
 fi
 
-if [ ! -f test/tmp.hg19.fa ]
+if [ ! -f data/tmp.hg19.fa ]
 then
-    curl --cipher 'DEFAULT:!DH' https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz | gunzip > test/tmp.hg19.fa
-    samtools faidx test/tmp.hg19.fa
+    curl --cipher 'DEFAULT:!DH' https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz | gunzip > data/tmp.hg19.fa
+    samtools faidx data/tmp.hg19.fa
 fi
 
 # ########################################################################################

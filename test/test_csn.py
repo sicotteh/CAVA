@@ -1,11 +1,10 @@
 import unittest
-from core import  Sequence
-from core import Variant
-from csn import makeProteinString
+from cava_.core import Variant
+from cava_.csn import makeProteinString
 
 
 class TestmakeProteinString(unittest.TestCase):
-#def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
+
     def test_makeProteinString_emptyProt(self):
         variant = Variant("chr1",1000,"C","T")
         actual = makeProteinString(variant,"NM","chr1","","MLX",1)
