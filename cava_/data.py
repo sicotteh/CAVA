@@ -614,6 +614,7 @@ class Reference(object):
             last = self.fastafile.get_reference_length(goodchrom)
 
         if end > last: end = last
+
         seq = self.fastafile.fetch(goodchrom, start - 1, end)
         return core.Sequence(seq.upper())
 

@@ -1,9 +1,8 @@
 from optparse import OptionParser
 from ensembldb import mane_db_prep as main
 import os
-with open(os.path.join('bin', 'VERSION')) as version_file:
+with open(os.path.join(os.path.dirname(__file__),  'VERSION')) as version_file:
     version = version_file.read().strip()
-
 
 # Command line argument parsing
 descr = 'bin/MANE.py' + version

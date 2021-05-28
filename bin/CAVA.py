@@ -3,7 +3,7 @@ import os
 from optparse import OptionParser
 
 from cava_ import main
-with open(os.path.join('bin', 'VERSION')) as version_file:
+with open(os.path.join(os.path.dirname(__file__),  'VERSION')) as version_file:
     version = version_file.read().strip()
 
 descr = 'CAVA (Clinical Annotation of VAriants) is a lightweight, fast and flexible NGS variant annotation tool that provides consistent transcript-level annotation.'
