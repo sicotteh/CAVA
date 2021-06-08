@@ -99,7 +99,8 @@ def printMetaData(datafile):
 #######################################################################################################################
 
 # Version
-version = '2.0.0'
+with open(os.path.join(os.path.dirname(__file__),  'VERSION')) as version_file:
+    version = version_file.read().strip()
 
 descr = 'CAVA dbsnp_db v' + version
 epilog = '\nExample usage: CAVA-{}/dbsnp_db -d 00-All.vcf.gz -s 138 -o out\n\n'.format(version)
