@@ -197,12 +197,12 @@ def makeDNAannotation(variant, transcript, reference):
 # 
 def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
     if prot == '': return '', ('.', '.', '.')
-# this is used to distringuish frameshift from non-frameshifts.. though an Early Stop codon .. will be coded as nonsense
-#      even if it's a frameshift [HGVS NOTE in fs: the shortest frame shift variantis fsTer2, fsTer1  variants are by definition nonsense variants]
+    # this is used to distringuish frameshift from non-frameshifts.. though an Early Stop codon .. will be coded as nonsense
+    #      even if it's a frameshift [HGVS NOTE in fs: the shortest frame shift variantis fsTer2, fsTer1  variants are by definition nonsense variants]
     is_not_frameshift = (len(variant.alt) - len(variant.ref)) % 3 == 0
 
     xindex=mutprot.find('X')
-# Edge case in HGVS, entire protein deleted .. starting 
+    # Edge case in HGVS, entire protein deleted .. starting
     if mutprot=='':
         return '_p.Met1?',('1',prot[0],'') 
     if xindex==0:
@@ -212,7 +212,7 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
     if prot == mutprot:
         idx = int(coord1 / 3)
         if coord1 % 3 > 0: idx += 1
-# Note old CAVA behavior of p.= is incorrect HGVS ... because that means there are no AA change across the entire protein for any variants.
+        # Note old CAVA behavior of p.= is incorrect HGVS ... because that means there are no AA change across the entire protein for any variants.
         return '_p.'+changeTo3lettersTer(prot[idx-1])+str(idx)+'=', (str(idx), prot[idx - 1], prot[idx - 1])
 
     # Checking if the variant affects the initiating amino acid

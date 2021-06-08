@@ -11,7 +11,7 @@
 
 # Absolute path to reference genome file
 # Possible values: string | Optional: no
-@reference = test/tmp.hg19.fa
+@reference = data/tmp.hg19.fa
 
 # Absolute path to Ensembl transcript database file
 # Possible values: string | Optional: yes (if not specified, default transcript database will be used)
