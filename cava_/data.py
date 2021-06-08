@@ -31,8 +31,7 @@ class Ensembl(object):
         self.codon_usage = codon_usage
         # Transcript to Protein Map for HGVSp protein
         # copy it over to "self" in order to maintain the calling function signature of Record.annotate() called by run() (main.py)
-        self.transcript2protein=options.transcript2protein
-
+        self.transcript2protein = options.transcript2protein
 
     # Find transcripts overlapping with a variant
     def findTranscripts(self, variant, strand, reference):
@@ -93,7 +92,7 @@ class Ensembl(object):
                     if not key in list(hitdict1.keys()):
                         retOUT[key] = transcript
 
-        else: # Variant is Substitution
+        else:  # Variant is Substitution
             hits1 = self.tabixfile.fetch(region=reg2)
             for line in hits1:
                 transcript = core.Transcript(line, reference)

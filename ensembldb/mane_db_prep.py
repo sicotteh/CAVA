@@ -2,12 +2,12 @@ import datetime
 import gzip
 import os
 import sys
-import pybedtools
-import pickle
-
 from operator import itemgetter
-import wget
+
+import pybedtools
 import requests
+import wget
+
 requests.packages.urllib3.disable_warnings()
 
 import pysam
@@ -20,14 +20,16 @@ failed_conversions['GENETYPE'] = set()
 failed_conversions['TRANSTYPE'] = set()
 failed_conversions['ENST'] = set()
 
+
 def warn(transcript):
     global failed_conversions
     failed_conversions['GENE'].add(transcript.GENE)
     failed_conversions['GENETYPE'].add(transcript.GENETYPE)
     failed_conversions['TRANSTYPE'].add(transcript.TRANSTYPE)
     failed_conversions['ENST'].add(transcript.ENST)
-    #print(f'FAILED: {failed_conversions["GENE"]}, failed_conversions['ENST']')
-    #raise Exception(f"Messed up: {transcript.GENE}")
+    # print(f'FAILED: {failed_conversions["GENE"]}, failed_conversions['ENST']')
+    # raise Exception(f"Messed up: {transcript.GENE}")
+
 
 # Class representing a transcript
 class Transcript(object):
@@ -213,7 +215,6 @@ class Gene(object):
                 transcript.output(outfile, outfile_list)
 
 
-
 #######################################################################################################################
 def write_temp(output_name, options, candidates, genesdata):
     outfile = open('temp.txt', 'w')
@@ -235,6 +236,7 @@ def write_temp(output_name, options, candidates, genesdata):
     # Close temporary output files
     outfile.close()
     outfile_list.close()
+
 
 def build_tx_to_prot_dict(opener, filename):
     print(f'\nBuilding transcript to protein mapping')
@@ -265,7 +267,7 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
 
     for line in opener(filename, 'rt'):
 
-        line = line.strip().replace('chr','')
+        line = line.strip().replace('chr', '')
         if line.startswith('#'): continue
         cols = line.split('\t')
 
@@ -320,13 +322,13 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
                 x = x.strip()
                 if x.startswith('exon_number'):
                     try:
-                        #Ensemble Entry
+                        # Ensemble Entry
                         idx = int(x.split()[1])
-                        style='ensembl'
+                        style = 'ensembl'
                         transcript.GENE = getValue(tags, 'gene_name')
 
                     except ValueError:
-                        #RefSeq Entry
+                        # RefSeq Entry
                         s = x[x.find('\"') + 1:]
                         idx = int(s[:s.find('\"')]) - 1
                         style = 'refseq'
@@ -341,10 +343,10 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
             if style == 'ensembl':
                 if idx >= len(transcript.EXONS):
                     for _ in range(len(transcript.EXONS), idx): transcript.EXONS.append(None)
-                transcript.EXONS[idx-1] = Exon(start, end)
+                transcript.EXONS[idx - 1] = Exon(start, end)
             else:
                 if idx >= len(transcript.EXONS):
-                    for _ in range(len(transcript.EXONS), idx+1): transcript.EXONS.append(None)
+                    for _ in range(len(transcript.EXONS), idx + 1): transcript.EXONS.append(None)
                 transcript.EXONS[idx] = Exon(start, end)
 
         if cols[2] == 'start_codon':
@@ -371,6 +373,7 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
         if first: first = False
     return transcript, prevenst, first, genesdata
 
+
 def sort_tmpfile(f):
     # Sort temporary output file
     data = dict()
@@ -393,6 +396,7 @@ def sort_tmpfile(f):
     sortedRecords = sortRecords(data, 6, 7)
     return sortedRecords
 
+
 # Retrieve tag value
 def getValue(tags, tag):
     ret = None
@@ -404,6 +408,7 @@ def getValue(tags, tag):
             break
     return ret
 
+
 # Retrieve boolean tag value
 def getBooleanValue(tags, tag):
     for x in tags:
@@ -414,11 +419,13 @@ def getBooleanValue(tags, tag):
             if value == tag: return True
     return False
 
+
 # Read transcript IDs from file
 def readTranscriptIDs(inputfn):
     ret = set()
     for line in open(inputfn): ret.add(line.strip())
     return ret
+
 
 # Sort records in file
 def sortRecords(records, idx1, idx2):
@@ -435,6 +442,7 @@ def sortRecords(records, idx1, idx2):
             for record in records[chrom]: ret.append(record)
     return ret
 
+
 # Write records to file
 def writeToFile(sortedRecords, filename):
     print(f"writeToFile to {filename}")
@@ -445,11 +453,13 @@ def writeToFile(sortedRecords, filename):
         outfile.write(s + '\n')
     outfile.close()
 
+
 # Read records from file as a list
 def readRecords(inputfn):
     ret = []
     for line in open(inputfn): ret.append(line.strip())
     return ret
+
 
 # Process Ensembl data
 def process_data(options, genome_build):
@@ -480,7 +490,6 @@ def process_data(options, genome_build):
     # Use crossmap to get hg19 if desired
     #################################################################
     if options.no_hg19 is not False:
-
         crossmap(source_compressed_gtf_ens)
         crossmap(source_compressed_gtf_ref)
 
@@ -496,14 +505,16 @@ def process_data(options, genome_build):
         genesdata = dict()
         transIDs = None
 
-        enst_records_hg19 = parse_gtf_loop(source_compressed_gtf_ens.replace('.gtf.gz','.hg19_converted.gtf'), options, genesdata, transIDs)
+        enst_records_hg19 = parse_gtf_loop(source_compressed_gtf_ens.replace('.gtf.gz', '.hg19_converted.gtf'), options,
+                                           genesdata, transIDs)
         print(f'Completed {enst_records_hg19} hg19-converted ENSEMBL records')
 
         assert enst_records_hg19 > 0, "Uh oh.  I didn't get any ensemble transcripts converted. Check your inputs"
         genesdata = dict()
         transIDs = None
 
-        ref_records_hg19  = parse_gtf_loop(source_compressed_gtf_ref.replace('.gtf.gz','.hg19_converted.gtf'), options, genesdata, transIDs)
+        ref_records_hg19 = parse_gtf_loop(source_compressed_gtf_ref.replace('.gtf.gz', '.hg19_converted.gtf'), options,
+                                          genesdata, transIDs)
         print(f'Completed {ref_records_hg19} hg19-converted RefSeq records')
         assert ref_records_hg19 > 0, "Uh oh.  I didn't get any refseq transcripts converted. Check your inputs"
 
@@ -516,12 +527,13 @@ def process_data(options, genome_build):
     sys.stdout.write('Removing temporary files... ')
     sys.stdout.flush()
     os.remove('temp.txt')
-    #os.remove(source_compressed_gtf)
+    # os.remove(source_compressed_gtf)
 
     print(f"Failed {failed_conversions['GENE'].__len__()} Genes and {failed_conversions['ENST'].__len__()} transcripts")
 
     # Return sorted records
     return enst_records, ref_records, ref_records_hg19, enst_records_hg19
+
 
 # Use Tabix to index output file
 def indexFile(f):
@@ -537,6 +549,7 @@ def indexFile(f):
     pysam.tabix_index(f + '.gz', seq_col=4, start_col=6, end_col=7, meta_char='#', force=True)
     sys.stdout.write('OK\n')
 
+
 # CHeck if string is a number (integer)
 def is_number(s):
     try:
@@ -545,16 +558,16 @@ def is_number(s):
     except ValueError:
         return False
 
+
 def run(options):
     # Checking if all required options specified
     if options.ensembl is None:
         print('\nError: no release specified. Use option -h to get help!\n')
         quit()
 
-
     # Genome build
     # genome_build = options.genome
-    genome_build =  'GRCh38'
+    genome_build = 'GRCh38'
 
     # Printing out version.py information
     print("\n---------------------------------------------------------------------------------------")
@@ -577,6 +590,7 @@ def run(options):
     print('CAVA ensembl_db successfully finished: ', datetime.datetime.now())
     print("---------------------------------------------------------------------------------------\n")
 
+
 def download_gtf(source_compressed_gtf, version):
     if not os.path.exists(source_compressed_gtf):
         sys.stdout.write(f'Downloading {os.path.basename(source_compressed_gtf)}... ')
@@ -594,6 +608,7 @@ def download_gtf(source_compressed_gtf, version):
             quit()
     print('')
     sys.stdout.flush()
+
 
 def crossmap(source_compressed_gtf):
     requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'  # Needed for UCSC
@@ -615,14 +630,14 @@ def crossmap(source_compressed_gtf):
     sys.stdout.write('\nMaking a hg19-conveterted GTF file\n')
     mapTree, targetChromSizes, sourceChromSizes = read_chain_file(os.path.join('data', 'hg38ToHg19.over.chain.gz'))
 
-    converted_gtf = source_compressed_gtf.replace('.gtf.gz','.hg19_converted.gtf')
+    converted_gtf = source_compressed_gtf.replace('.gtf.gz', '.hg19_converted.gtf')
     crossmap_gff_file(mapTree, source_compressed_gtf, converted_gtf)
-
 
     # Note this file is not sorted!
     a = pybedtools.BedTool(converted_gtf)
     a.sort().remove_invalid().saveas('tmp.txt')
     os.rename('tmp.txt', converted_gtf)
+
 
 def finalize_last_tx(transcript, genesdata):
     # Finalize last transcript and add to Gene object if candidate
@@ -639,13 +654,15 @@ def finalize_last_tx(transcript, genesdata):
 
     return genesdata
 
+
 def write_out(source_compressed_gtf, options, transIDs, genesdata):
     # write the text file and the sorted list (in temp.txt)
     if os.path.exists('temp.txt'): os.remove('temp.txt')
-    write_temp(source_compressed_gtf.replace('gtf','txt').replace('.gz',''), options, transIDs, genesdata)
+    write_temp(source_compressed_gtf.replace('gtf', 'txt').replace('.gz', ''), options, transIDs, genesdata)
     sortedRecords = sort_tmpfile('temp.txt')
-    writeToFile(sortedRecords, source_compressed_gtf.replace('gtf.gz','db').replace('gtf','db'))
+    writeToFile(sortedRecords, source_compressed_gtf.replace('gtf.gz', 'db').replace('gtf', 'db'))
     return sortedRecords
+
 
 def parse_gtf_loop(source_compressed_gtf, options, genesdata, transIDs):
     transcript, prevenst, first, genesdata = parse_GTF(filename=source_compressed_gtf,
@@ -669,6 +686,7 @@ def parse_gtf_loop(source_compressed_gtf, options, genesdata, transIDs):
     records = write_out(source_compressed_gtf, options, transIDs, genesdata)
     return len(records)
 
+
 def report_summary(enst_parsed, options, hg19=False, enst=True):
     version = options.ensembl
     if hg19 is True:
@@ -684,7 +702,7 @@ def report_summary(enst_parsed, options, hg19=False, enst=True):
         print('\n######################################################################')
         print('A total of ' + str(enst_parsed) + ' transcripts have been retrieved\n')
         # Indexing output file with Tabix
-        outfile = full_name +'.db'
+        outfile = full_name + '.db'
         indexFile(outfile)
         """
         # Printing out summary information
