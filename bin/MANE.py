@@ -14,7 +14,7 @@ OptionParser.format_epilog = lambda self, formatter: self.epilog
 parser = OptionParser(usage='\n\nbin/MANE.py <options>', version=version, description=descr,
                       epilog=epilog)
 parser.add_option('-D', "--outdir", dest='output_dir', action='store', default='data', help="Output directory")
-parser.add_option('-e', "--ensembl", default=None, dest='ensembl', action='store', help="release version")
+parser.add_option('-e', "--version", default=None, dest='ensembl', action='store', help="release version")
 parser.add_option("--no_hg19",  action='store_false', default=True, dest='no_hg19', help="Set this to skip hg19 builds")
 
 (options, args) = parser.parse_args()
