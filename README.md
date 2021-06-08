@@ -91,7 +91,7 @@ for use.
 CAVA can be run with the following simple command:
 
 ```bash
-cava -c config.txt -i input.vcf -o output
+python3 bin/CAVA.py -c config.txt -i input.vcf -o output
 ```
 
 It requires three command line arguments: 
