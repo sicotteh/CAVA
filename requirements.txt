@@ -14,5 +14,8 @@ six>=1.10.0
 sphinx>=1.6.3
 gevent>=1.2.2
 wget>=3.2
-crossmap
+CrossMap
 pycurl
+pyBigWig
+appdirs
+bgzip
