@@ -6,38 +6,41 @@ import pycurl
 
 
 def check_materials():
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+
     if not os.path.exists(os.path.join(base_dir, 'data')):
         print('Making data directory: {}'.format(os.path.join(base_dir, 'data')))
         os.mkdir(os.path.join(base_dir, 'data'))
-    if not os.path.exists(os.path.join(base_dir, 'data', 'tmp.GRCh38.fa.gz')):
+
+    if not os.path.exists(os.path.join(base_dir, 'data', 'tmp.GRCh38.fa.fai')) and not os.path.exists(
+            os.path.join(base_dir, 'data', 'tmp.GRCh38.fa')):
         print('Downloading build 38')
         c = pycurl.Curl()
         c.setopt(c.URL, 'http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz')
         with open(os.path.join(base_dir, 'data', 'tmp.GRCh38.fa.gz'), 'wb') as f:
             c.setopt(c.WRITEDATA, f)
             c.perform()
-    try:
-        print('Unzipping genome')
-        os.system("bgzip -d " + os.path.join(base_dir, 'data', 'tmp.GRCh38.fa.gz'))
-    except:
-        raise "Could not unzip genome."
 
-    try:
-        print('Indexing genome')
-        os.system("samtools faidx " + os.path.join(base_dir, 'data', 'tmp.GRCh38.fa'))
-    except:
-        raise "Unable to index the reference genome. Do you have samtools in your path?"
+    if not os.path.exists(os.path.join(base_dir, 'data', 'tmp.GRCh38.fa')):
+        try:
+            print('Unzipping genome')
+            os.system("bgzip -d " + os.path.join(base_dir, 'data', 'tmp.GRCh38.fa.gz'))
+        except:
+            raise Exception("Could not unzip genome.")
 
+    if not os.path.exists(os.path.join(base_dir, 'data', 'tmp.GRCh38.fa.fai')):
+        try:
+            print('Indexing genome')
+            os.system("samtools faidx " + os.path.join(base_dir, 'data', 'tmp.GRCh38.fa'))
+        except:
+            raise Exception("Unable to index the reference genome. Do you have samtools in your path?")
 
 
 class MyTestCase(unittest.TestCase):
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(self):
         check_materials()
-
-    def setUp(self):
         self.genelist = ['BRCA1']
         self.transcriptlist = ['NM_007294.4']
         self.codon_usage = ['1']
@@ -65,7 +68,6 @@ class MyTestCase(unittest.TestCase):
         rec.annotate(self.ensembl, None, self.reference, None)
         rec.variants[0].getFlag('CSN')
         self.assertEqual('c.5559C>G_p.Tyr1853Ter', rec.variants[0].getFlag('CSN'))
-
 
     def test_hg38_negStrand_fsdel(self):
         line = "17\t43093140\trs80357695\tTTC\tT\t.\t.\t.\tGT\t0/1\n"
@@ -175,18 +177,19 @@ class MyTestCase(unittest.TestCase):
 
 class Options:
     """Helper class for setting up testing options"""
+
     def __init__(self):
-        base_dir = os.path.join('..', os.path.dirname(__file__))
-        self.args = {'ensembl': os.path.join(base_dir,'data', 'RefSeq_small.gz'),
-                 'logfile': None,
-                 'reference': os.path.join(base_dir, 'data', 'tmp.GRCh38.fa.gz'),
-                 'inputformat': 'VCF',
-                 'type': 'ALL',
-                 'ontology': 'BOTH',
-                 'givealt': None,
-                 'ssrange': 4,
-                 'impactdef': 'SG,ESS,FS|SS5,IM,SL,EE,IF,NSY|SY,SS,INT,5PU,3PU'
-                 }
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        self.args = {'ensembl': os.path.join(base_dir, 'data', 'RefSeq_small.gz'),
+                     'logfile': None,
+                     'reference': os.path.join(base_dir, 'data', 'tmp.GRCh38.fa'),
+                     'inputformat': 'VCF',
+                     'type': 'ALL',
+                     'ontology': 'BOTH',
+                     'givealt': None,
+                     'ssrange': 4,
+                     'impactdef': 'SG,ESS,FS|SS5,IM,SL,EE,IF,NSY|SY,SS,INT,5PU,3PU'
+                     }
         self.dbsnp = None
         self.transcript2protein = None
         super().__init__()
