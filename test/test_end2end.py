@@ -6,7 +6,7 @@ import pycurl
 
 
 def check_materials():
-    base_dir = os.path.dirname(os.path.dirname(__file__))
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     if not os.path.exists(os.path.join(base_dir, 'data')):
         print('Making data directory: {}'.format(os.path.join(base_dir, 'data')))
         os.mkdir(os.path.join(base_dir, 'data'))
@@ -32,6 +32,10 @@ def check_materials():
 
 
 class MyTestCase(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        check_materials()
 
     def setUp(self):
         self.genelist = ['BRCA1']
@@ -190,5 +194,4 @@ class Options:
 
 
 if __name__ == '__main__':
-    check_materials()
     unittest.main()
