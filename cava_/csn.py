@@ -7,7 +7,7 @@ import cava_.core as core
 import sys
 
 # Class representing a CSN annotation
-class CSNAnnot():
+class CSNAnnot:
     # Constructor
     def __init__(self, coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
                  dna_ins):
@@ -67,7 +67,7 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
     # Creating protein level annotation
     where = transcript.whereIsThisVariant(variant)
     if not '-' in where and where.startswith('Ex'):
-        protein, protchange = makeProteinString(variant, transcript, reference, prot, mutprot, coord1)
+        protein, protchange = makeProteinString(variant, prot, mutprot, coord1)
     else:
         protein, protchange = '', ('.', '.', '.')
 
@@ -194,7 +194,7 @@ def makeDNAannotation(variant, transcript, reference):
 # 
 # Coord1 is 1-based position in the CDS .. and is ONLY used to report Synonymous variants .. it is not used to locate deletions or frameshifts
 # 
-def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
+def makeProteinString(variant, prot, mutprot, coord1):
     if prot == '': return '', ('.', '.', '.')
     # this is used to distringuish frameshift from non-frameshifts.. though an Early Stop codon .. will be coded as nonsense
     #      even if it's a frameshift [HGVS NOTE in fs: the shortest frame shift variantis fsTer2, fsTer1  variants are by definition nonsense variants]
@@ -371,7 +371,7 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
     # Pure Deletion Repeat Event (not a frameshift) that does not include the beginning or end (because such highly impactfull changes were dealth earlier)
     #
 
-    if (rightindex < len(protcopy) and len(trim_mutprot) == 0 and is_not_frameshift):
+    if rightindex < len(protcopy) and len(trim_mutprot) == 0 and is_not_frameshift:
         nDup = 0
         # Loop over potential repeat sizes (Smaller repeat sizes have priority)
         for SSRlen in range(1, len(trim_prot) + 1):
@@ -397,7 +397,7 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
                     if not (
                             nMatch_del == 1 and nMatch_ref == 0 or nMatch_ref + nMatch_del <= 1):  # Deletion of a single lone copy is not repeat polymorphism
                         nDup = nDups
-                        lowerlim = leftindex - SSRlen * (nMatch_ref) - 1
+                        lowerlim = leftindex - SSRlen * nMatch_ref - 1
                         upperlim = lowerlim + SSRlen
                         break
 
@@ -467,10 +467,10 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
                     while lowerlim >= 0 and protcopy[lowerlim:upperlim] == repeat_seq:
                         nMatch_ref = nMatch_ref + 1
                         lowerlim = lowerlim - SSRlen
-                        upperlime = lowerlim + SSRlen
+                        lowerlim + SSRlen
                     if nMatch_ref > 0:  # We require a copy to be present on the reference "protein" .. as per HGVS
                         nDup = nDups
-                        lowerlim = leftindex - SSRlen * (nMatch_ref) - 1
+                        lowerlim = leftindex - SSRlen * nMatch_ref - 1
                         upperlim = lowerlim + SSRlen
                         break  # break out of the for iDup loop
 
@@ -549,7 +549,7 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
                 if xindex == 0 and len(
                         prot) > 1:  # First Modified Base is a stop codon before end (Independent wether mutation is deletion or insertion
                     return '_p.' + changeTo3lettersTer(prot[0]) + str(leftindex) + 'Ter', (
-                    str(leftindex), prot[0], mut[0])
+                    str(leftindex), prot[0], mutprot[0])
                 if leftindex < len(protcopy) and xindex + 1 <= len(
                         prot):  # First Modified Base before the end of the protein .. and new Stop not past original Stop (e.g. not an extension)
                     # (btw Minimal length of prot==2 for protein ending in Ter)
@@ -587,11 +587,11 @@ def makeProteinString(variant, transcript, reference, prot, mutprot, coord1):
     # Past this point, only Complex delins not including the stop codon, 5' extension insertions
 
     # Trimming common ending substring
-    prot = trim_prot
-    mutprot = trim_mutprot
+    trim_prot
+    trim_mutprot
 
     prot = trim_prot
-    mutprot = trim_mutprot
+    trim_mutprot
 
     #  (len(prot)==0 and len(mutprot)==0) should have been covered by  earlier cases
 

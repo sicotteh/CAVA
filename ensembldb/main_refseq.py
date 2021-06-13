@@ -44,7 +44,7 @@ def replace_chrom_names(line):
         res = '\t'.join(str(x) for x in chrom)
         return res
     elif line.startswith('NC_012920'):
-        base, v = chrom[0].split('.')
+        _, _ = chrom[0].split('.')
         chrom[0] = 'MT'
         return '\t'.join(str(x) for x in chrom)
 
@@ -123,7 +123,7 @@ class Transcript(object):
 
     # Check if it is a candidate transcript
     def isCandidate(self):
-        return (self.CODING_START > -1 and self.CODING_END > -1)
+        return self.CODING_START > -1 and self.CODING_END > -1
         # if not (self.GENETYPE == 'protein_coding' and self.TRANSTYPE == 'protein_coding'):
         #    return False
         # return (self.CODING_START > -1 and self.CODING_END > -1) and self.isComplete
@@ -466,7 +466,7 @@ def readRecords(inputfn):
 
 
 # Process Ensembl data
-def process_data(options, genome_build):
+def process_data(options):
     # Dictionary of Gene objects
     genesdata = dict()
 
@@ -481,7 +481,7 @@ def process_data(options, genome_build):
         print(f'\n{nm}\n')
 
     # Load candidate and CCDS data for Ensembl <75
-    candidates = dict()
+    dict()
 
     ######################################################################
     # Download RefSeq data if necessary
@@ -692,7 +692,7 @@ def run(options):
     print('Reference genome: ' + genome_build)
 
     # Creating compressed output file
-    enst_parsed, ens_lifted = process_data(options, genome_build)
+    enst_parsed, ens_lifted = process_data(options)
     print('\nA total of ' + str(enst_parsed) + ' transcripts have been retrieved\n')
     # Indexing output file with Tabix
     indexFile(options.output, options)

@@ -8,8 +8,9 @@
 import gzip
 import logging
 import os
-import time
 import sys
+import time
+
 
 #######################################################################################################################
 
@@ -83,7 +84,7 @@ class Variant(object):
     def annotate(self, ensembl, dbsnp, reference, impactdir):
         self.annotateWithType()
         if not ensembl is None: self = ensembl.annotate(self, reference, impactdir)
-        if not dbsnp is None: self = dbsnp.annotate(self)
+        if not dbsnp is None: dbsnp.annotate(self)
 
     # Annotating variant with its type
     def annotateWithType(self):
@@ -380,7 +381,7 @@ class Record(object):
                             for itr in range(0, len(hgtranscripts)):  # Loop over transcripts within each alt-alleles
                                 hgtranscript = hgtranscripts[itr]
                                 hggene = hggenes[itr]
-                                hgcsn = hgcsns[itr]
+                                hgcsns[itr]
                                 hgcsn_hgvs = hgcsns_hgvs[itr]
                                 tHGVSC = hgtranscript
                                 tHGVSC += '(' + hggene + '):'
@@ -839,7 +840,7 @@ class Exon(object):
         self.length = end - start
 
     def contains(self, pos):
-        return (self.start + 1 <= pos <= self.end)
+        return self.start + 1 <= pos <= self.end
 
 
 #######################################################################################################################
@@ -984,7 +985,7 @@ class Options(object):
         # Reading options from file
         self.read()
 
-        if (self.args['ensembl'] == '.' or self.args['ensembl'] == ''):
+        if self.args['ensembl'] == '.' or self.args['ensembl'] == '':
             d = os.path.dirname(os.path.realpath(__file__))
             dir = d[:d.rfind('env/lib')]
             self.args['ensembl'] = dir + '/defaultdb/ensembl75s.gz'

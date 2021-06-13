@@ -254,7 +254,7 @@ def build_tx_to_prot_dict(opener, filename):
     return tx_to_prot_dict
 
 
-def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
+def parse_GTF(filename='', genesdata=None):
     first = True
     prevenst = ''
     transcript = None
@@ -463,9 +463,9 @@ def readRecords(inputfn):
 
 
 # Process Ensembl data
-def process_data(options, genome_build):
-    enst_records = 0
-    ref_records = 0
+def process_data(options):
+    0
+    0
     ref_records_hg19 = 0
     enst_records_hg19 = 0
     ######################################################################
@@ -580,7 +580,7 @@ def run(options):
     print('Reference genome: ' + genome_build)
 
     # Creating compressed output file
-    enst_parsed, ref_parsed, ens_lifted, ref_lifted = process_data(options, genome_build)
+    enst_parsed, ref_parsed, ens_lifted, ref_lifted = process_data(options)
 
     report_summary(enst_parsed, options, hg19=False, enst=True)
     report_summary(ref_parsed, options, hg19=False, enst=False)
@@ -667,9 +667,7 @@ def write_out(source_compressed_gtf, options, transIDs, genesdata):
 
 def parse_gtf_loop(source_compressed_gtf, options, genesdata, transIDs):
     transcript, prevenst, first, genesdata = parse_GTF(filename=source_compressed_gtf,
-                                                       options=options,
-                                                       genesdata=genesdata,
-                                                       transIDs=transIDs)
+                                                       genesdata=genesdata)
     sys.stdout.write('Done\n')
     sys.stdout.flush()
 
@@ -689,7 +687,7 @@ def parse_gtf_loop(source_compressed_gtf, options, genesdata, transIDs):
 
 
 def report_summary(enst_parsed, options, hg19=False, enst=True):
-    version = options.ensembl
+    options.ensembl
     if hg19 is True:
         hg19 = '.hg19_converted'
     else:
