@@ -34,7 +34,7 @@ class Ensembl(object):
         self.transcript2protein = options.transcript2protein
 
     # Find transcripts overlapping with a variant
-    def findTranscripts(self, variant, strand, reference):
+    def findTranscripts(self, variant):
         ret = dict()
         retOUT = dict()
 
@@ -62,12 +62,12 @@ class Ensembl(object):
             hitdict1 = dict()
             hitdict2 = dict()
             for line in hits1:
-                transcript = core.Transcript(line, reference)
+                transcript = core.Transcript(line)
                 if not (transcript.transcriptStart + 1 <= start <= transcript.transcriptEnd): continue
                 # if not strand == transcript.strand: continue
                 hitdict1[transcript.TRANSCRIPT] = transcript
             for line in hits2:
-                transcript = core.Transcript(line, reference)
+                transcript = core.Transcript(line)
                 if not (transcript.transcriptStart + 1 <= end <= transcript.transcriptEnd): continue
                 #  if not strand == transcript.strand: continue
                 hitdict2[transcript.TRANSCRIPT] = transcript
@@ -95,7 +95,7 @@ class Ensembl(object):
         else:  # Variant is Substitution
             hits1 = self.tabixfile.fetch(region=reg2)
             for line in hits1:
-                transcript = core.Transcript(line, reference)
+                transcript = core.Transcript(line)
 
                 if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
                 if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
@@ -194,8 +194,8 @@ class Ensembl(object):
         PROTALTstring = ''
 
         # Collecting transcripts that overlap with the variant
-        transcripts_plus, transcriptsOUT_plus = self.findTranscripts(variant_plus, 1, reference)
-        transcripts_minus, transcriptsOUT_minus = self.findTranscripts(variant_minus, -1, reference)
+        transcripts_plus, transcriptsOUT_plus = self.findTranscripts(variant_plus)
+        transcripts_minus, transcriptsOUT_minus = self.findTranscripts(variant_minus)
 
         transcripts = set(list(transcripts_plus.keys()) + list(transcripts_minus.keys()))
         transcriptsOUT = set(list(transcriptsOUT_plus.keys()) + list(transcriptsOUT_minus.keys()))

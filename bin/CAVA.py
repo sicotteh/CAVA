@@ -3,13 +3,15 @@ import os
 from optparse import OptionParser
 
 from cava_ import main
-with open(os.path.join(os.path.dirname(__file__),  'VERSION')) as version_file:
+
+with open(os.path.join(os.path.dirname(__file__), 'VERSION')) as version_file:
     version = version_file.read().strip()
 
 descr = 'CAVA (Clinical Annotation of VAriants) is a lightweight, fast and flexible NGS variant annotation tool that provides consistent transcript-level annotation.'
 epilog = '\nExample usage: python3 bin/CAVA.py -c config.txt -i input.vcf -o output\n\n'.format(version)
 OptionParser.format_epilog = lambda self, formatter: self.epilog
-parser = OptionParser(usage='python3 bin/CAVA.py <options>'.format(version), version=version, description=descr, epilog=epilog)
+parser = OptionParser(usage='python3 bin/CAVA.py <options>'.format(version), version=version, description=descr,
+                      epilog=epilog)
 parser.add_option('-i', "--input", default='input.vcf', dest='input', action='store',
                   help="Input file name [default value: %default]")
 parser.add_option('-o', "--output", default='output', dest='output', action='store',
