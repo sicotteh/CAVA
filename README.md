@@ -59,6 +59,9 @@ At this point, your terminal should change to let you know you are in a virtual 
 ------------------------------
 
 ```bash 
+pip install cava
+
+# - or -
 git clone git@github.com:Steven-N-Hart/CAVA.git
 # optional to checkout release
 # e.g. git checkout v.1.2.4
