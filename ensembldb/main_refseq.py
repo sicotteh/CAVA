@@ -54,6 +54,7 @@ class Transcript(object):
 
     # Constructor
     def __init__(self):
+        self.PROT = None
         self.ENST = None
         self.GENE = None
         self.ENSG = None
