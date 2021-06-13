@@ -1,14 +1,11 @@
-<!-- vim-markdown-toc GFM -->
-
 * [CAVA README](#cava-readme)
     * [1 INTRODUCTION](#1-introduction)
     * [2 PUBLICATION](#2-publication)
     * [3 DEPENDENCIES](#3-dependencies)
     * [4 INSTALLATION ON LINUX OR MAC](#4-installation-on-linux-or-mac)
     * [5 RUNNING CAVA](#5-running-cava)
-    * [6 LICENCE](#7-licence)
+    * [6 LICENCE](#6-licence)
 
-<!-- vim-markdown-toc -->
 
 CAVA README
 ==================
@@ -23,14 +20,9 @@ annotation consistent with the principles of the Human Genome Variation
 Society (HGVS) guidelines, optimised for automated clinical variant 
 annotation of NGS data. 
 
-CAVA has been extensively tested on exome data and is being used in the 
-Mainstreaming Cancer Genetics (MCG) programme which applies NGS to 
-increase the availability and affordability of clinical testing of 
-cancer predisposition genes.
-
-*UPDATE* CAVA is no longer being supported by the Rahman Team. This fork
-is used by the Mayo Clinic to annotate our research and clinical samples.
-
+Since 2017, CAVA has been maintained by a group of bioinformaticians involved 
+in both research and clinical genomics, adding several key functionalities, enhancements, 
+and general support along the way.
 
 2 PUBLICATION
 -------------
@@ -43,6 +35,7 @@ Gerton Lunter, Nazneen Rahman. CSN and CAVA: variant annotation tools
 for rapid, robust next-generation sequencing analysis in the clinical 
 setting. Genome Medicine 7:76, doi:10.1186/s13073-015-0195-6 (2015).
 
+Maybe some day, we'll get around to publishing what we've done to rescue this abandoned project.
 
 3 DEPENDENCIES
 --------------
@@ -52,41 +45,47 @@ To install and run CAVA you will need the following dependencies installed:
 - GCC and GNU make
 - virtualenv
 
-If your system is missing GCC and GNU make, these can be installed as 
+It just makes sense to keep things in a virtualenv. Here's how you do it if you are
+unfamiliar.
 
-On a Mac, the easiest way to set them up is to install Xcode Command Line Tools.
-On a Debian or Ubuntu Linux, they can be set up by installing the build-essential package:
-
-`bash sudo apt-get install build-essential`
-
-If not already installed on your system, virtualenv can be set up by:
-
-`bash 
+```bash 
 pip install virtualenv
-`
+virtualenv cava
+source cava/bin/activate
+```
+At this point, your terminal should change to let you know you are in a virtual environment.
 
 4 INSTALLATION ON LINUX OR MAC
 ------------------------------
 
 ```bash 
-git clone https://github.com/Steven-N-Hart/dicom_wsi.git
+git clone git@github.com:Steven-N-Hart/CAVA.git
 # optional to checkout release
 # e.g. git checkout v.1.2.4
-./install.sh
+python setup.py install
 ```
 
-CAVA uses virtualenv and pip to manage all its extra dependencies, 
-which means that it will not clutter up your system by installing 
-things globally. Everything it installs will go into a sub-directory 
-in the CAVA directory. If you delete CAVA then everything it has 
-installed will also be deleted.
-
-Once the installation script has finished successfully, CAVA is ready 
-for use.
 
 
 5 RUNNING CAVA
 --------------
+
+Before using CAVA, you will need to create a database of transcripts for which to base your annotations from.
+Details can be found in [this README](ensembldb/README.md). In short, we reccomend using MANE transcripts, 
+so to get started, you would simply:
+```bash
+# Download GTF files for either RefSeq or ENSEMBLE
+wget -O data/ENST.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_0.91/MANE.GRCh38.v0.91.select_ensembl_genomic.gtf.gz and
+wget -O data/RefSeq.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_0.91/MANE.GRCh38.v0.91.select_refseq_genomic.gtf.gz
+
+# Separate into ENST and NM Transcripts
+zcat data/ENST.gtf.gz |cut -f9|cut -f4 -d' '|grep ENST|sed 's/;//;s/\"//g'|sort -u > data/ENST.txt
+zcat data/RefSeq.gtf.gz |cut -f9|cut -f4 -d' '|grep "NM_"|sed 's/;//;s/\"//g'|sort -u > data/RefSeq.txt
+
+# Look at the options and configure appropriately
+python3 bin/MANE.py -h
+
+```
 
 CAVA can be run with the following simple command:
 
