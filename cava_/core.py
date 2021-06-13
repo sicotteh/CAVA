@@ -9,7 +9,7 @@ import gzip
 import logging
 import os
 import time
-
+import sys
 
 #######################################################################################################################
 
@@ -373,7 +373,7 @@ class Record(object):
                             print("--------------------------------------------------------------------\n")
                             if options.args['logfile']:
                                 logging.error("Bug: TRANSCRIPT GENE and CSN not same length\n")
-                            sys.exit(-1)
+                            sys.exit(1)
                         else:
                             trHGVSC = ''
                             trHGVSP = ''
@@ -586,7 +586,7 @@ class Record(object):
 # Class representing a single Ensembl transcript
 class Transcript(object):
     # Constructor
-    def __init__(self, line, reference):
+    def __init__(self, line):
         self.exons = []
         cols = line.split('\t')
         self.TRANSCRIPT = cols[0]
@@ -951,6 +951,7 @@ class Options(object):
     # Constructor
     def __init__(self, configfn):
 
+        self.args = dict()
         self.defs = dict()
         self.configfn = configfn
         self.transcript2protein = dict()
@@ -990,7 +991,6 @@ class Options(object):
 
     # Reading options from configuration file
     def read(self):
-        self.args = dict()
         for line in open(self.configfn):
             line = line.strip()
             if line.startswith('@'):
