@@ -1,4 +1,9 @@
-data/
+data/E*
+data/tmp*
+data/hg*
+data/Homo*
+data/RefSeq.*
+data/MANE*
 temp.txt
 /env
 /.cache
@@ -15,12 +20,7 @@ temp.txt
 /*/*/__pycache__
 /*/*/*/__pycache__
 doc/sphinx/_build
-/test/tmp.*
-/test/hg38.fa
-/test/hg38.fa.fai
 dist/
 build/
 CAVA.egg-info/
-test/tmp.*fa*
-test/test.input.vcf.gz
-test/test.input.vcf.gz.tbi
+

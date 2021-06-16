@@ -99,10 +99,11 @@ def printMetaData(datafile):
 #######################################################################################################################
 
 # Version
-version = '2.0.0'
+with open(os.path.join(os.path.dirname(__file__),  'VERSION')) as version_file:
+    version = version_file.read().strip()
 
 descr = 'CAVA dbsnp_db v' + version
-epilog = '\nExample usage: CAVA-{}/dbsnp_db -d 00-All.vcf.gz -s 138 -o out\n\n'.format(version)
+epilog = '\nExample usage: bin/dbsnp_db.py -d 00-All.vcf.gz -s 138 -o out\n\n'.format(version)
 OptionParser.format_epilog = lambda self, formatter: self.epilog
 parser = OptionParser(usage='CAVA-{}/dbsnp_db <options>'.format(version), version=version, description=descr,
                       epilog=epilog)
@@ -165,5 +166,5 @@ print('---------------------')
 print(options.output + '.gz (SNP database)')
 print(options.output + '.gz.tbi (index file)')
 print('')
-print('CAVA dbsnp_db successfully finished: ', datetime.datetime.now())
+print('dbsnp_db.py successfully finished: ', datetime.datetime.now())
 print("---------------------------------------------------------------------------------------\n")
