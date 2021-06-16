@@ -195,7 +195,16 @@ def makeDNAannotation(variant, transcript, reference):
 # Coord1 is 1-based position in the CDS .. and is ONLY used to report Synonymous variants .. it is not used to locate deletions or frameshifts
 # 
 def makeProteinString(variant, prot, mutprot, coord1):
-    if prot == '': return '', ('.', '.', '.')
+    """
+
+    :param variant:
+    :param prot:
+    :param mutprot:
+    :param coord1:
+    :return: '_p.Met1?', ('1', prot[0], 'X')
+    """
+    if prot == '':
+        return '', ('.', '.', '.')
     # this is used to distringuish frameshift from non-frameshifts.. though an Early Stop codon .. will be coded as nonsense
     #      even if it's a frameshift [HGVS NOTE in fs: the shortest frame shift variantis fsTer2, fsTer1  variants are by definition nonsense variants]
     is_not_frameshift = (len(variant.alt) - len(variant.ref)) % 3 == 0
