@@ -1,13 +1,14 @@
 import datetime
 import gzip
 import os
-import sys
-import pybedtools
 import pickle
-
+import sys
 from operator import itemgetter
-import wget
+
+import pybedtools
 import requests
+import wget
+
 requests.packages.urllib3.disable_warnings()
 
 import pysam
@@ -20,19 +21,22 @@ failed_conversions['GENETYPE'] = set()
 failed_conversions['TRANSTYPE'] = set()
 failed_conversions['ENST'] = set()
 
+
 def warn(transcript):
     global failed_conversions
     failed_conversions['GENE'].add(transcript.GENE)
     failed_conversions['GENETYPE'].add(transcript.GENETYPE)
     failed_conversions['TRANSTYPE'].add(transcript.TRANSTYPE)
     failed_conversions['ENST'].add(transcript.ENST)
-    #raise Exception(f"Messed up: {transcript.GENE}")
+    # raise Exception(f"Messed up: {transcript.GENE}")
+
 
 # Class representing a transcript
 class Transcript(object):
 
     # Constructor
     def __init__(self):
+        self.PROT = None
         self.ENST = None
         self.GENE = None
         self.ENSG = None
@@ -246,6 +250,7 @@ def build_tx_to_prot_dict(opener, filename):
             tx_to_prot_dict[enst_prot] = prot
     return tx_to_prot_dict
 
+
 def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
     first = True
     prevenst = ''
@@ -357,6 +362,7 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
         if first: first = False
     return transcript, prevenst, first, genesdata
 
+
 def sort_tmpfile(f):
     # Sort temporary output file
     data = dict()
@@ -379,6 +385,7 @@ def sort_tmpfile(f):
     sortedRecords = sortRecords(data, 6, 7)
     return sortedRecords
 
+
 # Retrieve tag value
 def getValue(tags, tag):
     ret = None
@@ -390,6 +397,7 @@ def getValue(tags, tag):
             break
     return ret
 
+
 # Retrieve boolean tag value
 def getBooleanValue(tags, tag):
     for x in tags:
@@ -400,11 +408,13 @@ def getBooleanValue(tags, tag):
             if value == tag: return True
     return False
 
+
 # Read transcript IDs from file
 def readTranscriptIDs(inputfn):
     ret = set()
     for line in open(inputfn): ret.add(line.strip())
     return ret
+
 
 # Sort records in file
 def sortRecords(records, idx1, idx2):
@@ -421,6 +431,7 @@ def sortRecords(records, idx1, idx2):
             for record in records[chrom]: ret.append(record)
     return ret
 
+
 # Write records to file
 def writeToFile(sortedRecords, filename):
     outfile = open(filename, 'w')
@@ -430,15 +441,16 @@ def writeToFile(sortedRecords, filename):
         outfile.write(s + '\n')
     outfile.close()
 
+
 # Read records from file as a list
 def readRecords(inputfn):
     ret = []
     for line in open(inputfn): ret.append(line.strip())
     return ret
 
+
 # Process Ensembl data
 def process_data(options, genome_build):
-
     # Dictionary of Gene objects
     genesdata = dict()
 
@@ -465,7 +477,7 @@ def process_data(options, genome_build):
 
     # Download Ensembl data if necessary
     source_compressed_gtf = 'Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz'
-    source_compressed_gtf = os.path.join('data', source_compressed_gtf)
+    source_compressed_gtf = os.path.join(options.output_dir, source_compressed_gtf)
     if not os.path.exists(source_compressed_gtf):
         sys.stdout.write('Downloading Ensembl database... ')
         sys.stdout.flush()
@@ -485,13 +497,13 @@ def process_data(options, genome_build):
     if options.no_hg19 is not False:
         requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'  # Needed for UCSC
         # only download if necessary
-        if not os.path.exists(os.path.join('data','hg38ToHg19.over.chain.gz')):
+        if not os.path.exists(os.path.join('data', 'hg38ToHg19.over.chain.gz')):
             sys.stdout.write('Downloading UCSC database... ')
             sys.stdout.flush()
             url = 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/hg38ToHg19.over.chain.gz'
             try:
                 p = requests.get(url, verify=False)
-                with open(os.path.join('data','hg38ToHg19.over.chain.gz'), 'wb') as o:
+                with open(os.path.join('data', 'hg38ToHg19.over.chain.gz'), 'wb') as o:
                     o.write(p.content)
 
             except Exception as e:
@@ -500,8 +512,8 @@ def process_data(options, genome_build):
                 quit()
 
         sys.stdout.write('\nMaking a hg19-conveterted GTF file\n')
-        mapTree, targetChromSizes, sourceChromSizes = read_chain_file(os.path.join('data','hg38ToHg19.over.chain.gz'))
-        converted_gtf = os.path.join('data','Homo_sapiens.hg19_converted' + options.ensembl + '.gtf')
+        mapTree, targetChromSizes, sourceChromSizes = read_chain_file(os.path.join('data', 'hg38ToHg19.over.chain.gz'))
+        converted_gtf = os.path.join(options.output_dir, 'Homo_sapiens.hg19_converted' + options.ensembl + '.gtf')
         crossmap_gff_file(mapTree, source_compressed_gtf, converted_gtf)
 
         # Note this file is not sorted!
@@ -514,7 +526,6 @@ def process_data(options, genome_build):
     #################################################################
     # Iterate through the lines in the ensembl data file
     sys.stdout.write('Extracting transcript data from Ensembl...')
-
 
     transcript, prevenst, first, genesdata = parse_GTF(filename=source_compressed_gtf,
                                                        options=options,
@@ -541,7 +552,7 @@ def process_data(options, genome_build):
 
     write_temp(os.path.join(options.output_dir, options.output + '.txt'), options, transIDs, genesdata)
     enst_records = sort_tmpfile('temp.txt')
-    assert(len(enst_records) > 0 )
+    assert (len(enst_records) > 0)
     writeToFile(enst_records, os.path.join(options.output_dir, options.output))
 
     failed_conversions['GENE'] = set()
@@ -558,7 +569,7 @@ def process_data(options, genome_build):
         transcript, prevenst, first, genesdata = parse_GTF(filename=converted_gtf,
                                                            options=options,
                                                            genesdata=genesdata,
-                                                            transIDs=transIDs)
+                                                           transIDs=transIDs)
 
         # Finalize last transcript and add to Gene object if candidate
         if transcript is not None:
@@ -579,12 +590,14 @@ def process_data(options, genome_build):
             print("-----------------------------------------------------------------\n")
             quit()
 
-        write_temp(os.path.join(options.output_dir, options.output + '.hg19_converted.txt'), options, transIDs, genesdata)
+        write_temp(os.path.join(options.output_dir, options.output + '.hg19_converted.txt'), options, transIDs,
+                   genesdata)
         sortedRecords = sort_tmpfile('temp.txt')
         writeToFile(sortedRecords, os.path.join(options.output_dir, options.output + '.hg19_converted'))
         sys.stdout.write('Completed hg19 version...')
         sys.stdout.flush()
-        pickle.dump(failed_conversions, open(os.path.join(options.output_dir, options.output + '_failed_conversions.pkl'), 'wb'))
+        pickle.dump(failed_conversions,
+                    open(os.path.join(options.output_dir, options.output + '_failed_conversions.pkl'), 'wb'))
         hg19_records = sortedRecords
     # ################################################################
     # END converted GTF conversion
@@ -595,12 +608,13 @@ def process_data(options, genome_build):
     sys.stdout.write('Removing temporary files... ')
     sys.stdout.flush()
     os.remove('temp.txt')
-    #os.remove(source_compressed_gtf)
+    # os.remove(source_compressed_gtf)
 
     print(f"Failed {failed_conversions['GENE'].__len__()} Genes and {failed_conversions['ENST'].__len__()} transcripts")
 
     # Return sorted records
     return len(enst_records), len(hg19_records)
+
 
 # Use Tabix to index output file
 def indexFile(f, options):
@@ -610,8 +624,10 @@ def indexFile(f, options):
     sys.stdout.write('OK\n')
     sys.stdout.write(f'Indexing output file {f}... ')
     sys.stdout.flush()
-    pysam.tabix_index(os.path.join(options.output_dir, f + '.gz'), seq_col=4, start_col=6, end_col=7, meta_char='#', force=True)
+    pysam.tabix_index(os.path.join(options.output_dir, f + '.gz'), seq_col=4, start_col=6, end_col=7, meta_char='#',
+                      force=True)
     sys.stdout.write('OK\n')
+
 
 # CHeck if string is a number (integer)
 def is_number(s):
@@ -621,10 +637,11 @@ def is_number(s):
     except ValueError:
         return False
 
+
 def run(options):
     # Checking if all required options specified
     if options.ensembl is None:
-        print('\nError: no Ensembl release specified. Use option -h to get help!\n')
+        print('\nError: no release specified. Use option -h to get help!\n')
         quit()
     if not is_number(options.ensembl):
         print('\nError: Ensembl release specified is not an integer. Use option -h to get help!\n')
@@ -664,7 +681,6 @@ def run(options):
     print(options.output + '.gz (transcript database)')
     print(options.output + '.gz.tbi (index file)')
     print(options.output + '.txt (list of transcripts)')
-
 
     if ens_lifted:
         print('\nA total of ' + str(ens_lifted) + ' transcripts have been lifted over\n')

@@ -32,9 +32,6 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
     protL = len(protein)
     mutprotL = len(mutprotein)
 
-    # Frame-shift coding variants
-    if not variant.isInFrame(): return 'FS'
-
     # Synonymous coding variants
     if protein == mutprotein:
         if potSS: return 'EE'
@@ -56,6 +53,17 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
     if protein[0] == 'X' and len(mutprotein) == 0: return 'SL'
     if protein[0] == 'X' and mutprotein[0] != 'X': return 'SL'
 
+    if len(mutprotein) > 0 and \
+            mutprotein[0] == 'X' and \
+            len(protein) > 0 and \
+            mutprotein[0] != protein[0] and \
+            not variant.isInFrame():
+        return 'SG'
+
+    # Frame-shift coding variants
+    if not variant.isInFrame():
+        return 'FS'
+
     while len(protein) > 0 and len(mutprotein) > 0:
         if protein[-1] == mutprotein[-1]:
             protein = protein[:-1]
@@ -63,15 +71,18 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
         else:
             break
 
-    if 'X' in mutprotein: return 'SG'
+    if 'X' in mutprotein:
+        return 'SG'
 
     # Non-synonymous coding variants
     if protL == mutprotL:
-        if potSS: return 'EE'
+        if potSS:
+            return 'EE'
         return 'NSY'
 
     # In-frame variants
-    if potSS: return 'EE'
+    if potSS:
+        return 'EE'
     return 'IF'
 
 

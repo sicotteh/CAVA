@@ -8,6 +8,7 @@
 import gzip
 import logging
 import os
+import sys
 import time
 
 
@@ -83,7 +84,7 @@ class Variant(object):
     def annotate(self, ensembl, dbsnp, reference, impactdir):
         self.annotateWithType()
         if not ensembl is None: self = ensembl.annotate(self, reference, impactdir)
-        if not dbsnp is None: self = dbsnp.annotate(self)
+        if not dbsnp is None: dbsnp.annotate(self)
 
     # Annotating variant with its type
     def annotateWithType(self):
@@ -360,32 +361,34 @@ class Record(object):
                 transcripts_list = flagvalues[flags.index('TRANSCRIPT')]
                 gene_list = flagvalues[flags.index('GENE')]
                 csn_list = flagvalues[flags.index('CSN')]
+                csn_hgvs_list = flagvalues[flags.index('CSNHGVS')]
                 if not (len(transcripts_list) == 0 or len(gene_list) != len(transcripts_list) or len(gene_list) != len(
                         csn_list)):
                     for ihg in range(0, len(transcripts_list)):  # Loop over alt-alleles
                         hgtranscripts = transcripts_list[ihg].split(":")
                         hggenes = gene_list[ihg].split(":")
                         hgcsns = csn_list[ihg].split(":")
+                        hgcsns_hgvs = csn_hgvs_list[ihg].split(":")
                         if not (len(hgtranscripts) == len(hggenes) and len(hgtranscripts) == len(hgcsns)):
                             print("ERROR transcripts GENE and CSN not same length\n")
                             print("--------------------------------------------------------------------\n")
                             if options.args['logfile']:
                                 logging.error("Bug: TRANSCRIPT GENE and CSN not same length\n")
-                            sys.exit(-1)
+                            sys.exit(1)
                         else:
                             trHGVSC = ''
                             trHGVSP = ''
                             for itr in range(0, len(hgtranscripts)):  # Loop over transcripts within each alt-alleles
                                 hgtranscript = hgtranscripts[itr]
                                 hggene = hggenes[itr]
-                                hgcsn = hgcsns[itr]
+                                hgcsns[itr]
+                                hgcsn_hgvs = hgcsns_hgvs[itr]
                                 tHGVSC = hgtranscript
                                 tHGVSC += '(' + hggene + '):'
                                 try:
-                                    cdna, prot = hgcsn.split('_p.')
-                                    prot = prot.replace('extX', "extTer")
+                                    cdna, prot = hgcsn_hgvs.split('_p.')
                                 except ValueError:  # Example c.802-51_802-14del38, splice
-                                    cdna = hgcsn
+                                    cdna = hgcsn_hgvs
                                     prot = '.'
                                 tHGVSC += cdna
                                 if tHGVSC == '.(.):.':
@@ -403,8 +406,7 @@ class Record(object):
                                         # provide incorrect HGVSP
                                         tHGVSP = '.'
                                         # Only report warning if transcript2protein mapping file was provided.
-                                        if len(
-                                                options.transcript2protein) > 0:
+                                        if len(options.transcript2protein) > 0:
                                             print(
                                                 "WARNING: transcript " + hgtranscript + " not in transcript2protein "
                                                                                         "file, HGVSp will be invalid\n")
@@ -585,7 +587,7 @@ class Record(object):
 # Class representing a single Ensembl transcript
 class Transcript(object):
     # Constructor
-    def __init__(self, line, reference):
+    def __init__(self, line):
         self.exons = []
         cols = line.split('\t')
         self.TRANSCRIPT = cols[0]
@@ -649,6 +651,7 @@ class Transcript(object):
             return ret, exonseqs
 
     # Getting the translated protein sequence of the transcript
+    # with the variant included as well as a list of the (reference) exon sequence.
     def getProteinSequence(self, reference, variant, exonseqs, codon_usage):
         # Translating coding sequence
         codon_usage = codon_usage
@@ -837,7 +840,7 @@ class Exon(object):
         self.length = end - start
 
     def contains(self, pos):
-        return (self.start + 1 <= pos <= self.end)
+        return self.start + 1 <= pos <= self.end
 
 
 #######################################################################################################################
@@ -949,6 +952,7 @@ class Options(object):
     # Constructor
     def __init__(self, configfn):
 
+        self.args = dict()
         self.defs = dict()
         self.configfn = configfn
         self.transcript2protein = dict()
@@ -981,14 +985,13 @@ class Options(object):
         # Reading options from file
         self.read()
 
-        if (self.args['ensembl'] == '.' or self.args['ensembl'] == ''):
+        if self.args['ensembl'] == '.' or self.args['ensembl'] == '':
             d = os.path.dirname(os.path.realpath(__file__))
             dir = d[:d.rfind('env/lib')]
             self.args['ensembl'] = dir + '/defaultdb/ensembl75s.gz'
 
     # Reading options from configuration file
     def read(self):
-        self.args = dict()
         for line in open(self.configfn):
             line = line.strip()
             if line.startswith('@'):
@@ -1026,7 +1029,7 @@ def readSet(options, tag):
 # Reading dictionary (from transcript -> Protein)
 def read_dict(options, tag):
     ret = dict()
-    tx_to_prot_source_file = options.args['ensembl'].replace('db.gz', 'txt').replace('.gz','.txt')
+    tx_to_prot_source_file = options.args['ensembl'].replace('db.gz', 'txt').replace('.gz', '.txt')
     print("Reading option file dictionary : " + tx_to_prot_source_file + "\n")
     with open(tx_to_prot_source_file, 'r') as f:
         for line in f:
@@ -1049,26 +1052,26 @@ def writeHeader(options, header, outfile, stdout, version):
         prefix = 'CAVA_'
     else:
         prefix = ''
-    headerinfo = '##INFO=<ID=' + prefix + 'TYPE,Number=.,Type=String,Description=\"Variant type: Substitution, Insertion, Deletion or Complex\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'GENE,Number=.,Type=String,Description=\"HGNC gene symbol\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'TRANSCRIPT,Number=.,Type=String,Description=\"Transcript identifier\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
+    headerinfo = '##INFO=<ID=' + prefix + 'TYPE,Number=.,Type=String,Description=\"Variant type: Substitution, Insertion, Deletion or Complex\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'GENE,Number=.,Type=String,Description=\"HGNC gene symbol\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'TRANSCRIPT,Number=.,Type=String,Description=\"Transcript identifier\",Source=\"CAVA\",Version=\"' + version + '\">\n'
     headerinfo += '##INFO=<ID=' + prefix + 'GENEID,Number=.,Type=String,Description=\"Gene identifier\",Source=\"CAVA\",Version=\"1.2.4\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'TRINFO,Number=.,Type=String,Description=\"Transcript information: Strand/Length of transcript/Number of exons/Length of coding DNA + UTR/Protein length\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'LOC,Number=.,Type=String,Description=\"Location of variant in transcript\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'CSN,Number=.,Type=String,Description=\"CSN annotation\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'PROTPOS,Number=.,Type=String,Description=\"Protein position\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'PROTREF,Number=.,Type=String,Description=\"Reference amino acids\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'PROTALT,Number=.,Type=String,Description=\"Alternate amino acids\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'CLASS,Number=.,Type=String,Description=\"5PU: Variant in 5 prime untranslated region, 3PU: Variant in 3 prime untranslated region, INT: Intronic variant that does not alter splice site bases, SS: Intronic variant that alters a splice site base but not an ESS or SS5 base, ESS: Variant that alters essential splice site base (+1,+2,-1,-2), SS5: Variant that alters the +5 splice site base, but not an ESS base, SY: Synonymous change caused by a base substitution (i.e. does not alter amino acid), NSY: Nonsynonymous change (missense) caused by a base substitution (i.e. alters amino acid), IF: Inframe insertion and/or deletion (variant alters the length of coding sequence but not the frame), IM: Variant that alters the start codon, SG: Variant resulting in stop-gain (nonsense) mutation, SL: Variant resulting in stop-loss mutation, FS: Frameshifting insertion and/or deletion (variant alters the length and frame of coding sequence), EE: Inframe deletion, insertion or base substitution which affects the first or last three bases of the exon\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'SO,Number=.,Type=String,Description=\"Sequence Ontology term\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'ALTFLAG,Number=.,Type=String,Description=\"None: variant has the same CSN annotation regardless of its left or right-alignment, AnnNotClass/AnnNotSO/AnnNotClassNotSO: indel has an alternative CSN but the same CLASS and/or SO, AnnAndClass/AnnAndSO/AnnAndClassNotSO/AnnAndSONotClass/AnnAndClassAndSO: Multiple CSN with different CLASS and/or SO annotations\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'ALTANN,Number=.,Type=String,Description=\"Alternate CSN annotation\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'ALTCLASS,Number=.,Type=String,Description=\"Alternate CLASS annotation\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'ALTSO,Number=.,Type=String,Description=\"Alternate SO annotation\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'IMPACT,Number=.,Type=String,Description=\"Impact group the variant is stratified into\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'DBSNP,Number=.,Type=String,Description=\"rsID from dbSNP\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'HGVSc,Number=.,Type=String,Description=\"HGVS Nomenclature for cDNA changes\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
-    headerinfo += '##INFO=<ID=' + prefix + 'HGVSp,Number=.,Type=String,Description=\"HGVS Nomenclature for protein changes\",Source=\"CAVA\",Version=\"'+ version +'\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'TRINFO,Number=.,Type=String,Description=\"Transcript information: Strand/Length of transcript/Number of exons/Length of coding DNA + UTR/Protein length\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'LOC,Number=.,Type=String,Description=\"Location of variant in transcript\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'CSN,Number=.,Type=String,Description=\"CSN annotation\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'PROTPOS,Number=.,Type=String,Description=\"Protein position\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'PROTREF,Number=.,Type=String,Description=\"Reference amino acids\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'PROTALT,Number=.,Type=String,Description=\"Alternate amino acids\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'CLASS,Number=.,Type=String,Description=\"5PU: Variant in 5 prime untranslated region, 3PU: Variant in 3 prime untranslated region, INT: Intronic variant that does not alter splice site bases, SS: Intronic variant that alters a splice site base but not an ESS or SS5 base, ESS: Variant that alters essential splice site base (+1,+2,-1,-2), SS5: Variant that alters the +5 splice site base, but not an ESS base, SY: Synonymous change caused by a base substitution (i.e. does not alter amino acid), NSY: Nonsynonymous change (missense) caused by a base substitution (i.e. alters amino acid), IF: Inframe insertion and/or deletion (variant alters the length of coding sequence but not the frame), IM: Variant that alters the start codon, SG: Variant resulting in stop-gain (nonsense) mutation, SL: Variant resulting in stop-loss mutation, FS: Frameshifting insertion and/or deletion (variant alters the length and frame of coding sequence), EE: Inframe deletion, insertion or base substitution which affects the first or last three bases of the exon\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'SO,Number=.,Type=String,Description=\"Sequence Ontology term\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'ALTFLAG,Number=.,Type=String,Description=\"None: variant has the same CSN annotation regardless of its left or right-alignment, AnnNotClass/AnnNotSO/AnnNotClassNotSO: indel has an alternative CSN but the same CLASS and/or SO, AnnAndClass/AnnAndSO/AnnAndClassNotSO/AnnAndSONotClass/AnnAndClassAndSO: Multiple CSN with different CLASS and/or SO annotations\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'ALTANN,Number=.,Type=String,Description=\"Alternate CSN annotation\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'ALTCLASS,Number=.,Type=String,Description=\"Alternate CLASS annotation\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'ALTSO,Number=.,Type=String,Description=\"Alternate SO annotation\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'IMPACT,Number=.,Type=String,Description=\"Impact group the variant is stratified into\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'DBSNP,Number=.,Type=String,Description=\"rsID from dbSNP\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'HGVSc,Number=.,Type=String,Description=\"HGVS Nomenclature for cDNA changes\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'HGVSp,Number=.,Type=String,Description=\"HGVS Nomenclature for protein changes\",Source=\"CAVA\",Version=\"' + version + '\">\n'
 
     dateline = '##fileDate=' + time.strftime("%Y-%m-%d")
 

@@ -21,7 +21,7 @@ set -o pipefail
 #        | bgzip > test/test.input.vcf.gz
 #fi
 #
-# Donload reference genomes
+# Download reference genomes
 #
 if [ ! -f data/tmp.GRCh38.fa ]
 then
@@ -79,7 +79,8 @@ rm test/tmpB.log
 python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmpC -c test/CAVA_config_7.txt
 rm test/tmpC.log
 # build 37 test small
-python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmpD -c test/CAVA_config_8.txt
+python3 bin/exit
+CAVA.py -i test/test.GRCh37.vcf -o test/tmpD -c test/CAVA_config_8.txt
 rm test/tmpD.log
 
 # ########################################################################################
@@ -104,10 +105,7 @@ python3 bin/CAVA.py -i test/test.GRCh37.vcf -o test/tmp_d -c test/CAVA_config_12
 rm test/tmp_d.log
 
 echo "Running unit test for HGVSP"
-PWD=`pwd`
-cd cava_/
-python3 -m unittest test_csn.py
-cd ${PWD}
+python3 -m unittest test/test_csn.py
 
 # Test: verify correct results
 # =========

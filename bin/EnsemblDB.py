@@ -32,5 +32,7 @@ if options.input is not None:
     options.select = True
 
 options.version = version
+if not os.path.exists(options.output_dir):
+    os.mkdir(options.output_dir)
 
 main.run(options)

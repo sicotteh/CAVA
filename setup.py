@@ -17,10 +17,8 @@ setup(
     packages=['cava_', 'ensembldb'],
     scripts=[
         'bin/CAVA.py',
-        'bin/cava',
         'bin/EnsemblDB.py',
         'bin/dbSNPDB.py',
-        'bin/dbsnp_db'
     ],
     install_requires=requires,
     zip_safe=False,
