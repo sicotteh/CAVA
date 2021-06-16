@@ -472,8 +472,8 @@ def process_data(options):
     # Download data if necessary
     source_compressed_gtf_ens = 'MANE.GRCh38.v' + options.ensembl + '.select_ensembl_genomic.gtf.gz'
     source_compressed_gtf_ref = 'MANE.GRCh38.v' + options.ensembl + '.select_refseq_genomic.gtf.gz'
-    source_compressed_gtf_ens = os.path.join('data', source_compressed_gtf_ens)
-    source_compressed_gtf_ref = os.path.join('data', source_compressed_gtf_ref)
+    source_compressed_gtf_ens = os.path.join(options.output_dir, source_compressed_gtf_ens)
+    source_compressed_gtf_ref = os.path.join(options.output_dir, source_compressed_gtf_ref)
     download_gtf(source_compressed_gtf_ens, options.ensembl)
     download_gtf(source_compressed_gtf_ref, options.ensembl)
 
@@ -603,10 +603,11 @@ def download_gtf(source_compressed_gtf, version):
         try:
             wget.download(url)
             os.rename(os.path.basename(source_compressed_gtf), source_compressed_gtf)
+
         except Exception as e:
             print('\n\nCannot connect to FTP site. No internet connection?\n')
             print(f'{e}\n{url}')
-            quit()
+            exit(1)
     print('')
     sys.stdout.flush()
 
@@ -687,7 +688,6 @@ def parse_gtf_loop(source_compressed_gtf, options, genesdata, transIDs):
 
 
 def report_summary(enst_parsed, options, hg19=False, enst=True):
-    options.ensembl
     if hg19 is True:
         hg19 = '.hg19_converted'
     else:

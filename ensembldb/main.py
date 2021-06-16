@@ -477,7 +477,7 @@ def process_data(options, genome_build):
 
     # Download Ensembl data if necessary
     source_compressed_gtf = 'Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz'
-    source_compressed_gtf = os.path.join('data', source_compressed_gtf)
+    source_compressed_gtf = os.path.join(options.output_dir, source_compressed_gtf)
     if not os.path.exists(source_compressed_gtf):
         sys.stdout.write('Downloading Ensembl database... ')
         sys.stdout.flush()
@@ -513,7 +513,7 @@ def process_data(options, genome_build):
 
         sys.stdout.write('\nMaking a hg19-conveterted GTF file\n')
         mapTree, targetChromSizes, sourceChromSizes = read_chain_file(os.path.join('data', 'hg38ToHg19.over.chain.gz'))
-        converted_gtf = os.path.join('data', 'Homo_sapiens.hg19_converted' + options.ensembl + '.gtf')
+        converted_gtf = os.path.join(options.output_dir, 'Homo_sapiens.hg19_converted' + options.ensembl + '.gtf')
         crossmap_gff_file(mapTree, source_compressed_gtf, converted_gtf)
 
         # Note this file is not sorted!
@@ -641,7 +641,7 @@ def is_number(s):
 def run(options):
     # Checking if all required options specified
     if options.ensembl is None:
-        print('\nError: no Ensembl release specified. Use option -h to get help!\n')
+        print('\nError: no release specified. Use option -h to get help!\n')
         quit()
     if not is_number(options.ensembl):
         print('\nError: Ensembl release specified is not an integer. Use option -h to get help!\n')

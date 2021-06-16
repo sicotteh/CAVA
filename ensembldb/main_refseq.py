@@ -487,7 +487,7 @@ def process_data(options):
     # Download RefSeq data if necessary
     source_compressed_gtf = options.refseq + '_genomic.gtf.gz'
     # https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/reference/GCF_000001405.39_GRCh38.p13/GCF_000001405.39_GRCh38.p13_genomic.gtf.gz
-    source_compressed_gtf = os.path.join('data', source_compressed_gtf)
+    source_compressed_gtf = os.path.join(options.output_dir, source_compressed_gtf)
 
     if not os.path.exists(source_compressed_gtf):
         sys.stdout.write('Downloading RefSeq database... ')
@@ -517,6 +517,7 @@ def process_data(options):
             cmd = 'bgzip -c temp.txt > ' + source_compressed_gtf
             os.system(cmd)
             os.remove('temp.txt')
+            os.remove(options.refseq + "_genomic.gtf")
         except Exception as e:
             print('\n\nCannot connect to RefSeq FTP site. No internet connection?\n')
             print(f'{e}\n{url}')
@@ -541,7 +542,7 @@ def process_data(options):
                 print(f'Exception: {e}')
                 quit()
 
-        converted_gtf = os.path.join('data', 'Homo_sapiens.RefSeq.hg19_converted.' + options.refseq + '.gtf')
+        converted_gtf = os.path.join(options.output_dir, 'Homo_sapiens.RefSeq.hg19_converted.' + options.refseq + '.gtf')
         if not os.path.exists(converted_gtf):
             sys.stdout.write('\nMaking a hg19-conveterted GTF file\n')
             mapTree, targetChromSizes, sourceChromSizes = read_chain_file(
