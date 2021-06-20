@@ -1,19 +1,19 @@
 #!env/bin/python3
 
 from optparse import OptionParser
-from ensembldb import main
+from cava.ensembldb import main
 import os
-with open(os.path.join(os.path.dirname(__file__),  'VERSION')) as version_file:
+with open(os.path.join(os.path.dirname(__file__), 'VERSION')) as version_file:
     version = version_file.read().strip()
 
 # Command line argument parsing
-descr = 'bin/EnsemblDB.py' + version
-epilog = '\nExample usage: bin/EnsemblDB.py -e 75 -o ensembl_db_75\n' \
+descr = 'EnsemblDB.py' + version
+epilog = '\nExample usage: EnsemblDB.py -e 75 -o ensembl_db_75\n' \
         'Note: by default, hg19 will be created using crossmap\n' \
         'Version: {}\n' \
          '\n'.format(version)
 OptionParser.format_epilog = lambda self, formatter: self.epilog
-parser = OptionParser(usage='\n\nbin/EnsemblDB.py <options>', version=version, description=descr,
+parser = OptionParser(usage='\n\nEnsemblDB.py <options>', version=version, description=descr,
                       epilog=epilog)
 parser.add_option('-i', "--input", default=None, dest='input', action='store', help="Input filename (list of ENST IDs)")
 parser.add_option('-o', "--output", default=None, dest='output', action='store', help="Output filename prefix")

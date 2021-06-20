@@ -74,7 +74,7 @@ python setup.py install
 --------------
 
 Before using CAVA, you will need to create a database of transcripts for which to base your annotations from.
-Details can be found in [this README](ensembldb/README.md). In short, we reccomend using MANE transcripts, 
+Details can be found in [this README](cava/ensembldb/README.md). In short, we reccomend using MANE transcripts, 
 so to get started, you would simply:
 ```bash
 # Download GTF files for either RefSeq or ENSEMBLE
@@ -86,14 +86,14 @@ zcat data/ENST.gtf.gz |cut -f9|cut -f4 -d' '|grep ENST|sed 's/;//;s/\"//g'|sort 
 zcat data/RefSeq.gtf.gz |cut -f9|cut -f4 -d' '|grep "NM_"|sed 's/;//;s/\"//g'|sort -u > data/RefSeq.txt
 
 # Look at the options and configure appropriately
-python3 bin/MANE.py -h
+python3 MANE.py -h
 
 ```
 
 CAVA can be run with the following simple command:
 
 ```bash
-python3 bin/CAVA.py -c config.txt -i input.vcf -o output
+python3 CAVA.py -c config.txt -i input.vcf -o output
 ```
 
 It requires three command line arguments: 

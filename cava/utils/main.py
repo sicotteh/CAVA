@@ -9,9 +9,9 @@ import sys
 
 import pysam
 
-from cava_.data import Ensembl
-from cava_.data import Reference
-from cava_.data import dbSNP
+from cava.utils.data import Ensembl
+from cava.utils.data import Reference
+from cava.utils.data import dbSNP
 from . import core
 from .core import Options
 from .core import Record

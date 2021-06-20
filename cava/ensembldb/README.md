@@ -17,7 +17,7 @@ zcat data/ENST.gtf.gz |cut -f9|cut -f4 -d' '|grep ENST|sed 's/;//;s/\"//g'|sort 
 zcat data/RefSeq.gtf.gz |cut -f9|cut -f4 -d' '|grep "NM_"|sed 's/;//;s/\"//g'|sort -u > data/RefSeq.txt
 
 # Look at the options and configure appropriately
-python3 bin/MANE.py -h
+python3 MANE.py -h
 
 Options:
   --version             show program's version number and exit
@@ -28,7 +28,7 @@ Options:
                         release version
   --no_hg19             Set this to skip hg19 builds
 
-Example usage: bin/MANE.py -e 0.91 -o mane_0.91
+Example usage: MANE.py -e 0.91 -o mane_0.91
 Note: by default, hg19 will be created using crossmap
 Version: 1.3.3
 
@@ -41,7 +41,7 @@ To make an Ensemble database, use the following program:
 ```
 Usage:
 
-bin/EnsemblDB.py
+EnsemblDB.py
 
 CAVA ensembl_db v1.3.0
 
@@ -67,7 +67,7 @@ Note that by default, if you specify a version > 75, the coordinates will be in 
 automatically create an hg19 coordinate version unless you tell it not to. Using our example from above, the command
 
 ```
-python3 bin/EnsemblDB.py -e 101 -o ENST75 -D data -i data/ENST.txt
+python3 EnsemblDB.py -e 101 -o ENST75 -D data -i data/ENST.txt
 ``` 
 
 will create two Ensembl databases of MANE transcripts (one hg19, the other GRCh38). Without specifying the input, the
@@ -78,10 +78,10 @@ database will contain all transcripts in that Ensembl release.
 To make an RefSeq database is similar to the Ensembl process.
 
 ```
- python3 bin/RefSeqDB.py -h
+ python3 RefSeqDB.py -h
 Usage:
 
-bin/RefSeqDB.py <options>
+RefSeqDB.py <options>
 
 CAVA refseq v1.3.0
 
@@ -113,5 +113,5 @@ identifying the pattern that fits this expression:
 For example, one might want to run the following:
 
 ```
-python3 bin/RefSeqDB.py -r GCF_000001405.39_GRCh38.p13 -o RefSeq -i data/RefSeq.txt
+python3 RefSeqDB.py -r GCF_000001405.39_GRCh38.p13 -o RefSeq -i data/RefSeq.txt
 ```

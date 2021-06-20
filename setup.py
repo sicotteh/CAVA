@@ -1,6 +1,6 @@
 from setuptools import setup
 import os
-with open(os.path.join(os.path.dirname(__file__), 'bin', 'VERSION')) as version_file:
+with open(os.path.join(os.path.dirname(__file__), 'cava', 'VERSION')) as version_file:
     version = version_file.read().strip()
 
 with open('requirements.txt') as requires_file:
@@ -14,13 +14,10 @@ setup(
     author='Steven-N-Hart',
     author_email='hart.steven@mayo.edu',
     license='MIT',
-    packages=['cava_', 'ensembldb'],
-    scripts=[
-        'bin/CAVA.py',
-        'bin/EnsemblDB.py',
-        'bin/dbSNPDB.py',
-    ],
+    packages=['cava', 'cava.utils', 'cava.ensembldb'],
     install_requires=requires,
     zip_safe=False,
-    include_package_data=True
+    include_package_data=True,
+    test_suite='tests',
+    tests_require=['wget'],
 )
