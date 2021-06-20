@@ -1,19 +1,20 @@
 #!env/bin/python3
 import os
 from optparse import OptionParser
-from ensembldb import main_refseq as main
-with open(os.path.join(os.path.dirname(__file__),  'VERSION')) as version_file:
+from cava.ensembldb import main_refseq as main
+
+with open(os.path.join(os.path.dirname(__file__), 'VERSION')) as version_file:
     version = version_file.read().strip()
 
 # Command line argument parsing
 descr = 'CAVA refseq v' + version
-epilog = '\nExample usage: bin/RefSeqDB.py  -e GCF_000001405.39_GRCh38.p13 -o refseq_db_75 -D refseq_75\n' \
+epilog = '\nExample usage: RefSeqDB.py  -e GCF_000001405.39_GRCh38.p13 -o refseq_db_75 -D refseq_75\n' \
         'Note: by default, hg19 will be created using crossmap\n' \
         'Version: {}\n' \
          '\n'.format(version)
 
 OptionParser.format_epilog = lambda self, formatter: self.epilog
-parser = OptionParser(usage='\n\nbin/RefSeqDB.py <options>', version=version, description=descr,
+parser = OptionParser(usage='\n\nRefSeqDB.py <options>', version=version, description=descr,
                       epilog=epilog)
 parser.add_option('-i', "--input", default=None, dest='input', action='store', help="Input filename (list of NM IDs)")
 parser.add_option('-o', "--output", default=None, dest='output', action='store', help="Output filename prefix")
