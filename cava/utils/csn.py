@@ -3,7 +3,7 @@
 
 # CSN annotation
 #######################################################################################################################
-import cava_.core as core
+import cava.utils.core as core
 import sys
 
 # Class representing a CSN annotation

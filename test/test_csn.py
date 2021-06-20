@@ -1,7 +1,7 @@
 import unittest
 
-from cava_.core import Variant
-from cava_.csn import makeProteinString
+from cava.utils.core import Variant
+from cava.utils.csn import makeProteinString
 
 
 class TestmakeProteinString(unittest.TestCase):

@@ -7,9 +7,7 @@
 import os
 import sys
 
-from . import conseq
-from . import core
-from . import csn
+from cava.utils import core, conseq, csn
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + '/pysamdir')
 import pysam
