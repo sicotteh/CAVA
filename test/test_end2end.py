@@ -1,8 +1,9 @@
 import unittest
-from cava_.data import Ensembl, Reference
-from cava_ import core
+
+from cava.utils.data import Ensembl, Reference
+from cava.utils import core
 import os
-import pycurl
+import wget
 
 
 def check_materials():
@@ -15,11 +16,10 @@ def check_materials():
     if not os.path.exists(os.path.join(base_dir, 'data', 'tmp.GRCh38.fa.fai')) and not os.path.exists(
             os.path.join(base_dir, 'data', 'tmp.GRCh38.fa')):
         print('Downloading build 38')
-        c = pycurl.Curl()
-        c.setopt(c.URL, 'http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz')
-        with open(os.path.join(base_dir, 'data', 'tmp.GRCh38.fa.gz'), 'wb') as f:
-            c.setopt(c.WRITEDATA, f)
-            c.perform()
+        url = 'http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz'
+        wget.download(url)
+        os.rename('hg38.fa.gz', os.path.join(base_dir, 'data', 'tmp.GRCh38.fa.gz'))
+
 
     if not os.path.exists(os.path.join(base_dir, 'data', 'tmp.GRCh38.fa')):
         try:

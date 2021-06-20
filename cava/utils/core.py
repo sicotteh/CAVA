@@ -361,7 +361,8 @@ class Record(object):
                 transcripts_list = flagvalues[flags.index('TRANSCRIPT')]
                 gene_list = flagvalues[flags.index('GENE')]
                 csn_list = flagvalues[flags.index('CSN')]
-                csn_hgvs_list = flagvalues[flags.index('CSNHGVS')]
+                csn_hgvs_list = csn_list
+                #csn_hgvs_list = flagvalues[flags.index('CSNHGVS')]
                 if not (len(transcripts_list) == 0 or len(gene_list) != len(transcripts_list) or len(gene_list) != len(
                         csn_list)):
                     for ihg in range(0, len(transcripts_list)):  # Loop over alt-alleles
@@ -381,7 +382,6 @@ class Record(object):
                             for itr in range(0, len(hgtranscripts)):  # Loop over transcripts within each alt-alleles
                                 hgtranscript = hgtranscripts[itr]
                                 hggene = hggenes[itr]
-                                hgcsns[itr]
                                 hgcsn_hgvs = hgcsns_hgvs[itr]
                                 tHGVSC = hgtranscript
                                 tHGVSC += '(' + hggene + '):'

@@ -1,17 +1,17 @@
 from optparse import OptionParser
-from ensembldb import mane_db_prep as main
+from cava.ensembldb import mane_db_prep as main
 import os
-with open(os.path.join(os.path.dirname(__file__),  'VERSION')) as version_file:
+with open(os.path.join(os.path.dirname(__file__), 'VERSION')) as version_file:
     version = version_file.read().strip()
 
 # Command line argument parsing
-descr = 'bin/MANE.py' + version
-epilog = '\nExample usage: bin/MANE.py -e 0.91 -D mane_0.91\n' \
+descr = 'MANE.py' + version
+epilog = '\nExample usage: MANE.py -e 0.91 -D mane_0.91\n' \
         'Note: by default, hg19 will be created using crossmap\n' \
         'Version: {}\n' \
          '\n'.format(version)
 OptionParser.format_epilog = lambda self, formatter: self.epilog
-parser = OptionParser(usage='\n\nbin/MANE.py <options>', version=version, description=descr,
+parser = OptionParser(usage='\n\nMANE.py <options>', version=version, description=descr,
                       epilog=epilog)
 parser.add_option('-D', "--outdir", dest='output_dir', action='store', default='data', help="Output directory")
 parser.add_option('-e', "--mane_version", default=None, dest='ensembl', action='store', help="release version")
