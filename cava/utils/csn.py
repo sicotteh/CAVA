@@ -59,6 +59,13 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
     coord1, intr1, coord2, intr2 = calculateCSNCoordinates(variant, transcript)
 
     # Creating DNA level annotation
+    if variant.alt == '<NON_REF>':
+        dna, dna_ins = 'X', 'X'
+        protein, protchange = '', ('.', '.', '.')
+        coord1_ins, intr1_ins, coord2_ins, intr2_ins = '', '', '', ''
+        csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
+                       dna_ins)
+        return csn, protchange
     try:
         dna, dna_ins = makeDNAannotation(variant, transcript, reference)
     except TypeError:
@@ -126,6 +133,8 @@ def calculateCSNCoordinates(variant, transcript):
 
 # Calculating DNA level annotation of the variant
 def makeDNAannotation(variant, transcript, reference):
+    if variant.alt == '<NON_REF>':
+        return ''
     # Returning DNA level annotation if variant is a base substitution
     if variant.isSubstitution():
         if transcript.strand == 1:
@@ -161,6 +170,7 @@ def makeDNAannotation(variant, transcript, reference):
             return 'del' + variant.ref, ''
         else:
             return 'del' + core.Sequence(variant.ref).reverseComplement(), ''
+
 
     # Returning DNA level annotation if variant is a complex indel
     if variant.isComplex():
