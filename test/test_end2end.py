@@ -174,6 +174,13 @@ class MyTestCase(unittest.TestCase):
         rec.variants[0].getFlag('CSN')
         self.assertEqual('c.5152+2dupT', rec.variants[0].getFlag('CSN'))
 
+    def test_hg38_norefmulti(self):
+        line = "17\t43063871\tNA\tT\tA,<NON_REF>\t22.58\t.\tDP=2;MLEAC=2,0;MLEAF=1.00,0.00;MQ=60.00	GT:AD:DP:GQ:PL:SB\t1/1:0,2,0:2:6:49,6,0,49,6,49:0,0,1,1"
+        rec = core.Record(line, self.options, None)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        rec.variants[0].getFlag('CSN')
+        self.assertEqual('c.5152+3A>T', rec.variants[0].getFlag('CSN'))
+
 
 class Options:
     """Helper class for setting up testing options"""
