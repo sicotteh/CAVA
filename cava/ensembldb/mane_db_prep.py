@@ -615,7 +615,7 @@ def download_gtf(source_compressed_gtf, version):
 def crossmap(source_compressed_gtf):
     requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'  # Needed for UCSC
     # only download if necessary
-    if not os.path.exists(os.path.join('data', 'hg38ToHg19.over.chain.gz')):
+    if not os.path.exists(os.path.join(os.path.dirname(source_compressed_gtf), 'hg38ToHg19.over.chain.gz')):
         sys.stdout.write('Downloading UCSC database... ')
         sys.stdout.flush()
         url = 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/hg38ToHg19.over.chain.gz'
