@@ -1,0 +1,12 @@
+1078c82489ac5022866b0f262b8d0a01  test/tmp1.vcf
+41e33447daaa495c00f662e63e0d34d9  test/tmp2.vcf
+ad94e4ef14114fb4d49301b66efc80d5  test/tmp3.vcf
+387ee6a4f8e594955739711d40c8a4bc  test/tmp4.vcf
+15a9a02b3e1e0f5d0b384bf7d72145c2  test/tmpA.vcf
+643330169112609fc8f90d712a0d6afd  test/tmpB.vcf
+cd64fcfe6d548b3c2cf48880e7496df3  test/tmpC.vcf
+cd64fcfe6d548b3c2cf48880e7496df3  test/tmpD.vcf
+474f6491461aaaf9f0dc57f52c7b98cf  test/tmp_a.vcf
+643330169112609fc8f90d712a0d6afd  test/tmp_b.vcf
+af8d9dfa3730592e628439d14544b741  test/tmp_c.vcf
+cd64fcfe6d548b3c2cf48880e7496df3  test/tmp_d.vcf

@@ -256,7 +256,7 @@ class Record(object):
                 for _ in self.targetBED.fetch(region=goodchrom + ':' + str(start) + '-' + str(start)): foundstart = True
                 foundend = False
                 for _ in self.targetBED.fetch(region=goodchrom + ':' + str(end) + '-' + str(end)): foundend = True
-                if not (foundstart and foundend): continue
+                if not (foundstart or foundend): continue
 
             # Adding Variant object to this record
             self.variants.append(var)
