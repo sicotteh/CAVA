@@ -291,18 +291,18 @@ class SingleJob(multiprocessing.Process):
                     printProgressInfo(counter, int(self.numOfRecords / self.copts.threads))
 
             # Parsing record from input file
-            record = Record(line, self.options, self.targetBED)
+            record = Record(line, self.options, self.targetBED,self.reference)
 
-            # Filtering out REFCALL records
+            # Filtering out REFCALL records .. from original VCF annotation
             if record.filter == 'REFCALL': continue
 
             # Filtering record, if required
             if self.options.args['filter'] and not record.filter == 'PASS': continue
 
-            # Only include records of allowed chromosome names
+            # Only annotate records of allowed chromosome names
             if record.chrom not in self.chroms:
                 logging.warning(
-                    "\t!!!!!!Chromosome " + record.chrom + " not found, skipping annotation, but still printing!!!!!!\n")
+                    "\t!!!!!!Chromosome " + record.chrom + " not found, skipping annotation, but still outputting in VCF as long as within target region (if specified)!!!!!!\n")
             else:
                 # Annotating the record based on the Ensembl, dbSNP and reference data
                 record.annotate(self.ensembl, self.dbsnp, self.reference, self.impactdir)

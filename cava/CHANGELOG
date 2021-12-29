@@ -1,0 +1,51 @@
+11/05/2021
+3 bugs are being fixed
+1.
+   CAVA issue: Only SNV or inframe events in initiating and terminating codons are classified
+    correctly as IM (alters initiating methionine start codon)
+   or
+   SL (alters stop codon), respectively;
+   whereas indels impacting either the start or stop codon are classified as a frameshift variant... which is incorrect
+
+   This is fixed, and the "SO" is still frameshift_variants
+
+    NC_000013.11:g.32316462T>C	NM_000059.4(BRCA2):c.2T>C NP_000050.3:p.(?) p/M>T IM
+
+    Protein Change Annotation for Functional (PS3) and Case Prevalence (PS4) will be blank if this happens.
+	NOTE: This limitation does not represent a risk as no impact on variant prioritization was observed during User Acceptance Testing.
+
+2.
+	CAVA issue: CAVA CSN and HGVSc nomenclature for variation within the  UTR is inaccurately annotated  rather
+	notation to designate the position of the variation. This annotation can be overwritten with the correct HGVS nomenclature
+	via the HGVS Override feature. than *a with +a 3
+	1.	HGVS annotion is incorrect for variants after the stop codon.
+        e.g. Chr2(GRCh38):g.47386731T>C
+
+        cDNA Level:
+        NM_002354.2:c.+118T>C. should be NM_002354.2:c.*118T>C.
+
+
+3.
+The previous version required both the start and stop position of a variant to be within a transcript.
+For indels overlapping the edges of transcripts, shifting may change the position inside/outside the variant.
+
+
+1)	Deletions that would delete the ends of the transcript would be skipped and therefore not prioritized
+2)	Insertions/Deletions that could shift inside transcript, would be required to be shifted/normalized INSIDE transcript prior to running CAVA.. No guarantee of that since normalization is to shift everything left…
+a.	Pos STRAND GENES: 3’ END would be left shifted correctly, 5’end would be shifted outside variant
+b.	Neg Strand Genes:  5’ end would be left shifted inside gene, 3’end would be shifted outside of genes
+3)	I can easily fix CAVA to accept partially overlapping variants
+a.	but checking the normalization would be more work and slow performance (additional sequence fetching)
+b.	the HGVS nomenclature for cDNA does not allow defining coordinates outside(before/after cDNA) for deletions
+i.	Option 1: Partially annotate the deletion that is within the cDNA (coordinates range would not span the whole transcript: Easy
+ii.	Option 2: Annotate the coordinate like we would do an intron
+c.-278-5_c.-250del (where -278 id lowest coordinate of transcript
+iii.
+c.	the HGVS  protein omenclature has no annotation for something that would delete transcription start site.. and therefore, should probably be a p.?
+
+
+Other option is to relegate these issue to a separate copy number .. large indel module that would perform those checks.
+
+4. cDNA insertiong before the ATG we annotated as -2_
+
+

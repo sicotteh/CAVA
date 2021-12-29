@@ -67,7 +67,12 @@ git clone git@github.com:Steven-N-Hart/CAVA.git
 # e.g. git checkout v.1.2.4
 python setup.py install
 ```
-
+If you get this error, run the following command before running the setup.py
+```bash
+pip uninstall pycurl
+export PYCURL_SSL_LIBRARY=nss
+pip install --compile --install-option="--with-nss" --no-cache-dir pycurl  
+```
 
 
 5 RUNNING CAVA

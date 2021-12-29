@@ -22,9 +22,14 @@ class CSNAnnot:
         self.coord2_ins = coord2_ins
         self.intr2_ins = intr2_ins
         self.dna_ins = dna_ins
+        self.nout1 = None
+        self.nout2 = None
 
     # Getting annotation as a single String
     def getAsString(self):
+        if (self.nout1 is not None and self.nout1>0) and (self.nout2 is not None and self.nout2>0):
+            return ''   # Currently not used... HGVS does not support annotating variants  outside transcript .. even if it's close
+                        # ..
         # Adding the first part of the csn annotation (coordinates)
         ret = 'c.' + str(self.coord1)
         if self.intr1 != 0:
@@ -56,15 +61,16 @@ class CSNAnnot:
 # Getting CSN annotation of a given variant
 def getAnnotation(variant, transcript, reference, prot, mutprot):
     # Creating csn annotation coordinates
-    coord1, intr1, coord2, intr2 = calculateCSNCoordinates(variant, transcript)
+    coord1, intr1, coord2, intr2, nout1, nout2 = calculateCSNCoordinates(variant, transcript)
 
     # Creating DNA level annotation
-    if variant.alt == '<NON_REF>':
+    if variant.alt.startswith("<") and variant.alt.endswith(">") and not ("," in variant.alt): # Tolerate gVCF or any symbolic ID (e.g. CNV)
         dna, dna_ins = 'X', 'X'
         protein, protchange = '', ('.', '.', '.')
         coord1_ins, intr1_ins, coord2_ins, intr2_ins = '', '', '', ''
-        csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
-                       dna_ins)
+        csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins, dna_ins)
+        csn.nout1 = nout1
+        csn.nout2 = nout2
         return csn, protchange
     try:
         dna, dna_ins = makeDNAannotation(variant, transcript, reference)
@@ -75,18 +81,23 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
     where = transcript.whereIsThisVariant(variant)
     if not '-' in where and where.startswith('Ex'):
         protein, protchange = makeProteinString(variant, prot, mutprot, coord1)
-    else:
+    else:  # large variant crossing intron/exon boundary .. or purely in intron
         protein, protchange = '', ('.', '.', '.')
 
     # Transforming coordinates if the variant is a duplication
     if not dna_ins == '':
+        # This will ONLY occur if the variant is an indel AND needs to be shifted
+        # AND shifting will not push variant outside transcript region
         coord1_ins, intr1_ins, coord2_ins, intr2_ins = coord1, intr1, coord2, intr2
-        coord1, intr1, coord2, intr2 = duplicationCoordinates(variant, transcript)
+        coord1, intr1, coord2, intr2, nout1, nout2  = duplicationCoordinates(variant, transcript)
     else:
         coord1_ins, intr1_ins, coord2_ins, intr2_ins = '', '', '', ''
 
     # Creating and returning csnAnnot object
     csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins, dna_ins)
+    csn.nout1 = nout1
+    csn.nout2 = nout2
+
     return csn, protchange
 
 
@@ -94,46 +105,85 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
 def calculateCSNCoordinates(variant, transcript):
     # Returning coordinates if variant is a base substitution
     if variant.isSubstitution():
-        x, y = transformToCSNCoordinate(variant.pos, transcript)
-        return x, y, None, None
+        x, y, nout = transformToCSNCoordinate(variant.pos, transcript)
+        return x, y, None, None, nout, None
 
     # Returning coordinates if variant is an insertion
     if variant.isInsertion():
-        startx, starty = transformToCSNCoordinate(variant.pos - 1, transcript)
-        endx, endy = transformToCSNCoordinate(variant.pos, transcript)
+        startx, starty, start_nout = transformToCSNCoordinate(variant.pos - 1, transcript)  # For insertion, variant.pos is one after .. adjusting
+        endx, endy, end_nout = transformToCSNCoordinate(variant.pos, transcript)
         if transcript.strand == 1:
-            return startx, starty, endx, endy
+            return startx, starty, endx, endy, start_nout, end_nout
         else:
-            return endx, endy, startx, starty
+            return endx, endy, startx, starty, end_nout, start_nout
 
     # Returning coordinates if variant is a deletion
     if variant.isDeletion():
-        startx, starty = transformToCSNCoordinate(variant.pos, transcript)
+        startx, starty, start_nout  = transformToCSNCoordinate(variant.pos, transcript)
         if len(variant.ref) == 1:
-            return startx, starty, None, None
-        endx, endy = transformToCSNCoordinate(variant.pos + len(variant.ref) - 1, transcript)
+            return startx, starty, None, None, start_nout, None
+        endx, endy, end_nout  = transformToCSNCoordinate(variant.pos + len(variant.ref) - 1, transcript)
+        # Only return if at least one of the ends is inside transcript or cover the entire gene
+        start_in_transcript = False
+        if '*' in startx:
+            afterlen = int(startx[(startx.index('*')+1):len(startx)])
+            if afterlen <= transcript.three_prime_len:
+                start_in_transcript = True
+        elif '-' in startx:
+            beforelen = int(startx[(startx.index('-')+1):len(startx)])
+            if beforelen < transcript.codingStart:
+                start_in_transcript = True
+        elif startx != '0' and startx is not None:  # start inside coding region, it does not matter where endx is
+            if transcript.strand == 1:
+                return startx, starty, endx, endy, start_nout, end_nout
+            else:
+                return endx, endy, startx, starty, end_nout ,start_nout
+        end_in_transcript = False
+        if '*' in endx:
+            afterlen = int(endx[(endx.index('*')+1):len(endx)])
+            if afterlen <= transcript.three_prime_len:
+                end_in_transcript = True
+        elif '-' in endx:
+            beforelen = int(endx[(1+endx.index('-')):len(endx)])
+            if beforelen < transcript.codingStart:
+                end_in_transcript = True
+        elif endx != '0' and endx is not None: # endx in coding region, so it does not matter where startx is
+            if transcript.strand == 1:
+                return startx, starty, endx, endy, start_nout, end_nout
+            else:
+                return endx, endy, startx, starty, end_nout ,start_nout
+        if start_in_transcript is True or end_in_transcript is True:  # At least One end in transcript
+            if transcript.strand ==1:
+                return startx, starty, endx, endy, start_nout, end_nout
+            else:
+                return endx, endy, startx, starty, end_nout ,start_nout
         if transcript.strand == 1:
-            return startx, starty, endx, endy
+            if '-' in startx and '*' in endx:  #Deletion encompassing whole transcript
+                return startx, starty, endx, endy, start_nout, end_nout
         else:
-            return endx, endy, startx, starty
+            if '*' in startx and '-' in endx:  #Deletion encompassing whole transcript
+                return endx, endy, startx, starty, end_nout ,start_nout
+        return None, None, None, None  # Boths ends of variant outside transcript (one side of other)
+
+
 
     # Returning coordinates if variant is a complex indel
     if variant.isComplex():
-        startx, starty = transformToCSNCoordinate(variant.pos, transcript)
+        startx, starty, start_nout = transformToCSNCoordinate(variant.pos, transcript)
         if len(variant.ref) == 1:
-            return startx, starty, None, None
-        endx, endy = transformToCSNCoordinate(variant.pos + len(variant.ref) - 1, transcript)
+            return startx, starty, None, None, start_nout, 0
+        endx, endy, end_nout = transformToCSNCoordinate(variant.pos + len(variant.ref) - 1, transcript)
         if transcript.strand == 1:
-            return startx, starty, endx, endy
+            return startx, starty, endx, endy, start_nout, end_nout
         else:
-            return endx, endy, startx, starty
+            return endx, endy, startx, starty, end_nout, start_nout
 
     return None, None, None, None
 
 
-# Calculating DNA level annotation of the variant
+# Calculating genomic DNA level annotation of the variant
 def makeDNAannotation(variant, transcript, reference):
-    if variant.alt == '<NON_REF>':
+    if variant.alt.startswith('<') and variant.alt.endswith('>') and not ( "," in variant.alt):  # support <NON_REF>' <*> or SV
         return ''
     # Returning DNA level annotation if variant is a base substitution
     if variant.isSubstitution():
@@ -142,25 +192,41 @@ def makeDNAannotation(variant, transcript, reference):
         else:
             return variant.ref.reverseComplement() + '>' + variant.alt.reverseComplement(), ''
 
-    # Returning DNA level annotation if variant is an insertion
+    # Returning genomic DNA level annotation if variant is an insertion
     if variant.isInsertion():
         insert = core.Sequence(variant.alt)
-        if transcript.strand == 1:
-            before = reference.getReference(variant.chrom, variant.pos - len(insert), variant.pos - 1)
-            # Checking if variant is a duplication
-            if insert == before and (variant.pos - len(insert) >= transcript.transcriptStart):
-                if len(insert) > 4: return 'dup' + str(len(insert)), 'ins' + insert
-                return 'dup' + insert, 'ins' + insert
-            else:
+        ## 11/16/2021 Check for Dup independent of original normalization (both before and after)
+        #             to only look for cDNA dups within the transcripts bonds.
+        ##            refactor code to optimize and minimize DNA variant lookups.
+        #              note that for insertion, pos points to after deletion.
+        #              Only left shift insertions (or call dup) if variant is within transcript
+        if transcript.strand == 1: #
+            if (variant.pos - len(insert) >= transcript.transcriptStart):  # Only annotate dup, if dup is within transcript, otherwise will be shifted outside transcript.
+                before = reference.getReference(variant.chrom, variant.pos - len(insert), variant.pos-1)
+                # Checking if variant is a duplication, favor left shifting by 1 position.
+                if insert == before:
+                    if len(insert) > 4:
+                        return 'dup' + str(len(insert)), 'ins' + insert
+                    return 'dup' + insert, 'ins' + insert
+            # Detect dups, but do not shift left.
+            if variant.pos + len(insert) <= transcript.transcriptEnd:
+                after =  reference.getReference(variant.chrom, variant.pos, variant.pos+len(insert)-1)
+                if insert == after:
+                    return 'dup' + insert, ''  # uppercase INS insures position  will remain here.
                 return 'ins' + insert, ''
-        else:
-            before = reference.getReference(variant.chrom, variant.pos, variant.pos + len(insert) - 1)
+            return 'ins' + insert, ''
+        else:  # transcript.strand == -1
+            if (variant.pos + (len(insert)-1) <= transcript.transcriptEnd): #' 5' shift (right)
+                before = reference.getReference(variant.chrom, variant.pos, variant.pos + len(insert)- 1 )
             # Checking if variant is a duplication
-            if insert == before and (variant.pos + len(insert) - 1 <= transcript.transcriptEnd):
-                if len(insert) > 4: return 'dup' + str(len(insert)), 'ins' + insert.reverseComplement()
-                return 'dup' + insert.reverseComplement(), 'ins' + insert.reverseComplement()
-            else:
-                return 'ins' + insert.reverseComplement(), ''
+                if insert == before:
+                    if len(insert) > 4: return 'dup' + str(len(insert)), 'ins' + insert.reverseComplement()
+                    return 'dup' + insert.reverseComplement(), 'ins' + insert.reverseComplement()
+            if variant.pos - len(insert) >= transcript.transcriptStart:
+                after = reference.getReference(variant.chrom, variant.pos - len(insert), variant.pos-1)
+                if insert == after:
+                    return 'dup' +  insert.reverseComplement(), ''  # Uppercase insures variant is not shifted
+            return 'ins' + insert.reverseComplement(), ''
 
     # Returning DNA level annotation if variant is a deletion
     if variant.isDeletion():
@@ -204,7 +270,7 @@ def makeDNAannotation(variant, transcript, reference):
 # 
 # Coord1 is 1-based position in the CDS .. and is ONLY used to report Synonymous variants .. it is not used to locate deletions or frameshifts
 # 
-def makeProteinString(variant, prot, mutprot, coord1):
+def makeProteinString(variant, prot, mutprot, coord1_str):
     """
 
     :param variant:
@@ -213,6 +279,13 @@ def makeProteinString(variant, prot, mutprot, coord1):
     :param coord1:
     :return: '_p.Met1?', ('1', prot[0], 'X')
     """
+    if isinstance(coord1_str,str):
+        try:
+            coord1 = int(coord1_str)
+        except Exception as e:
+            return '', ('.', '.', '.')   # "-" before coding or "*": after Stop codon
+    else:
+        coord1 = coord1_str
     if prot == '':
         return '', ('.', '.', '.')
     # this is used to distringuish frameshift from non-frameshifts.. though an Early Stop codon .. will be coded as nonsense
@@ -292,6 +365,7 @@ def makeProteinString(variant, prot, mutprot, coord1):
     # Missense at first base or deletion or insertion (if initial protein is partial)
     # it doesn't matter if this is a frameshift as deletion of Initial Methionine dominates( also frameshifts cannot occur at first AA)
     # Deleting the Start Codon Dominates the HGVS function over SSR repeats, so don't even check for that either
+    # out-of-frame delins at the first (or last) base are NOT frameshift, just p?
 
     if leftindex == 1 and len(prot) > 0 and len(mutprot) > 0:  # leftindex==1 means first base of ref is different
         if prot[0] == 'M':
@@ -299,7 +373,7 @@ def makeProteinString(variant, prot, mutprot, coord1):
                 if rightindex != leftindex:
                     return '_p.?', ('1-' + str(rightindex), trim_prot, '-')
                 else:
-                    return '_p.?', ('1', trim_prot, '-')
+                    return '_p.?', ('1', trim_prot, '-')  # in-frame deletion
             else:
                 if rightindex != leftindex:  # del/ins/complex
                     return '_p.?', ('1-' + str(rightindex), trim_prot, trim_mutprot)
@@ -669,7 +743,7 @@ def makeProteinString(variant, prot, mutprot, coord1):
     return "", ()
 
 
-# Transforming a genomic position ot csn coordinate
+# Transforming a genomic position to csn coordinate
 def transformToCSNCoordinate(pos, transcript):
     prevExonEnd = 99999999
 
@@ -683,96 +757,112 @@ def transformToCSNCoordinate(pos, transcript):
                 if transcript.strand == 1:
                     # Checking if genomic position is within intron
                     if prevExonEnd < pos < exon.start + 1:
-                        if pos <= int((exon.start + 1 - prevExonEnd) / 2) + prevExonEnd:
-                            x, y = transformToCSNCoordinate(prevExonEnd, transcript)
-                            return x, pos - prevExonEnd
-                        else:
-                            x, y = transformToCSNCoordinate(exon.start + 1, transcript)
-                            return x, pos - exon.start - 1
+                        if pos <= int((exon.start + 1 - prevExonEnd) / 2) + prevExonEnd:  # count from previous exon
+                            x, y, nout = transformToCSNCoordinate(prevExonEnd, transcript)
+                            return x, pos - prevExonEnd, nout
+                        else:   # count from exon coming up
+                            x, y, nout = transformToCSNCoordinate(exon.start + 1, transcript)
+                            return x, pos - exon.start - 1, nout
                 else:
                     # Checking if genomic position is within intron
                     if exon.end < pos < prevExonEnd:
                         if pos >= int((prevExonEnd - exon.end + 1) / 2) + exon.end:
-                            x, y = transformToCSNCoordinate(prevExonEnd, transcript)
-                            return x, prevExonEnd - pos
+                            x, y, nout = transformToCSNCoordinate(prevExonEnd, transcript)
+                            return x, prevExonEnd - pos, nout
                         else:
-                            x, y = transformToCSNCoordinate(exon.end, transcript)
-                            return x, exon.end - pos
+                            x, y, nout = transformToCSNCoordinate(exon.end, transcript)
+                            return x, exon.end - pos, nout
             # Checking if genomic position is within exon
             if exon.start + 1 <= pos <= exon.end:
                 if transcript.strand == 1:
-                    return sumOfExonLengths + pos - exon.start, 0
+                    return str(sumOfExonLengths + pos - exon.start), 0, 0
                 else:
-                    return sumOfExonLengths + exon.end - pos + 1, 0
+                    return str(sumOfExonLengths + exon.end - pos + 1), 0, 0
             # Calculating sum of exon lengths up to this point
             sumOfExonLengths += exon.length
             if transcript.strand == 1:
                 prevExonEnd = exon.end
             else:
                 prevExonEnd = exon.start + 1
-
     # If genomic position is outside CDS
     else:
-
         sumpos = 0
-        for i in range(len(transcript.exons)):
+        lastexon  = len(transcript.exons)-1
+        noutside = 0
+        for i in range(lastexon+1):
             exon = transcript.exons[i]
-
-            if i > 0:
+            if i > 0:  # checking is position is within intron before current exon
                 if transcript.strand == 1:
                     # Checking if genomic position is within intron
                     if prevExonEnd < pos < exon.start + 1:
                         if pos <= int((exon.start + 1 - prevExonEnd) / 2) + prevExonEnd:
-                            x, y = transformToCSNCoordinate(prevExonEnd, transcript)
-                            return x, pos - prevExonEnd
+                            x, y, nout = transformToCSNCoordinate(prevExonEnd, transcript)
+                            return x, pos - prevExonEnd, nout
                         else:
-                            x, y = transformToCSNCoordinate(exon.start + 1, transcript)
-                            return x, pos - exon.start - 1
+                            x, y, nout = transformToCSNCoordinate(exon.start + 1, transcript)
+                            return x, pos - exon.start - 1, nout
                 else:
                     # Checking if genomic position is within intron
                     if exon.end < pos < prevExonEnd:
                         if pos >= int((prevExonEnd - exon.end + 1) / 2) + exon.end:
-                            x, y = transformToCSNCoordinate(prevExonEnd, transcript)
-                            return x, prevExonEnd - pos
+                            x, y, nout = transformToCSNCoordinate(prevExonEnd, transcript)
+                            return x, prevExonEnd - pos, nout
                         else:
-                            x, y = transformToCSNCoordinate(exon.end, transcript)
-                            return x, exon.end - pos
+                            x, y, nout  = transformToCSNCoordinate(exon.end, transcript)
+                            return x, exon.end - pos, nout
 
             if transcript.strand == 1:
                 if pos > transcript.codingEndGenomic:
-                    if transcript.codingEndGenomic < exon.start + 1 and exon.end < pos:
+                    if transcript.codingEndGenomic < exon.start + 1 and exon.end < pos:  # coding end is in an earlier exon
                         sumpos += exon.length
-                    elif exon.contains(transcript.codingEndGenomic) and exon.end < pos:
+                        if i==lastexon: # Variant past end of transcript
+                            noutside += pos-exon.end
+                    elif exon.contains(transcript.codingEndGenomic) and exon.end < pos: # coding end is in this exon
                         sumpos += exon.end - transcript.codingEndGenomic + 1
+                        if i==lastexon: # Variant past end of transcript
+                            noutside += pos-exon.end
                     elif exon.contains(transcript.codingEndGenomic) and exon.contains(pos):
                         sumpos += pos - transcript.codingEndGenomic
                     elif transcript.codingEndGenomic < exon.start + 1 and exon.contains(pos):
                         sumpos += pos - exon.start - 1
+                    # no else, all cases covered
                 if pos < transcript.codingStartGenomic:
-                    if pos < exon.start + 1 and exon.end < transcript.codingStartGenomic:
+                    if pos < exon.start + 1 and exon.end < transcript.codingStartGenomic:  # coding start is in a later exon
                         sumpos += exon.length
+                        if i == 0:  # pos 5' of TSS
+                            noutside += (exon.start + 1 - pos)
                     elif pos < exon.start + 1 and exon.contains(transcript.codingStartGenomic):
                         sumpos += transcript.codingStartGenomic - exon.start
+                        if i==0:  # pos 5' of TSS
+                            noutside += (exon.start + 1 - pos)
                     elif exon.contains(pos) and exon.contains(transcript.codingStartGenomic):
                         sumpos += transcript.codingStartGenomic - pos
                     elif exon.contains(pos) and exon.end < transcript.codingStartGenomic:
                         sumpos += exon.end - pos
 
-            if transcript.strand == -1:
+            if transcript.strand == -1:  # exons are from higher coordinate to lower, but still start<end
                 if pos < transcript.codingEndGenomic:
-                    if pos < exon.start + 1 and exon.end < transcript.codingEndGenomic:
+                    if pos < exon.start + 1 and exon.end < transcript.codingEndGenomic:  # coding end is in an earlier (higher coodginate) exon
                         sumpos += exon.length
-                    elif pos < exon.start + 1 and exon.contains(transcript.codingEndGenomic):
+                        if i==lastexon:  # variant is downstream of transcript
+                            noutside += (exon.start+1 - pos)
+                    elif pos < exon.start + 1 and exon.contains(transcript.codingEndGenomic): #
                         sumpos += transcript.codingEndGenomic - exon.start
+                        if i==lastexon: # variant is downstream of transcript
+                            noutside += (exon.start+1 - pos)
                     elif exon.contains(pos) and exon.contains(transcript.codingEndGenomic):
                         sumpos += transcript.codingEndGenomic - pos
                     elif exon.contains(pos) and exon.end < transcript.codingEndGenomic:
                         sumpos += exon.end - pos
                 if transcript.codingStartGenomic < pos:
-                    if transcript.codingStartGenomic < exon.start + 1 and exon.end < pos:
+                    if transcript.codingStartGenomic < exon.start + 1 and exon.end < pos:  # coding start is in a later (downstream) exon
                         sumpos += exon.length
+                        if i==0: # variant is 5' of TSS
+                            noutside += (pos - exon.end)
                     elif exon.contains(transcript.codingStartGenomic) and exon.end < pos:
                         sumpos += exon.end - transcript.codingStartGenomic + 1
+                        if i==0: # variant is 5' of TSS
+                            noutside += (pos - exon.end)
                     elif exon.contains(transcript.codingStartGenomic) and exon.contains(pos):
                         sumpos += pos - transcript.codingStartGenomic
                     elif transcript.codingStartGenomic < exon.start + 1 and exon.contains(pos):
@@ -783,31 +873,43 @@ def transformToCSNCoordinate(pos, transcript):
             else:
                 prevExonEnd = exon.start + 1
 
+        #  .. If decide to not annotate variants outside transcript, use this
+        #  .. but according to HGVS, it is OK to refere to variants outside transcripts
+        #  ... as long as it's relative to the CDS start/end (and not relative to transcripts annotated ends which can
+        #  ...   be uncertain)
+        # if transcript.strand == 1:
+        #     if pos > transcript.codingEndGenomic:  return '*' + str(sumpos), 0, noutside
+        #     if pos < transcript.codingStartGenomic: return '-' + str(sumpos), 0, noutside
+        # else:
+        #     if pos < transcript.codingEndGenomic: return '*' + str(sumpos), 0, noutside
+        #     if pos > transcript.codingStartGenomic: return '-' + str(sumpos), 0, noutside
+        #
+        # return str(sumpos), 0, noutside
         if transcript.strand == 1:
-            if pos > transcript.codingEndGenomic:  return '+' + str(sumpos), 0
-            if pos < transcript.codingStartGenomic: return '-' + str(sumpos), 0
+            if pos > transcript.codingEndGenomic:  return '*' + str(sumpos+noutside), 0, 0
+            if pos < transcript.codingStartGenomic: return '-' + str(sumpos+noutside), 0, 0
         else:
-            if pos < transcript.codingEndGenomic: return '+' + str(sumpos), 0
-            if pos > transcript.codingStartGenomic: return '-' + str(sumpos), 0
+            if pos < transcript.codingEndGenomic: return '*' + str(sumpos+noutside), 0, 0
+            if pos > transcript.codingStartGenomic: return '-' + str(sumpos+noutside), 0, 0
 
-        return str(sumpos), 0
+        return str(sumpos), 0, 0
 
 
 # Calculating csn coordinates for duplications
 def duplicationCoordinates(variant, transcript):
     if transcript.strand == 1:
-        coord1, intr1 = transformToCSNCoordinate(variant.pos - len(variant.alt), transcript)
+        coord1, intr1, nout1 = transformToCSNCoordinate(variant.pos - len(variant.alt), transcript)
         if len(variant.alt) == 1:
-            coord2, intr2 = None, None
+            coord2, intr2, nout2 = None, None, None
         else:
-            coord2, intr2 = transformToCSNCoordinate(variant.pos - 1, transcript)
+            coord2, intr2, nout2 = transformToCSNCoordinate(variant.pos - 1, transcript)
     else:
-        coord1, intr1 = transformToCSNCoordinate(variant.pos + len(variant.alt) - 1, transcript)
+        coord1, intr1, nout1 = transformToCSNCoordinate(variant.pos + len(variant.alt) - 1, transcript)
         if len(variant.alt) == 1:
-            coord2, intr2 = None, None
+            coord2, intr2, nout2 = None, None, None
         else:
-            coord2, intr2 = transformToCSNCoordinate(variant.pos, transcript)
-    return coord1, intr1, coord2, intr2
+            coord2, intr2, nout2 = transformToCSNCoordinate(variant.pos, transcript)
+    return coord1, intr1, coord2, intr2, nout1, nout2
 
 
 # Changing protein sequence of 1-letter amino acid code to 3-letter code

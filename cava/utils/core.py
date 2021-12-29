@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 import time
+import re
 
 
 #######################################################################################################################
@@ -54,6 +55,7 @@ class Variant(object):
     def isComplex(self):
         return len(self.ref) > 0 and len(self.alt) > 0 and not self.isSubstitution()
 
+
     # Checking if the variant is in-frame
     def isInFrame(self):
         return (len(self.alt) - len(self.ref)) % 3 == 0
@@ -83,8 +85,8 @@ class Variant(object):
     # Annotating variant
     def annotate(self, ensembl, dbsnp, reference, impactdir):
         self.annotateWithType()
-        if not ensembl is None: self = ensembl.annotate(self, reference, impactdir)
-        if not dbsnp is None: dbsnp.annotate(self)
+        if ensembl is not None: self = ensembl.annotate(self, reference, impactdir)
+        if dbsnp is not None: dbsnp.annotate(self)
 
     # Annotating variant with its type
     def annotateWithType(self):
@@ -160,10 +162,11 @@ class Variant(object):
 # Class representing a single VCF record     
 class Record(object):
     # Constructor
-    def __init__(self, line, options, targetBED):
+    def __init__(self, line, options, targetBED, reference):
 
         self.targetBED = targetBED
-
+        # Reference genome
+        self.reference = reference
         # Parsing VCF format
         if options.args['inputformat'].upper() == 'VCF':
             cols = line.strip().split("\t")
@@ -190,9 +193,7 @@ class Record(object):
                 self.rest = cols[8:]
             else:
                 self.rest = []
-
-        # Parsing TXT format
-        if options.args['inputformat'].upper() == 'TXT':
+        elif options.args['inputformat'].upper() == 'TXT':  # Parsing TXT format
             cols = line.strip().split("\t")
             self.id = cols[0]
             self.chrom = cols[1]
@@ -204,12 +205,19 @@ class Record(object):
             self.filter = 'PASS'
             self.info = ''
             self.rest = []
+        else:
+            raise Exception("Invalid Input format type")
 
-        # Creating a Variant object for each variant call in the record
+        # Creating a Variant object for each variant/alt-allele  in the record
+        # as long as they pass filtering.
         self.variants = []
+        self.alts = []
+        in_target_region = False
         for alt in alts:
             # Initializing each Variant object with different alt allele
             var = Variant(self.chrom, self.pos, self.ref, alt)
+
+
             # DO  NOT FILTER
             """
             if 'N' in self.ref or 'N' in alt:
@@ -228,10 +236,11 @@ class Record(object):
                 continue
             """
             # Filtering by variant type (i.e. substitution, indel, insertion, deletion, complex indel), if required
+            # Filtering via those options is NOT recommended, especially when dealing with multiple alt-alleles.
             if options.args['type'].upper() == 'SUBSTITUTION' and not var.isSubstitution():
                 continue
-            if options.args[
-                'type'].upper() == 'INDEL' and not var.isInsertion() and not var.isDeletion() and not var.isComplex():
+            if options.args['type'].upper() == 'INDEL' and not var.isInsertion() and not var.isDeletion() \
+                    and not var.isComplex():
                 continue
             if options.args['type'].upper() == 'INSERTION' and not var.isInsertion():
                 continue
@@ -239,13 +248,24 @@ class Record(object):
                 continue
             if options.args['type'].upper() == 'COMPLEX' and not var.isComplex():
                 continue
+            # Adding Variant object to this record
+            # 10/2021-New benavior, adding all alt-alleles variants if any of the alleles is in the target region .. and is not explicitely filtered out by type
+            # The logic is that the user should be able to decide which variant has the best support in the sequencing data (read count)
+            # .. and not be biased by the most deleterious option.
+            # At least 1 must pass the BED filtering - if requested (otherwise all alt-alleles (whole variant) are excluded)
+            self.variants.append(var)
+            self.alts.append(alt)
 
             # Filtering by BED file, if required
-            if not targetBED is None:
-                goodchrom = var.chrom
-                if not goodchrom in targetBED.contigs:
-                    goodchrom = 'chr' + goodchrom
-                    if not goodchrom in targetBED.contigs: continue
+            if targetBED is not None:
+                goodchrom = ""+var.chrom
+                if goodchrom.startswith("chr"):
+                    goodchrom_core = goodchrom[3:len(goodchrom)]
+                else:
+                    goodchrom_core = goodchrom
+                    goodchrom = "chr" + goodchrom
+                if not (goodchrom in targetBED.contigs or goodchrom_core in targetBED.contigs):
+                    continue
                 if not var.isInsertion():
                     start = var.pos
                     end = var.pos + len(var.ref) - 1
@@ -256,11 +276,46 @@ class Record(object):
                 for _ in self.targetBED.fetch(region=goodchrom + ':' + str(start) + '-' + str(start)): foundstart = True
                 foundend = False
                 for _ in self.targetBED.fetch(region=goodchrom + ':' + str(end) + '-' + str(end)): foundend = True
-                if not (foundstart or foundend): continue
+                if not (foundstart or foundend): 
+                    if not (var.isDeletion() or var.isInsertion()):
+                        continue  # No shifting possible, so definitively outside bed region.
+                    else:
+                        var_plus = var.alignOnPlusStrand(self.reference)
+                        var_minus = var.alignOnMinusStrand(self.reference)
+                        if var_plus.pos == var_minus.pos:  # No change, so no shifting
+                            continue
+                        else:
+                            if not var_plus.isInsertion():
+                                start = var_plus.pos
+                                end = var_plus.pos + len(var_plus.ref) - 1
+                            else:
+                                start = var_plus.pos - 1
+                                end = var_plus.pos
+                            foundstart = False
+                            for _ in self.targetBED.fetch(region=goodchrom + ':' + str(start) + '-' + str(start)): foundstart = True
+                            foundend = False
+                            for _ in self.targetBED.fetch(region=goodchrom + ':' + str(end) + '-' + str(end)): foundend = True
+                            if not (foundstart or foundend):
+                                if not var_minus.isInsertion():
+                                    start = var_minus.pos
+                                    end = var_minus.pos + len(var_minus.ref) - 1
+                                else:
+                                    start = var_minus.pos - 1
+                                    end = var_minus.pos
+                                foundstart = False
+                                for _ in self.targetBED.fetch(region=goodchrom + ':' + str(start) + '-' + str(start)): foundstart = True
+                                foundend = False
+                                for _ in self.targetBED.fetch(region=goodchrom + ':' + str(end) + '-' + str(end)): foundend = True
+                                if not (foundstart or foundend):
+                                    continue
+                in_target_region = True
+            else:
+                in_target_region = True
 
-            # Adding Variant object to this record
-            self.variants.append(var)
-            self.alts.append(alt)
+
+        if in_target_region is False:
+            self.alts = []
+            self.variants = []
 
     # Annotating record
     def annotate(self, ensembl, dbsnp, reference, impactdir):
@@ -274,6 +329,8 @@ class Record(object):
         outalts = []
         # Values of Entries for Separate Alleles are separated by ','
         # Entries for Multiple transcripts (for 1 allele) are separated by ':'
+        #  This allows each allele to have different transcripts
+        #  (for multiple allele, shifting may lead to different alleles in shifted vs non-shifted alt-alleles)
 
         for i in range(len(self.variants)):
             variant = self.variants[i]
@@ -390,6 +447,10 @@ class Record(object):
                                 except ValueError:  # Example c.802-51_802-14del38, splice
                                     cdna = hgcsn_hgvs
                                     prot = '.'
+                                # HGVS does not allow nucs after del c.21_22delAA
+                                del_nuc = re.match(r"^(.*del[ACGTacgtnN]+)$", cdna)
+                                if del_nuc:
+                                    cdna = del_nuc.group(1)
                                 tHGVSC += cdna
                                 if tHGVSC == '.(.):.':
                                     tHGVSC = '.'
@@ -596,18 +657,34 @@ class Transcript(object):
         self.TRINFO = cols[3]
         self.chrom = cols[4]
         self.strand = int(cols[5])
-        self.transcriptStart = int(cols[6])
-        self.transcriptEnd = int(cols[7])
-        self.codingStart = int(cols[8])
+        self.transcriptStart = int(cols[6])  # 0-based, lowest coordinate
+        self.transcriptEnd = int(cols[7])   # 1-bases upper coordinate
+        self.codingStart = int(cols[8])  # in cDNA coordinated
         self.codingStartGenomic = int(cols[9])
         self.codingEndGenomic = int(cols[10])
         # Initializing and adding exons
         for i in range(1, len(cols) - 11, 2):
-            self.exons.append(Exon(int((i + 1) / 2), int(cols[10 + i]), int(cols[11 + i])))
+            self.exons.append(Exon(int((i + 1) / 2), int(cols[10 + i]), int(cols[11 + i])))   # Start is 0-based, ENd is 1-based -- like a bed file
+        self.three_prime_len = 0
+        for ex in self.exons:
+            if self.strand == 1:
+                if self.codingEndGenomic >= ex.start+1:
+                    if self.codingEndGenomic<ex.end:
+                        self.three_prime_len += (ex.end - self.codingEndGenomic)
+                    else:
+                        self.three_prime_len += ex.end-ex.start
+            else:
+                if self.codingEndGenomic <= ex.start+1:
+                    if self.codingEndGenomic>ex.end:
+                        self.three_prime_len += ex.end - ex.start
+                    else:
+                        self.three_prime_len += (ex.end - self.codingEndGenomic)
+
 
     # self.reference=reference.getReference(self.chrom,self.transcriptStart,self.transcriptEnd)
-
     # Getting the full coding sequence of the transcript
+    # Note that the coding sequence starts at ATG, but ends all the way to the end of the UTR (to allow frameshifting to include new stop)
+
     def getCodingSequence(self, reference, variant, exonseqs):
         ret = ''
         ret_exonseqs = []
@@ -615,7 +692,7 @@ class Transcript(object):
         for i in range(len(self.exons)):
             exon = self.exons[i]
 
-            if not variant is None:
+            if variant is not None:
                 if exon.start < variant.pos <= exon.end:
                     if self.strand == 1:
                         ret += reference.getReference(self.chrom, exon.start + 1,
@@ -663,6 +740,7 @@ class Transcript(object):
             ret = Sequence(codingsequence).translate('4')
         else:
             ret = Sequence(codingsequence).translate(codon_usage)
+        ret = trim_prot_after_stop(ret)  # trim up to and including the first X (if any)
         return ret, exonseqa
 
     # Checking if a given position is outside the region between the start and stop codon
@@ -810,12 +888,28 @@ class Transcript(object):
         if first == second:
             return first
         if self.strand == 1:
-            return first + '-' + second
+            if (len(first) == 0 or first == '.') and (len(second) == 0 or second == '.'):
+                return '.'
+            elif first == '.' or len(first) ==0:
+                return second
+            elif second == '.' or len(second)==0:
+                return first
+            else:
+                return first + '-' + second
         else:
-            return second + '-' + first
+            if (len(first) == 0 or first == '.') and (len(second) == 0 or second == '.'):
+                return '.'
+            elif first == '.' or len(first) ==0:
+                return second
+            elif second == '.' or len(second)==0:
+                return first
+            else:
+                return second + '-' + first
 
     # Getting the length of an intron, where idx is the index of the succeeding exon
     def intronLength(self, idx):
+        if idx <= 0:
+            return 0
         for exon in self.exons:
             if exon.index == idx:
                 if self.strand == 1:
@@ -826,6 +920,7 @@ class Transcript(object):
                 prev = exon.end
             else:
                 prev = exon.start
+        return 0
 
 
 #######################################################################################################################
@@ -972,7 +1067,7 @@ class Options(object):
         self.defs['snplist'] = ('string', '.')
         self.defs['nonannot'] = ('boolean', True)
         self.defs['givealt'] = ('boolean', True)
-        self.defs['givealtflag'] = ('boolean', False)
+        self.defs['givealtflag'] = ('boolean', True)
         self.defs['ssrange'] = ('string', '8')
         self.defs['ontology'] = ('string', 'both')
         self.defs['impactdef'] = ('string', 'SG,ESS,FS|SS5,IM,SL,EE,IF,NSY|SY,SS,INT,5PU,3PU')
@@ -987,8 +1082,8 @@ class Options(object):
 
         if self.args['ensembl'] == '.' or self.args['ensembl'] == '':
             d = os.path.dirname(os.path.realpath(__file__))
-            dir = d[:d.rfind('env/lib')]
-            self.args['ensembl'] = dir + '/defaultdb/ensembl75s.gz'
+            dirn = d[:d.rfind('env/lib')]
+            self.args['ensembl'] = dirn + '/defaultdb/ensembl75s.gz'
 
     # Reading options from configuration file
     def read(self):
@@ -1015,13 +1110,17 @@ def readSet(options, tag):
     if tag in list(options.args.keys()) and not (options.args[tag] == '' or options.args[tag] == '.'):
         for line in open(options.args[tag]):
             line = line.strip()
-            if line == '' or line == '.': continue
+            if line == '' or line == '.':
+                continue
             ret.add(line)
         if options.args['logfile']:
             txt = ''
-            if tag == 'genelist': txt = 'Gene list'
-            if tag == 'transcriptlist': txt = 'Transcript list'
-            if tag == 'snplist': txt = 'SNP list'
+            if tag == 'genelist':
+                txt = 'Gene list'
+            if tag == 'transcriptlist':
+                txt = 'Transcript list'
+            if tag == 'snplist':
+                txt = 'SNP list'
             logging.info(txt + ' loaded.')
     return ret
 
@@ -1088,7 +1187,8 @@ def writeHeader(options, header, outfile, stdout, version):
             headerm = []
             startline = '##fileformat=VCFv4.1'
             for x in headerv:
-                if x.startswith('##fileDate') or x.startswith('##filedate'): continue
+                if x.startswith('##fileDate') or x.startswith('##filedate'):
+                    continue
                 if x.startswith('##fileformat'):
                     startline = x
                     continue
@@ -1099,34 +1199,35 @@ def writeHeader(options, header, outfile, stdout, version):
                 outfile.write(startline + '\n' + dateline + '\n' + headerinfo + '\n'.join(headerm) + '\n')
 
     if options.args['outputformat'] == 'TSV':
-        str = 'ID\tCHROM\tPOS\tREF\tALT\tQUAL\tFILTER\tTYPE'
+        hstr = 'ID\tCHROM\tPOS\tREF\tALT\tQUAL\tFILTER\tTYPE'
         if (not options.args['ensembl'] == '.') and (not options.args['ensembl'] == ''):
-            if options.args[
-                'ontology'].upper() == 'CLASS': str += '\tTRANSCRIPT\tGENE\tGENEID\tTRINFO\tLOC\tCSN\tPROTPOS\tPROTREF\tPROTALT\tCLASS'
-            if options.args[
-                'ontology'].upper() == 'SO': str += '\tTRANSCRIPT\tGENE\tGENEID\tTRINFO\tLOC\tCSN\tPROTPOS\tPROTREF\tPROTALT\tSO'
-            if options.args[
-                'ontology'].upper() == 'BOTH': str += '\tTRANSCRIPT\tGENE\tGENEID\tTRINFO\tLOC\tCSN\tPROTPOS\tPROTREF\tPROTALT\tCLASS\tSO'
+            if options.args['ontology'].upper() == 'CLASS':
+                hstr += '\tTRANSCRIPT\tGENE\tGENEID\tTRINFO\tLOC\tCSN\tPROTPOS\tPROTREF\tPROTALT\tCLASS'
+            if options.args['ontology'].upper() == 'SO':
+                hstr += '\tTRANSCRIPT\tGENE\tGENEID\tTRINFO\tLOC\tCSN\tPROTPOS\tPROTREF\tPROTALT\tSO'
+            if options.args['ontology'].upper() == 'BOTH':
+                hstr += '\tTRANSCRIPT\tGENE\tGENEID\tTRINFO\tLOC\tCSN\tPROTPOS\tPROTREF\tPROTALT\tCLASS\tSO'
 
-            if not (options.args['impactdef'] == '.' or options.args['impactdef'] == ''): str += '\tIMPACT'
+            if not (options.args['impactdef'] == '.' or options.args['impactdef'] == ''):
+                hstr += '\tIMPACT'
 
             if options.args['givealt']:
-                if options.args['ontology'].upper() == 'CLASS': str += '\tALTANN\tALTCLASS'
-                if options.args['ontology'].upper() == 'SO': str += '\tALTANN\tALTSO'
-                if options.args['ontology'].upper() == 'BOTH': str += '\tALTANN\tALTCLASS\tALTSO'
+                if options.args['ontology'].upper() == 'CLASS': hstr += '\tALTANN\tALTCLASS'
+                if options.args['ontology'].upper() == 'SO': hstr += '\tALTANN\tALTSO'
+                if options.args['ontology'].upper() == 'BOTH': hstr += '\tALTANN\tALTCLASS\tALTSO'
 
             if (not options.args['givealt']) or options.args['givealtflag']:
-                str += '\tALTFLAG'
+                hstr += '\tALTFLAG'
 
         if (not options.args['dbsnp'] == '.') and (not options.args['dbsnp'] == ''):
-            str += '\tDBSNP'
+            hstr += '\tDBSNP'
 
-        str += '\tHGVSC\tHGVSP'
+        hstr += '\tHGVSC\tHGVSP'
 
         if stdout:
-            print(str)
+            print(hstr)
         else:
-            outfile.write(str + '\n')
+            outfile.write(hstr + '\n')
 
 
 # Counting number of records in a file
@@ -1145,8 +1246,8 @@ def countRecords(filename):
 # Checking if options are correct
 def checkOptions(options):
     # Checking if @inputformat was given correct value
-    str = options.args['inputformat'].upper()
-    if not (str == 'VCF' or str == 'TXT'):
+    optstr = options.args['inputformat'].upper()
+    if not (optstr == 'VCF' or optstr == 'TXT'):
         print('ERROR: incorrect value of the tag @inputformat.')
         print('(Allowed values: \'VCF\' or \'TXT\')')
         print('\nNo output file written. CAVA quit.')
@@ -1157,8 +1258,8 @@ def checkOptions(options):
         quit()
 
     # Checking if @outputformat was given correct value
-    str = options.args['outputformat'].upper()
-    if not (str == 'VCF' or str == 'TSV'):
+    optstr = options.args['outputformat'].upper()
+    if not (optstr == 'VCF' or optstr == 'TSV'):
         print('ERROR: incorrect value of the tag @outputformat.')
         print('(Allowed values: \'VCF\' or \'TSV\')')
         print('\nNo output file written. CAVA quit.')
@@ -1169,9 +1270,9 @@ def checkOptions(options):
         quit()
 
     # Checking if @type was given correct value
-    str = options.args['type'].upper()
+    optstr = options.args['type'].upper()
     if not (
-            str == 'ALL' or str == 'SUBSTITUTION' or str == 'INDEL' or str == 'INSERTION' or str == 'DELETION' or str == 'COMPLEX'):
+            optstr == 'ALL' or optstr == 'SUBSTITUTION' or optstr == 'INDEL' or optstr == 'INSERTION' or optstr == 'DELETION' or optstr == 'COMPLEX'):
         print('ERROR: incorrect value of the tag @type.')
         print('(Allowed values: \'all\', \'substitution\', \'indel\', \'insertion\', \'deletion\' or \'complex\')')
         print('\nNo output file written. CAVA quit.')
@@ -1194,8 +1295,8 @@ def checkOptions(options):
         quit()
 
     # Checking if @ontology was given correct value
-    str = options.args['ontology'].upper()
-    if not (str == 'CLASS' or str == 'SO' or str == 'BOTH'):
+    optstr = options.args['ontology'].upper()
+    if not (optstr == 'CLASS' or optstr == 'SO' or optstr == 'BOTH'):
         print('ERROR: incorrect value of the tag @ontology.')
         print('(Allowed values: \'CLASS\' or \'SO\' or \'both\')')
         print('\nNo output file written. CAVA quit.')
@@ -1325,16 +1426,16 @@ def checkOptions(options):
 
     # Checking if @transcript2protein file exists
     #  
-    if not (('transcripts2protein' not in options.args) or options.args['transcript2protein'] == '.' or options.args[
-        'transcript2protein'] == '') and not os.path.isfile(options.args['transcript2protein']):
+    if not (('transcripts2protein' not in options.args) or options.args['transcript2protein'] == '.'
+            or options.args['transcript2protein'] == '') and not os.path.isfile(options.args['transcript2protein']):
         print('ERROR: the file given as @transcript2protein does not exist.')
         print('\nNo output file written. CAVA quit.')
         print("--------------------------------------------------------------------\n")
         quit()
 
     # Checking if @normalized_mitochondrial_chrom was given correct value
-    str = options.args['normalized_mitochondrial_chrom']
-    if str != 'not_normalized' and not (str == 'M' or str == 'MT'):
+    optstr = options.args['normalized_mitochondrial_chrom']
+    if optstr != 'not_normalized' and not (optstr == 'M' or optstr == 'MT'):
         print('ERROR: incorrect value of the tag @normalized_mitochondrial_chrom.')
         print('(Allowed values: \'M\' or \'MT\')')
         print('\nNo output file written. CAVA quit.')
@@ -1344,4 +1445,13 @@ def checkOptions(options):
             logging.info('No output file written. CAVA quit.')
         quit()
 
-#######################################################################################################################
+# trim protein, up to including the stop codon
+
+def trim_prot_after_stop(seq):
+    if 'X' in seq:
+        seq = seq[0:(seq.index('X')+1)]
+    elif 'x' in seq:
+        seq = seq[0:(seq.index('x') + 1)]
+    return seq
+
+######################################################################################################################

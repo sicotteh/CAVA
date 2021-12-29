@@ -1,6 +1,9 @@
 Cython
 pybedtools
 pysam
-crossmap
+bx-python
+pyBigWig
+crossmap == 0.6.1
 wget
 requests
+pycurl
