@@ -72,8 +72,9 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
         csn.nout1 = nout1
         csn.nout2 = nout2
         return csn, protchange
+
     try:
-        dna, dna_ins = makeDNAannotation(variant, transcript, reference)
+        dna, dna_ins = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2, nout1, nout2)
     except TypeError:
         dna, dna_ins = 'X', 'X'
 
@@ -90,6 +91,7 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
         # AND shifting will not push variant outside transcript region
         coord1_ins, intr1_ins, coord2_ins, intr2_ins = coord1, intr1, coord2, intr2
         coord1, intr1, coord2, intr2, nout1, nout2  = duplicationCoordinates(variant, transcript)
+        # Check for case where duplication would yiel
     else:
         coord1_ins, intr1_ins, coord2_ins, intr2_ins = '', '', '', ''
 
@@ -180,9 +182,310 @@ def calculateCSNCoordinates(variant, transcript):
 
     return None, None, None, None
 
+# find if the alt-allele (or deletion) contains a repeated pattern (N full repeats )
+#
+# Can you shift a deletion not multiple of local unit (4 base del in a triplet repeat)? No! .. example
+# ACGA[CGAC]GACG -> ACGAGACG
+# ACG[ACGA]CGACG -> ACGCGACG  .. not same
+# AC[GACG]ACGACG -> ACACGACG   .. not same
+# A[CGAC]GACGACG -> AGACGACG   .. not same
+# However, you can delete multiple copies of the repeat unit
+# ACG[ACGACG]ACG -> ACGACG
+# AC[GACGAC]GACG -> ACGACG
+# A[CGACGA]CGACG -> ACGACG
+# [ACGACG]ACGACG -> ACGACG
 
-# Calculating genomic DNA level annotation of the variant
-def makeDNAannotation(variant, transcript, reference):
+# This is why this function tries to split a deleted/inserted sequence into elementary repeat.
+def find_repeat_unit(extraseq):
+    if len(extraseq) == 0:
+        return ["", 0]
+    elif len(extraseq) == 1:
+        return [extraseq, 1]
+    else:
+        irlen = 0
+        nsegs = 0
+        for irlen in range(1, min(len(extraseq) - 1, int((len(extraseq) + 1) / 2)) + 1):  # max repeat leg
+            roll_seq = ""
+            nsegs = int((len(extraseq)) / irlen)
+            nsegsmatch = 0
+            seg0 = extraseq[0:irlen]
+            allsegsmatch = True
+            for iseg in range(1, nsegs):
+                segi = extraseq[(iseg * irlen):((iseg + 1) * irlen)]
+                if seg0 != segi:
+                    allsegsmatch = False
+                    break
+            if allsegsmatch is True:
+                roll_seq = extraseq[(nsegs * irlen):]
+                if len(roll_seq) > 0 and roll_seq != seg0:
+                    allsegsmatch = False
+                else:  # success, found full repeat,
+                    return [seg0, nsegs]
+        return [extraseq, 1]
+
+    # An indel from NGS could be a repeat expansion..
+    # Priority to the repeat uniq that leads to the most shifting
+    #   inserted or deleted sequence is mono or exact repeat (no partial)
+    #   .. if not, perfect repeat
+    #              shift all the way right, then all the way left.. and
+    #              scan for smallest possible repeat pattern that covers the interval
+    #              Once have that pattern, scan for possible expansion of range
+def scan_for_repeat(variant, transcript, reference):
+
+    if not (variant.isDeletion() or variant.isInsertion()):
+        return [None,None,None]
+    else:
+        if variant.isInsertion():
+            rep0 = variant.alt
+            pos_left_of_variant = variant.pos - 1  # where do you look for previous repeat
+            pos_right_of_variant = variant.pos  # Where do you look for next repeat
+        else:
+            rep0 = variant.ref
+            pos_left_of_variant = variant.pos - 1
+            pos_right_of_variant = variant.pos + len(variant.ref)
+        [rep, nrep] = find_repeat_unit(rep0)  # The insertion or deletion could be more than 1 repeat unit long.
+
+        lseq = ""
+        lrep = len(rep)
+        left_context = ""
+        nrep_left = 0
+        # get reference operations are very expensive, better to get a big chunk.
+        left_end = pos_left_of_variant + 1  # Just adding +1 to get loop initialized
+        next_left = pos_left_of_variant - len(rep) + 1
+        match_rep = True
+        while match_rep is True:  # Scan for repeats and load bigger chunks of data as scan toward the end.
+            left_right_end = left_end - 1
+            left_end = left_end - 40 * lrep
+            left_context = reference.getReference(variant.chrom, left_end, left_right_end) + left_context
+            while match_rep is True and next_left > left_end + lrep:  # scan for repeat in current chunk
+                pseq = left_context[next_left - left_end:(next_left + lrep - left_end)]
+                if pseq != rep:
+                    match_rep = False
+                    lseq = pseq
+                else:
+                    next_left = next_left - lrep
+                    nrep_left += 1
+
+        # Now scan all the way to the right.
+        rseq = ""
+        nrep_right = 0
+        # get reference operations are very expensive, better to get a big chunk.
+        right_left_end = pos_right_of_variant  # left end of fasta sequence block
+        right_end = right_left_end - 1  # initialize so loop works (will need right_left_end to be variant.pos+1)
+        next_right = right_left_end  # start position of next repeat
+        match_rep = True
+        right_context = ""
+        while match_rep is True:
+            right_left_end = right_end + 1
+            right_end = right_end + 40 * lrep
+            right_context = right_context + reference.getReference(variant.chrom, right_left_end,
+                                                                   right_end)  # positions are inclusive
+            while match_rep is True and next_right + lrep - 1 <= right_end - lrep:
+                pseq = right_context[next_right - right_left_end:(next_right + lrep - right_left_end)]
+                if pseq != rep:
+                    match_rep = False
+                    rseq = pseq
+                else:
+                    next_right = next_right + lrep
+                    nrep_right += 1
+        # We need to check if changing the repeat unit might  allow a little more shifting
+        # 3 cases arise
+        # 1) extend on both sides, lead to more repeat units
+        # e.g. CTATAT[AT]ATAC -> CTATATATAC was described as an AT deletion, CT[AT](3;2)AC or as a TA deletion C[TA](4;3)C
+        # 2)  extend on left only, leading to more left-shifting, but same number of repeat units
+        #  CTATAT[AT]ATC -> CTATATATC can be described as AT deletion CT[AT](4;3)C or TA deletion C[TA](4;3)C, the latter being more left-shifted
+        # 3) extend to right only, leading to more right-shifting, but same number of repeat units.
+        #   CATAT[AT]ATAC -> CATATATAC was described as an AT deletion, C[AT](4;3)AC or as CA[TA](4;3)C
+        right_pad = 0
+        left_pad = 0
+        if lrep > 1 and len(lseq)== lrep and len(rseq) == lrep:
+            # see if "rolling" the repeat pattern could extend the repeated section
+            # We already know that we can only find a partial pattern on left and/or right
+
+            for npad in range(1, lrep):
+                # Check left side extension
+                if rep[lrep - npad:] == lseq[lrep - npad:]:
+                    left_pad = npad
+                # Check right side extension of pattern
+                if rep[0:npad] == rseq[0:npad]:
+                    right_pad = npad
+
+        extra_rep = 0
+        if left_pad + right_pad >= lrep:
+            extra_rep = 1
+        sys.stdout.write("left_pad="+str(left_pad)+"\n")
+        sys.stdout.write("right_pad="+str(right_pad)+"\n")
+
+        # return fully left_padded variant with ref_repeats, alt_repeats, rep_unit, start_pos
+        if variant.isInsertion():
+            nrep_ref = 0
+            nrep_alt = nrep
+        elif variant.isDeletion():
+            nrep_ref = nrep
+            nrep_alt = 0
+        newleft_rep = rep[lrep - left_pad:] + rep[0:lrep - left_pad]
+        left_result = [next_left + lrep - left_pad,  # left shifted position of indel for variant obj
+                       next_left + lrep - left_pad,  # HGVS of repeat is always
+                       nrep_left + nrep_right + extra_rep + nrep_ref,  # Number of ref repeats
+                       nrep_left + nrep_right + extra_rep + nrep_alt,  # number of alt repeats
+                       newleft_rep,  # repeat_pattern
+                       newleft_rep * nrep_ref,  # trimmed ref-allele
+                       newleft_rep * nrep_alt]  # trimmed alt-allele
+#
+        newright_rep = rep[right_pad:] + rep[0:right_pad]
+        right_result = [next_right - lrep * nrep + right_pad,  # right shifted position of indel for variant obj
+                        next_left + lrep + right_pad,  #
+                        nrep_left + nrep_right + extra_rep + nrep_ref,  # Number of ref repeats
+                        nrep_left + nrep_right + extra_rep + nrep_alt ,  # number of alt repeats
+                        newright_rep,  # repeat_pattern
+                        newright_rep * nrep_ref,  # trimmed ref-allele
+                        newright_rep * nrep_alt]  # trimmed alt-allele
+        full_result = [left_result[0],  # left-most position
+                       next_right +lrep-1 + right_pad,  # rightmost position, including repeat sequencue
+                       left_context[next_left - left_end + lrep - left_pad:] +
+                       variant.ref +
+                       right_context[:(next_right - right_left_end + right_pad)],
+                       left_context[next_left - left_end + lrep - left_pad:] +
+                       variant.alt +
+                       right_context[:(next_right - right_left_end + right_pad)]
+                       ]  # sequence
+        return [left_result,right_result,full_result]
+
+#
+
+                # return fully right_padded variant ref_repeats, alt_repeats, rep_unit, start_pos
+                # return fully left+right variants
+                # Repeats annotation does not Span introns.. so all this shifting is purely at the DNA level.
+                # If the first repeat unit starts 5' (before) of the TSS, we want to shift the position 5'
+                # If the first repeat unit starts after the TSS (3') or ends after the 3'end, we want to shift the repeat 3'
+                # If the repeat is entirely within transcript, shift it 3'
+
+    #
+    #         if len(rep)<len(rep0):
+    #         left_context=reference.getReference(variant.chrom, variant.pos - len(insert), variant.pos-1
+    #         if transcript.strand == 1:
+    #             # Full variant is already shifted 3' .. and should be
+    #             before = reference.getReference(variant.chrom, variant.pos - len(insert), variant.pos-1)
+    #                 # Checking if variant is a duplication, favor left shifting by 1 position.
+    #                 if insert == before:
+    #                     if len(insert) > 4:
+    #                         return 'dup' + str(len(insert)), 'ins' + insert
+    #                     return 'dup' + insert, 'ins' + insert
+    #             # Detect dups, but do not shift left.
+    #             if variant.pos + len(insert) <= transcript.transcriptEnd:
+    #                 after =  reference.getReference(variant.chrom, variant.pos, variant.pos+len(insert)-1)
+    #                 if insert == after:
+    #                     return 'dup' + insert, ''  # uppercase INS insures position  will remain here.
+    #                 return 'ins' + insert, ''
+    #             return 'ins' + insert, ''
+    #         else:  # transcript.strand == -1
+    #             if (variant.pos + (len(insert)-1) <= transcript.transcriptEnd): #' 5' shift (right)
+    #                 before = reference.getReference(variant.chrom, variant.pos, variant.pos + len(insert)- 1 )
+    #             # Checking if variant is a duplication
+    #                 if insert == before:
+    #                     if len(insert) > 4: return 'dup' + str(len(insert)), 'ins' + insert.reverseComplement()
+    #                     return 'dup' + insert.reverseComplement(), 'ins' + insert.reverseComplement()
+    #             if variant.pos - len(insert) >= transcript.transcriptStart:
+    #                 after = reference.getReference(variant.chrom, variant.pos - len(insert), variant.pos-1)
+    #                 if insert == after:
+    #                     return 'dup' +  insert.reverseComplement(), ''  # Uppercase insures variant is not shifted
+    #             return 'ins' + insert.reverseComplement(), ''
+    # #
+    # # Returning DNA level annotation if variant is a deletion
+    # if variant.isDeletion():
+    #     if len(variant.ref) > 4:
+    #         return 'del' + str(len(variant.ref)), ''
+    #     if transcript.strand == 1:
+    #         return 'del' + variant.ref, ''
+    #     else:
+    #         return 'del' + core.Sequence(variant.ref).reverseComplement(), ''
+    #
+    #     nDup = 0
+    #     # Loop over potential repeat sizes (Smaller repeat sizes have priority)
+    #     for SSRlen in range(1, len(trim_prot) + 1):
+    #         # Make sure repeat size is a full multiple of the deletion
+    #         nDups = int(len(trim_prot) / SSRlen)
+    #         if nDups >= 1 and len(trim_prot) % SSRlen == 0:
+    #             repeat_seq = trim_prot[0:SSRlen]
+    #             nMatch_del = 0
+    #             nMatch_ref = 0
+    #             # Check if the repeat pattern matches every base of the trim_prot
+    #             for iDup in range(0, nDups):
+    #                 if trim_prot[(0 + SSRlen * iDup):(SSRlen * (iDup + 1))] == repeat_seq:
+    #                     nMatch_del = nMatch_del + 1
+    #                 else:
+    #                     break
+    #             if nMatch_del == nDups:  # Can have 0... nMatch_ref copies in reference sequence left after deletion
+    #                 lowerlim = leftindex - SSRlen - 1
+    #                 upperlim = lowerlim + SSRlen
+    #                 while lowerlim >= 0 and protcopy[lowerlim:upperlim] == repeat_seq:
+    #                     nMatch_ref = nMatch_ref + 1
+    #                     lowerlim = lowerlim - SSRlen
+    #                     upperlim = lowerlim + SSRlen
+    #                 if not (
+    #                         nMatch_del == 1 and nMatch_ref == 0 or nMatch_ref + nMatch_del <= 1):  # Deletion of a single lone copy is not repeat polymorphism
+    #                     nDup = nDups
+    #                     lowerlim = leftindex - SSRlen * nMatch_ref - 1
+    #                     upperlim = lowerlim + SSRlen
+    #                     break
+    #
+    #     if nDup == 0:  # No Repeats .. straight Deletion .. not frameshift .. not ins or complex
+    #         if len(trim_prot) == 1:
+    #             return '_p.' + changeTo3lettersTer(trim_prot[0]) + str(leftindex) + "del", (
+    #             str(leftindex), trim_prot, '-')
+    #         else:
+    #             return '_p.' + changeTo3lettersTer(trim_prot[0]) + str(leftindex) + "_" + changeTo3lettersTer(
+    #                 trim_prot[len(trim_prot) - 1]) + str(rightindex) + "del", (
+    #                    str(leftindex) + '-' + str(leftindex + len(trim_prot) - 1), trim_prot, '-')
+    #     else:
+    #         if SSRlen == 1:  # Repeat unit of 1 base.
+    #             if nMatch_ref == 0:  # Multiple >1 copies are deleted, leaving empty sequence. Guaranteed to be an interval of at least 2 AA positions to be called SSR
+    #                 return '_p.' + changeTo3lettersTer(protcopy[lowerlim]) + str(lowerlim + 1) + "[" + str(
+    #                     nMatch_ref + nMatch_del) + "]%3B[" + str(nMatch_ref) + "]", (
+    #                        str(leftindex) + '-' + str(rightindex), trim_prot, '-')
+    #             else:
+    #                 if leftindex == rightindex:
+    #                     return '_p.' + changeTo3lettersTer(protcopy[lowerlim]) + str(lowerlim + 1) + "[" + str(
+    #                         nMatch_ref + nMatch_del) + "]%3B[" + str(nMatch_ref) + "]", (str(leftindex), trim_prot, '-')
+    #                 else:
+    #                     return '_p.' + changeTo3lettersTer(protcopy[lowerlim]) + str(lowerlim + 1) + "[" + str(
+    #                         nMatch_ref + nMatch_del) + "]%3B[" + str(nMatch_ref) + "]", (
+    #                            str(leftindex) + '-' + str(rightindex), trim_prot, '-')
+    #
+    #         else:  # Multi base repeat
+    #             if nMatch_ref == 0:  # Deletion of repeats leaving no copies
+    #                 return '_p.' + changeTo3lettersTer(protcopy[lowerlim]) + str(
+    #                     lowerlim + 1) + "_" + changeTo3lettersTer(protcopy[upperlim - 1]) + str(upperlim) + "[" + str(
+    #                     nMatch_ref + nMatch_del) + "]%3B[" + str(nMatch_ref) + "]", (
+    #                        str(leftindex) + "-" + str(rightindex), trim_prot, '-')
+    #             else:
+    #                 return '_p.' + changeTo3lettersTer(protcopy[lowerlim]) + str(
+    #                     lowerlim + 1) + "_" + changeTo3lettersTer(protcopy[upperlim - 1]) + str(upperlim) + "[" + str(
+    #                     nMatch_ref + nMatch_del) + "]%3B[" + str(nMatch_ref) + "]", (
+    #                        str(leftindex) + '-' + str(rightindex), trim_prot, '-')
+
+#
+# In original CAVA version, repeats can only be reported as a duplication.. even if it is part of a more complex repeat
+# This is cDNA annotation, so the repeats should be detected within the confines of the transcript sequence
+#   In version 20.05 of the HGVS nomenclature, the following note explains the limited scope of repeat annotation for cDNA
+# exception: using a coding DNA reference sequence (“c.” description) a Repeated sequence variant description can be used
+# only for repeat units with a length which is a multiple of 3, i.e. which can not affect the reading frame.
+#   Consequently, use NM_024312.4:c.2692_2693dup and not NM_024312.4:c.2686A[10],
+#   use NM_024312.4:c.1741_1742insTATATATA and not NM_024312.4:c.1738TA[6].
+# so the original CAVA code is correct unless repeat units are *3
+#
+# The original CAVA version has one problem, it may call dups across exon/intron boundaries
+#   .
+#
+# https://varnomen.hgvs.org/recommendations/DNA/variant/duplication/
+#    for all descriptions the most 3’ position possible of the reference sequence is arbitrarily assigned to have been changed (3’rule)
+#    exception:
+#    duplications around exon/exon junctions when identical nucleotides flank the junction (see Numbering);
+#    when ..GAT gta..//..cag TCA.. changes to ..GATT gta..//..cag TCA.., based on a coding DNA reference sequence
+#     the variant is described as LRG_199t1:c.3921dup (NC_000023.10:g.32459297dup)
+#     and not as c.3922dup (which would translate to g.32456507dup)
+#
+def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2, nout1, nout2):
     if variant.alt.startswith('<') and variant.alt.endswith('>') and not ( "," in variant.alt):  # support <NON_REF>' <*> or SV
         return ''
     # Returning DNA level annotation if variant is a base substitution
@@ -195,24 +498,31 @@ def makeDNAannotation(variant, transcript, reference):
     # Returning genomic DNA level annotation if variant is an insertion
     if variant.isInsertion():
         insert = core.Sequence(variant.alt)
-        ## 11/16/2021 Check for Dup independent of original normalization (both before and after)
-        #             to only look for cDNA dups within the transcripts bonds.
-        ##            refactor code to optimize and minimize DNA variant lookups.
-        #              note that for insertion, pos points to after deletion.
-        #              Only left shift insertions (or call dup) if variant is within transcript
-        if transcript.strand == 1: #
-            if (variant.pos - len(insert) >= transcript.transcriptStart):  # Only annotate dup, if dup is within transcript, otherwise will be shifted outside transcript.
+        # this is cDNA annotation
+
+        # 2nd return value is set to !='' if variant is a dup and position needs to be altered.
+        #  ... this will be done later.
+        if transcript.strand == 1:
+            # Must shift description 3' if possible
+            if variant.pos - len(insert) >= transcript.transcriptStart and variant.pos - 1 <= transcript.transcriptEnd:
+                # Only annotate dup, if dup is within transcript, otherwise will be shifted outside transcript.
+                #
                 before = reference.getReference(variant.chrom, variant.pos - len(insert), variant.pos-1)
                 # Checking if variant is a duplication, favor left shifting by 1 position.
                 if insert == before:
-                    if len(insert) > 4:
-                        return 'dup' + str(len(insert)), 'ins' + insert
-                    return 'dup' + insert, 'ins' + insert
+                    if intr2 ==0 and intr1 ==0: # then not right at intron boundary and shift right.
+                        if len(insert) > 4:
+                            return 'dup' + str(len(insert)), 'ins' + insert
+                        return 'dup' + insert, 'ins' + insert
+                    elif intr1 ==0 and intr2 !=0: # Annotate as Dup, but Don't shift right (3') if at the donor exon/intron boundary
+                        if len(insert) > 4:
+                            return 'dup' + str(len(insert)), ''
+                        return 'dup' + insert, ''
             # Detect dups, but do not shift left.
             if variant.pos + len(insert) <= transcript.transcriptEnd:
                 after =  reference.getReference(variant.chrom, variant.pos, variant.pos+len(insert)-1)
                 if insert == after:
-                    return 'dup' + insert, ''  # uppercase INS insures position  will remain here.
+                    return 'dup' + insert, ''  #  2ns term == '' insures position will not be changed
                 return 'ins' + insert, ''
             return 'ins' + insert, ''
         else:  # transcript.strand == -1
@@ -895,7 +1205,7 @@ def transformToCSNCoordinate(pos, transcript):
         return str(sumpos), 0, 0
 
 
-# Calculating csn coordinates for duplications
+# Calculating csn coordinates for duplications.. by 3' shifting
 def duplicationCoordinates(variant, transcript):
     if transcript.strand == 1:
         coord1, intr1, nout1 = transformToCSNCoordinate(variant.pos - len(variant.alt), transcript)

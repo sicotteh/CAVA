@@ -275,7 +275,6 @@ class Ensembl(object):
         # Iterating through the list of transcripts with  variant fully inside transcript
         #  or Del/MNP with one end in transcript
         for TRANSCRIPT in transcripts:
-
             if TRANSCRIPT in list(transcripts_plus.keys()):
                 transcript = transcripts_plus[TRANSCRIPT]
             elif TRANSCRIPT in list(transcripts_minus.keys()):
@@ -314,8 +313,8 @@ class Ensembl(object):
             if TRANSCRIPT in list(transcripts_plus.keys()):
                 loc_plus = transcript.whereIsThisVariant(variant_plus)
             elif TRANSCRIPT in list(transcriptsOUT_plus.keys()):
-#                loc_plus = 'OUT'
-                loc_plus = transcript.whereIsThisVariant(variant_plus)
+                loc_plus = 'OUT'
+#                loc_plus = transcript.whereIsThisVariant(variant_plus)
             else:
                 loc_plus = '.'
 
@@ -323,8 +322,8 @@ class Ensembl(object):
                 if TRANSCRIPT in list(transcripts_minus.keys()):
                     loc_minus = transcript.whereIsThisVariant(variant_minus)
                 elif TRANSCRIPT in list(transcriptsOUT_minus.keys()):
- #                   loc_minus = 'OUT'
-                    loc_minus = transcript.whereIsThisVariant(variant_minus)
+                    loc_minus = 'OUT'
+ #                   loc_minus = transcript.whereIsThisVariant(variant_minus)
                 else:
                     loc_minus = '.'
             else:
@@ -395,7 +394,6 @@ class Ensembl(object):
             impact_minus = ''
 
             if not impactdir is None or self.options.args['ontology'].upper() in ['CLASS', 'BOTH']:
-
                 # Creating the CLASS annotations both for left and right aligned variant
                 if TRANSCRIPT in transcripts_allplus:
                     class_plus = conseq.getClassAnnotation(variant_plus, transcript, protein, mutprotein_plus, loc_plus,
@@ -414,7 +412,6 @@ class Ensembl(object):
 
             # Determining the IMPACT flag
             if not impactdir is None:
-
                 if TRANSCRIPT in transcripts_allplus:
                     if class_plus in list(impactdir.keys()):
                         impact_plus = impactdir[class_plus]
@@ -446,7 +443,6 @@ class Ensembl(object):
                                                                         mutprotein_minus, loc_minus)
                     else:
                         so_minus = '.'
-
                 else:
                     so_minus = so_plus
 
@@ -481,7 +477,6 @@ class Ensembl(object):
                 PROTALTstring += protchange_minus[2]
 
             if self.options.args['givealt']:
-
                 # Creating the ALTANN annotation
                 if not csn_plus_str == csn_minus_str:
                     ALTANNstring += ALTANN

@@ -4,7 +4,7 @@
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
-17	473045705	c.5565A>T_p.Ile1855=	T	A	.	.	.	GT	0/1
+17	43045705	c.5565A>T_p.Ile1855=	T	A	.	.	.	GT	0/1
 17	43051071	c.5324T>G_p.Met1775Arg	A	C	.	.	.	GT	0/1
 17	43045711	c.5559C>G_p.Tyr1853Ter	G	C	.	.	.	GT	0/1
 17	43093140	c.2389_2390delGA_p.Glu797ThrfsTer3	TTC	T	.	.	.	GT	0/1
@@ -31,5 +31,5 @@
 13	32316461	c.1_2insC_p.?	A	AC	.	.	.	GT	0/1
 13	32316460	c.-1_1insC	A	AC	.	.	.	GT	0/1
 13	32398769	c.10256_10257insC_p.Ter3419TyrextX19	A	AC	.	.	.	GT	0/1
-13	32316526	c.67+1delG	GG	G	.	.	.	GT	0/1
-13	32325074	c.317delG_p.Gly106GlufsTer15	GG	G	.	.	.	GT	0/1
+13	32316527	c.67+1delG	GG	G	.	.	.	GT	0/1
+13	32325075	c.317delG_p.Gly106GlufsTer15	GG	G	.	.	.	GT	0/1

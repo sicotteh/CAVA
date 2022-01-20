@@ -1,6 +1,8 @@
 import unittest
 from cava.utils.data import Ensembl, Reference
 from cava.utils import core
+from cava.utils.csn import find_repeat_unit
+from cava.utils.csn import scan_for_repeat
 import os
 import pycurl
 import sys
@@ -55,7 +57,6 @@ class MyTestCase(unittest.TestCase):
         rec.annotate(self.ensembl, None, self.reference, None)
         rec.variants[0].getFlag('CSN')
         self.assertEqual('c.5565A>T_p.Ile1855=', rec.variants[0].getFlag('CSN'))
-
     def test_hg38_negStrand_simplemissense(self):
         line = "17\t43051071\tVCV000017694.14\tA\tC\t.\t.\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
@@ -180,7 +181,6 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         csn=rec.variants[0].getFlag('CSN')
-        sys.stderr.write("CSN for large del overlapping ends="+csn+"\n")
         self.assertEqual('5PU', rec.variants[0].getFlag('CLASS'))
         self.assertEqual(csn,"c.-221_-178delinsA","-221  is past the beginning of the transcript (-197) .. but that's OK")
 
@@ -211,12 +211,12 @@ class MyTestCase(unittest.TestCase):
 
     def test_hg38_del_in_Met2(self):
         line = "13\t32316461\tindel_in_met2\tAT\tA\t.\t.\t.\tGT\t0/1\n"
-
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         rec.variants[0].getFlag('CSN')  # So we can check value with debugger
         self.assertEqual('c.2delT_p.?', rec.variants[0].getFlag('CSN'))
         self.assertEqual('IM', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('1-3417', rec.variants[0].getFlag('PROTPOS'))
 
     def test_hg38_del_in_Met1(self):
         line = "13\t32316460\tindel_in_met1\tAA\tA\t.\t.\t.\tGT\t0/1\n"
@@ -225,6 +225,7 @@ class MyTestCase(unittest.TestCase):
         rec.variants[0].getFlag('CSN')
         self.assertEqual('c.1delA_p.?', rec.variants[0].getFlag('CSN'))
         self.assertEqual('IM', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('1-3417', rec.variants[0].getFlag('PROTPOS'))
         self.assertEqual('frameshift_variant', rec.variants[0].getFlag('SO'))
 
     def test_hg38_ins_in_Met12(self):
@@ -248,7 +249,6 @@ class MyTestCase(unittest.TestCase):
 
     def test_hg38_ins_in_Ter(self): # Cannot be a Frameshift, needs to be a Stop Loss.
         line = "13\t32398769\tins_in_ter\tA\tAC\t.\t.\t.\tGT\t0/1\n"
-        # NC_000013.11:g.32316462T>C	c(BRCA2):c.2T>C NP_000050.3:p.(?) p/M>T IM
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('c.10256_10257insC_p.Ter3419TyrextX19', rec.variants[0].getFlag('CSN'))
@@ -257,7 +257,7 @@ class MyTestCase(unittest.TestCase):
 
 
     def test_hg38_splice_indel_donor(self): # 3' shifting at DNA level should work for exon/intron 3' shifting spf deletion at splice donor (BRCA2)
-        line = "13\t32316526\tdonor_deletion\tGG\tG\t.\t.\t.\tGT\t0/1\n"
+        line = "13\t32316527\tdonor_deletion\tGG\tG\t.\t.\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('c.67+1delG', rec.variants[0].getFlag('CSN'))
@@ -266,13 +266,106 @@ class MyTestCase(unittest.TestCase):
 
 
     def test_hg38_splice_indel_exception_acceptor(self): # 3' shifting at DNA level should properly shift out a deletion of splice donor (BRCA2)
-        line = "13\t32325074\tacceptor_deletion\tGG\tG\t.\t.\t.\tGT\t0/1\n"
+        line = "13\t32325075\tacceptor_deletion\tGG\tG\t.\t.\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('c.317delG_p.Gly106GlufsTer15', rec.variants[0].getFlag('CSN'))
         self.assertEqual('FS', rec.variants[0].getFlag('CLASS'))
         self.assertEqual('splice_region_variant|frameshift_variant', rec.variants[0].getFlag('SO'))
 
+    def test_repeats(self):
+        seq="TTTTT"
+        [rep,nrep]=find_repeat_unit(seq)
+        self.assertEqual("T",rep)
+
+
+        seq = "TCTCT"
+        [rep, nrep] = find_repeat_unit(seq)
+        self.assertEqual("TCTCT", rep)
+        self.assertEqual(1, nrep)
+
+
+        seq = "TCTCTC"
+        [rep, nrep] = find_repeat_unit(seq)
+        self.assertEqual("TC", rep)
+        self.assertEqual(3, nrep)
+
+        seq = "GTCGTCGTC"
+        [rep, nrep] = find_repeat_unit(seq)
+        self.assertEqual("GTC", rep)
+        self.assertEqual(3, nrep)
+
+    def test_scan_for_repeat(self):
+#        line = "13\t32329810\tinsertion_TA\tA\tATA\t.\t.\t.\tGT\t0/1\n"
+        line = "13\t32329810\tdeletion_TA_\tATA\tA\t.\t.\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        transcript = self.ensembl.findTranscripts(rec.variants[0])
+        [dleftn,drightn,dfulln] = scan_for_repeat(rec.variants[0], transcript, self.reference)
+
+
+        self.assertEqual(drightn[0], 32329817)  # deletion
+        self.assertEqual(drightn[1], 32329807)  # deletion left shifted for HGVS .. position of first repeat
+        self.assertEqual(drightn[2], 6)  # Number of ref
+        self.assertEqual(drightn[3], 5)  # number of alt
+        self.assertEqual(drightn[4], 'TA')
+        self.assertEqual(drightn[5], 'TA')
+        self.assertEqual(drightn[6], '')
+
+        self.assertEqual(dleftn[0], 32329807)  # deletion
+        self.assertEqual(dleftn[1], 32329807)  # deletion left shifted for HGVS .. position of first repeat
+        self.assertEqual(dleftn[2], 6)  # Number of ref
+        self.assertEqual(dleftn[3], 5)  # number of alt
+        self.assertEqual(dleftn[4], 'TA')
+        self.assertEqual(dleftn[5], 'TA')
+        self.assertEqual(dleftn[6], '')
+
+        self.assertEqual(dfulln[0], 32329807)  # deletion
+        self.assertEqual(dfulln[1], 32329820)  # deletionleft shifted for HGVS .. position of first repeat
+        self.assertEqual(dfulln[2], 'TATATATATATA')  # ref
+        self.assertEqual(dfulln[3], 'TATATATATA')  # alt
+
+        line = "13\t32329810\tdinsertions_TA_\tA\tATATA\t.\t.\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        transcript = self.ensembl.findTranscripts(rec.variants[0])
+        [ileftn, irightn, ifulln] = scan_for_repeat(rec.variants[0], transcript, self.reference)
+        self.assertEqual(irightn[0], 32329815)  # insertion, 1 bp after insertion site
+        self.assertEqual(irightn[1], 32329807)  # insertion left shifted for HGVS .. position of first repeat
+        self.assertEqual(irightn[2], 6)  # Number of ref
+        self.assertEqual(irightn[3], 8)   # number of alt
+        self.assertEqual(irightn[4], 'TA')
+        self.assertEqual(irightn[5], '')
+        self.assertEqual(irightn[6], 'TATA')
+
+        self.assertEqual(ileftn[0], 32329807)  # insertion, 1 bp after insertion site
+        self.assertEqual(ileftn[1], 32329807)  # insertion left shifted for HGVS .. position of first repeat
+        self.assertEqual(ileftn[2], 6)  # Number of ref
+        self.assertEqual(ileftn[3], 8)  # number of alt
+        self.assertEqual(ileftn[4], 'TA')
+        self.assertEqual(ileftn[5], '')
+        self.assertEqual(ileftn[6], 'TATA')
+
+        self.assertEqual(ifulln[0], 32329807)  # insertion, 1 bp after insertion site
+        self.assertEqual(ifulln[1], 32329820)  # insertion left shifted for HGVS .. position of first repeat
+        self.assertEqual(ifulln[2], 'TATATATATATA')  # ref
+        self.assertEqual(ifulln[3], 'TATATATATATATATA')  # alt
+
+
+    # BRCA1 is on the minus strand, so this variant should be left shifter and not be on the transcript.
+    def test_hhg38_del_brca1_dupEnd(self): # 3' shifting at DNA level should properly shift out a deletion of splice donor (BRCA2)
+        line = "17\t43044291\tdel_TSS_shifted_into\tATGG\tA\t.\t.\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('NM_007294.4', rec.variants[0].getFlag('TRANSCRIPT'))
+        self.assertEqual('Deletion', rec.variants[0].getFlag('TYPE'))
+
+
+    # BRCA1 is on the minus strand, so this variant should be left shifter and not be on the transcript.
+    def test_hhg38_del_brca1_dupTSS(self): # 3' shifting at DNA level should shift Inside transcript
+        line = "17\t43125364\tins_TSS_shifted_into\tC\tCGC\t.\t.\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('NM_007294.4', rec.variants[0].getFlag('TRANSCRIPT'))
+        self.assertEqual('Deletion', rec.variants[0].getFlag('TYPE'))
 
 
 class Options:

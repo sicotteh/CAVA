@@ -95,12 +95,20 @@ class Variant(object):
         if self.isDeletion(): self.addFlag('TYPE', 'Deletion')
         if self.isComplex(): self.addFlag('TYPE', 'Complex')
 
-    # Aligning variant on the plus strand
+    # Aligning variant on the plus strand, shifting 3' (right) on DNA
     def alignOnPlusStrand(self, reference):
-        seq1 = reference.getReference(self.chrom, self.pos, self.pos + len(self.ref) - 1 + 100)
-        seq2 = self.alt + reference.getReference(self.chrom, self.pos + len(self.ref),
-                                                 self.pos + len(self.ref) + 100 - 1)
-        left, seq1, seq2 = self.rightAlign(seq1, seq2)
+        maxreplen = abs(len(self.ref)-len(self.alt))
+        PADLEN = max(100,1+5*maxreplen) # the bigger the repeat, the less likely there are multiple exact copies, so 5 is OKfSequence
+        seq1_0 = reference.getReference(self.chrom, self.pos, self.pos + len(self.ref) - 1 + PADLEN)
+        seq2_0 = self.alt + reference.getReference(self.chrom, self.pos + len(self.ref),
+                                                 self.pos + len(self.ref) + PADLEN - 1)
+        left, seq1, seq2 = self.rightAlign(seq1_0, seq2_0)
+        while left >= PADLEN - (maxreplen -  1):  # Shifted almost all the way to the end, make sure there is not more to shift
+            PADLEN += PADLEN
+            seq1_0 = reference.getReference(self.chrom, self.pos, self.pos + len(self.ref) - 1 + PADLEN)
+            seq2_0 = self.alt + reference.getReference(self.chrom, self.pos + len(self.ref),
+                                                       self.pos + len(self.ref) + PADLEN - 1)
+            left, seq1, seq2 = self.rightAlign(seq1_0, seq2_0)
         if len(seq1) == 0 or len(seq2) == 0:
             left -= 1
             base = reference.getReference(self.chrom, self.pos + left, self.pos + left)
@@ -112,11 +120,21 @@ class Variant(object):
 
     # Aligning variant on the minus strand
     def alignOnMinusStrand(self, reference):
-        seq1 = reference.getReference(self.chrom, self.pos - 100, self.pos + len(self.ref) - 1)
-        s = reference.getReference(self.chrom, self.pos - 100, self.pos - 1)
-        seq2 = s + self.alt
+        maxreplen = abs(len(self.ref)-len(self.alt))
+        PADLEN = max(100,1+5*maxreplen)
+        seq1_0 = reference.getReference(self.chrom, self.pos - PADLEN, self.pos + len(self.ref) - 1)
+        s = reference.getReference(self.chrom, self.pos - PADLEN, self.pos - 1)
+        seq2_0 = s + self.alt
         N = len(s)
-        left, seq1, seq2 = self.leftAlign(seq1, seq2)
+        left, seq1, seq2 = self.leftAlign(seq1_0, seq2_0)
+        while left <= maxreplen-1 :  # Shifted  all the way to the beginning, make sure there is not more to shift
+            PADLEN += PADLEN
+            seq1_0 = reference.getReference(self.chrom, self.pos - PADLEN, self.pos + len(self.ref) - 1)
+            s = reference.getReference(self.chrom, self.pos - PADLEN, self.pos - 1)
+            seq2_0 = s + self.alt
+            left, seq1, seq2 = self.leftAlign(seq1_0, seq2_0)
+            N = len(s)
+
         if len(seq1) == 0 or len(seq2) == 0:
             left = left - 1
             base = reference.getReference(self.chrom, self.pos + left - N, self.pos + left - N)
@@ -890,9 +908,9 @@ class Transcript(object):
         if self.strand == 1:
             if (len(first) == 0 or first == '.') and (len(second) == 0 or second == '.'):
                 return '.'
-            elif first == '.' or len(first) ==0:
+            elif first == '.' or len(first) == 0:
                 return second
-            elif second == '.' or len(second)==0:
+            elif second == '.' or len(second) == 0:
                 return first
             else:
                 return first + '-' + second
@@ -940,7 +958,7 @@ class Exon(object):
 
 #######################################################################################################################
 
-# Class representing a DNA sequence
+# Class representing a DNA sequence, inherits from str class
 class Sequence(str):
     # Translating to amino acid sequence
     def translate(self, letter):
