@@ -597,9 +597,9 @@ def download_gtf(source_compressed_gtf, version):
         sys.stdout.write(f'Downloading {os.path.basename(source_compressed_gtf)}... ')
         sys.stdout.flush()
         if 'ensembl' in source_compressed_gtf:
-            url = 'ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_' + version + '/MANE.GRCh38.v' + version + '.select_ensembl_genomic.gtf.gz'
+            url = 'https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_' + version + '/MANE.GRCh38.v' + version + '.select_ensembl_genomic.gtf.gz'
         else:
-            url = 'ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_' + version + '/MANE.GRCh38.v' + version + '.select_refseq_genomic.gtf.gz'
+            url = 'https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_' + version + '/MANE.GRCh38.v' + version + '.select_refseq_genomic.gtf.gz'
         try:
             wget.download(url)
             os.rename(os.path.basename(source_compressed_gtf), source_compressed_gtf)
