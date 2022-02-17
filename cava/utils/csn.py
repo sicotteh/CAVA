@@ -3,8 +3,9 @@
 
 # CSN annotation
 #######################################################################################################################
-import cava.utils.core as core
 import sys
+from . import core
+
 
 # Class representing a CSN annotation
 class CSNAnnot:
@@ -32,7 +33,7 @@ class CSNAnnot:
                         # ..
         # Adding the first part of the csn annotation (coordinates)
         ret = 'c.' + str(self.coord1)
-        if self.intr1 != 0:
+        if self.intr1 is not None and self.intr1 != 0:
             if self.intr1 > 0:
                 ret += '+' + str(self.intr1)
             else:
@@ -165,7 +166,7 @@ def calculateCSNCoordinates(variant, transcript):
         else:
             if '*' in startx and '-' in endx:  #Deletion encompassing whole transcript
                 return endx, endy, startx, starty, end_nout ,start_nout
-        return None, None, None, None  # Boths ends of variant outside transcript (one side of other)
+        return None, None, None, None, None, None  # Boths ends of variant outside transcript (one side of other)
 
 
 
@@ -496,6 +497,14 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
             return variant.ref.reverseComplement() + '>' + variant.alt.reverseComplement(), ''
 
     # Returning genomic DNA level annotation if variant is an insertion
+    rep_unit = variant.alt
+    repn = 1
+    replen = len(rep_unit)
+    if variant.isInsertion():
+        [rep_unit,repn] = find_repeat_unit(variant.alt)
+    elif variant.isDeletion():
+        [rep_unit, repn] = find_repeat_unit(variant.ref)
+
     if variant.isInsertion():
         insert = core.Sequence(variant.alt)
         # this is cDNA annotation
@@ -507,6 +516,8 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
             if variant.pos - len(insert) >= transcript.transcriptStart and variant.pos - 1 <= transcript.transcriptEnd:
                 # Only annotate dup, if dup is within transcript, otherwise will be shifted outside transcript.
                 #
+                # variant object is already shifted 3'
+
                 before = reference.getReference(variant.chrom, variant.pos - len(insert), variant.pos-1)
                 # Checking if variant is a duplication, favor left shifting by 1 position.
                 if insert == before:
@@ -586,7 +597,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
     :param variant:
     :param prot:
     :param mutprot:
-    :param coord1:
+    :param coord1_str:
     :return: '_p.Met1?', ('1', prot[0], 'X')
     """
     if isinstance(coord1_str,str):
@@ -596,7 +607,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
             return '', ('.', '.', '.')   # "-" before coding or "*": after Stop codon
     else:
         coord1 = coord1_str
-    if prot == '':
+    if len(prot) == 0:
         return '', ('.', '.', '.')
     # this is used to distringuish frameshift from non-frameshifts.. though an Early Stop codon .. will be coded as nonsense
     #      even if it's a frameshift [HGVS NOTE in fs: the shortest frame shift variantis fsTer2, fsTer1  variants are by definition nonsense variants]
@@ -604,15 +615,18 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
 
     xindex = mutprot.find('X')
     # Edge case in HGVS, entire protein deleted .. starting
-    if mutprot == '':
+    if len(mutprot)==0:
         return '_p.Met1?', ('1', prot[0], '')
-    if xindex == 0:
+    if mutprot[0]=='X' and prot[0] != 'X': # allow selenocysteine proteins.
         return '_p.Met1?', ('1', prot[0], 'X')
 
         # Checking if there was no change in protein sequence
-    if prot == mutprot:
+    if prot == mutprot:  # to reach this point, both must be len>0
         idx = int(coord1 / 3)
-        if coord1 % 3 > 0: idx += 1
+        if coord1 % 3 > 0:
+            idx += 1
+            if idx > len(prot):
+                sys.stderr.write("Protein too short: prot="+prot+"\n in variant="+variant.id+" for coord1="+coord1_str+"\n")
         # Note old CAVA behavior of p.= is incorrect HGVS ... because that means there are no AA change across the entire protein for any variants.
         return '_p.' + changeTo3lettersTer(prot[idx - 1]) + str(idx) + '=', (str(idx), prot[idx - 1], prot[idx - 1])
 
@@ -636,7 +650,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
             break
 
     # Any mutation where the first different AA is a Stop is a nonsense mut (wether insertion of deletion or frameshift)
-    if mutprot[0] == 'X' and prot[0] != 'X':
+    if len(mutprot)>0 and mutprot[0] == 'X' and len(prot)>0 and prot[0] != 'X':
         return '_p.' + changeTo3lettersTer(prot[0]) + str(leftindex) + changeTo3lettersTer(mutprot[0]), (
         str(leftindex), prot[0], 'X')
 
@@ -711,12 +725,12 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
     #               For the case of Ins of fs.. if an early Stop occur.. and is encodable as a substitution
 
     # Any mutation where the first different AA is a new Stop ==> priority as nonsense mut (wether ins, del or fs, or complex )
-    if mutprot[0] == 'X' and prot[0] != 'X':
+    if len(mutprot)>0 and mutprot[0] == 'X' and len(prot)>0 and prot[0] != 'X':
         return '_p.' + changeTo3lettersTer(prot[0]) + str(leftindex) + changeTo3lettersTer(mutprot[0]), (
         str(leftindex), prot[0], 'X')
 
     # Checking if the first base altered results in a stop lost mutation
-    if prot[0] == 'X':  # Don't have to check for frameshift or SSR if stop codon is first mutated.
+    if len(prot)>0 and prot[0] == 'X':  # Don't have to check for frameshift or SSR if stop codon is first mutated.
         if len(mutprot) == 0:  # 3' Extension of unknown length on reference sequence without reference sequence that can lead to extension
             return '_p.Ter' + str(leftindex) + '?extX?', (str(leftindex), 'X', '?')
         else:  # by definition or "prot" and left-scanning ==> mutprot[0] != 'X' : # 3' Extension
@@ -938,8 +952,8 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
                     return '_p.(Met1Ter)', ('1', 'M', 'X')
                 # Check to see if new Stop is a 3' extension.. can only occur if last AA is the first one changed.
                 if leftindex == len(protcopy):  # last AA of protein is first mutated ==> Extensions
-                    if xindex + 1 > len(
-                            prot):  # extension, at or past end of current protein. do not check to see if last original codon is X,x,* .. to allow partial reference.
+                    if xindex + 1 > len(prot):  # extension, at or past end of current protein.
+                        # do not check to see if last original codon is X,x,* .. to allow partial reference.
                         return '_p.' + changeTo3lettersTer(prot[0]) + str(len(protcopy)) + changeTo3lettersTer(
                             mutprot[0]) + 'extX' + str(xindex + 1), (str(leftindex), prot[0], mutprot[0:(xindex + 1)])
                     # else xindex+1<=len(prot) .. only xindex+1==len(prot) possible .. which would mean that the new Ter is at the end of the protein.(only possible is original protein is partial .. considered below)
@@ -989,12 +1003,6 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
 
     # Past this point, only Complex delins not including the stop codon, 5' extension insertions
 
-    # Trimming common ending substring
-    trim_prot
-    trim_mutprot
-
-    prot = trim_prot
-    trim_mutprot
 
     #  (len(prot)==0 and len(mutprot)==0) should have been covered by  earlier cases
 

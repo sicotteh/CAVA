@@ -18,18 +18,25 @@ import re
 # Class representing a single variant call
 class Variant(object):
     # Constructor
-    def __init__(self, chrom, pos, ref, alt):
+    def __init__(self, chrom, pos, vcf_ref, vcf_alt):
+        vcf_ref = vcf_ref.upper()
+        vcf_alt = vcf_alt.upper()
         self.chrom = chrom
+        self.id = chrom + ":" + str(pos) + ":" + vcf_ref + "/" + vcf_alt
         self.pos = pos
-        self.ref = Sequence(ref)
-        self.alt = Sequence(alt)
-        shiftpos, a, b = self.trimCommonStart(self.ref, self.alt)
-        self.pos = self.pos + shiftpos
-        shiftpos, x, y = self.trimCommonEnd(a, b)
+        self.vcf_padded_base = ''
+        shift_pos, a, b = self.trimCommonStart(vcf_ref, vcf_alt)
+        self.pos = self.pos + shift_pos
+        shiftpos2, x, y = self.trimCommonEnd(a, b)
+        if (len(x) == 0 or len(y) == 0) and shift_pos > 0:
+            self.vcf_padded_base = vcf_ref[shift_pos - 1]
+
         self.ref = Sequence(x)
         self.alt = Sequence(y)
         self.flags = []
         self.flagvalues = []
+        self.alignonplus = None  # Cache the result of alignment because it is expensive and can be done many times.
+        self.alignonminus = None
 
     # Getting basic information about variant
     def info(self):
@@ -85,8 +92,10 @@ class Variant(object):
     # Annotating variant
     def annotate(self, ensembl, dbsnp, reference, impactdir):
         self.annotateWithType()
-        if ensembl is not None: self = ensembl.annotate(self, reference, impactdir)
-        if dbsnp is not None: dbsnp.annotate(self)
+        if ensembl is not None:
+            self = ensembl.annotate(self, reference, impactdir)
+        if dbsnp is not None:
+            dbsnp.annotate(self)
 
     # Annotating variant with its type
     def annotateWithType(self):
@@ -95,53 +104,130 @@ class Variant(object):
         if self.isDeletion(): self.addFlag('TYPE', 'Deletion')
         if self.isComplex(): self.addFlag('TYPE', 'Complex')
 
+    def remove_same_bases_ref_alt(self):  # Only apply for SNV or MNP with padded bases to remove.
+        if len(self.ref) != len(self.alt) or len(self.ref) == 0:
+            return [self.pos, self.ref, self.alt]
+        if self.ref == self.alt:
+            return [self.pos, self.ref[0], self.alt[0]]
+        left, seq1, seq2 = self.trimCommonStart(self.ref, self.alt)
+        right, newref, newalt = self.trimCommonEnd(seq1, seq2)
+        return [self.pos + left, newref, newalt]
+
     # Aligning variant on the plus strand, shifting 3' (right) on DNA
     def alignOnPlusStrand(self, reference):
+        if self.alignonplus is not None:
+            return self.alignonplus
+        if self.chrom not in reference.reflens or not (self.isInsertion() or self.isDeletion()):
+            [self.pos, self.ref, self.alt] = self.remove_same_bases_ref_alt()  # Trime redundant bases from SNP/MNP
+            self.alignononplus = self
+            return self
+        reflen = reference.reflens[self.chrom]
         maxreplen = abs(len(self.ref)-len(self.alt))
         PADLEN = max(100,1+5*maxreplen) # the bigger the repeat, the less likely there are multiple exact copies, so 5 is OKfSequence
-        seq1_0 = reference.getReference(self.chrom, self.pos, self.pos + len(self.ref) - 1 + PADLEN)
-        seq2_0 = self.alt + reference.getReference(self.chrom, self.pos + len(self.ref),
-                                                 self.pos + len(self.ref) + PADLEN - 1)
+#        seq1_0 = reference.getReference(self.chrom, self.pos, self.pos + len(self.ref) - 1 + PADLEN)
+#        seq2_0 = self.alt + reference.getReference(self.chrom, self.pos + len(self.ref),
+#                                                 self.pos + len(self.ref) + PADLEN - 1)
+        maxpos = self.pos + len(self.ref) - 1 + PADLEN
+        if maxpos > reflen:
+            maxpos = reflen
+        EXTRA_PREBASE = 1
+        if self.pos == 1:
+            EXTRA_PREBASE = 0
+        seq12_0 = reference.getReference(self.chrom, self.pos-EXTRA_PREBASE, maxpos)
+        seq1_0 = seq12_0[EXTRA_PREBASE:]
+        seq2_0 = self.alt+seq12_0[len(self.ref)+EXTRA_PREBASE:]
         left, seq1, seq2 = self.rightAlign(seq1_0, seq2_0)
-        while left >= PADLEN - (maxreplen -  1):  # Shifted almost all the way to the end, make sure there is not more to shift
+        while left >= PADLEN - (maxreplen -  1) and maxpos!=reflen:  # Shifted almost all the way to the end, make sure there is not more to shift
             PADLEN += PADLEN
-            seq1_0 = reference.getReference(self.chrom, self.pos, self.pos + len(self.ref) - 1 + PADLEN)
-            seq2_0 = self.alt + reference.getReference(self.chrom, self.pos + len(self.ref),
-                                                       self.pos + len(self.ref) + PADLEN - 1)
+            maxpos = self.pos + len(self.ref) - 1 + PADLEN
+            if maxpos > reflen:
+                maxpos = reflen
+#            seq1_0 = reference.getReference(self.chrom, self.pos, maxpos)
+#            seq2_0 = self.alt + reference.getReference(self.chrom, self.pos + len(self.ref),
+#                                                       self.pos + len(self.ref) + PADLEN - 1)
+            seq12_0 = reference.getReference(self.chrom, self.pos-EXTRA_PREBASE, maxpos)
+            seq1_0 = seq12_0[EXTRA_PREBASE:]
+            seq2_0 = seq12_0[len(self.ref)+EXTRA_PREBASE:]
             left, seq1, seq2 = self.rightAlign(seq1_0, seq2_0)
-        if len(seq1) == 0 or len(seq2) == 0:
-            left -= 1
-            base = reference.getReference(self.chrom, self.pos + left, self.pos + left)
+
+        base = ''
+        if len(seq1) == 0 or len(seq2) == 0:  # e.g. if insertion/deletion .. should always be the case
+            if (left >= 1 and EXTRA_PREBASE == 1):
+                # base = reference.getReference(self.chrom, self.pos + left, self.pos + left)
+                base = seq12_0[left]
+            elif left == 0 and EXTRA_PREBASE == 1:
+                base = seq12_0[0]
+            else:  # Variant on First base of chrom (currently only Mitochorndria has first base not an 'N')
+                base = ""
             seq1, seq2 = base + seq1, base + seq2
-        ret = Variant(self.chrom, self.pos + left, seq1, seq2)
+        ret = Variant(self.chrom, self.pos + left-len(base), seq1, seq2)  # have to use VCF padded coordinates
         ret.flags = self.flags
-        ret.flagvalues = self.flagvalues
+        self_flagvalues = self.flagvalues
+        ret.flagvalues = self_flagvalues
+        self.alignonplus = ret
         return ret
 
     # Aligning variant on the minus strand
     def alignOnMinusStrand(self, reference):
+        if self.alignonminus is not None:
+            return self.alignonminus
+        if self.pos == 1 or (self.chrom not in reference.reflens or not (self.isInsertion() or self.isDeletion())):
+            [self.pos, self.ref, self.alt] = self.remove_same_bases_ref_alt()
+            self.alignonminus = self
+            return self
+        else:
+            if self.isInsertion():
+                if not len(self.vcf_padded_base) == 0:
+                    if self.vcf_padded_base[0] != self.alt[-1]:  # See if there is the potential for another copy of the alt allele
+                        self.alignonminus = self
+                        return self
+            elif self.isDeletion():
+                if not len(self.vcf_padded_base) == 0:  # Skip cases where initial VCF was invalid and did not have pre-base as can happen after splitting multiple alleles
+                    if self.vcf_padded_base[0] != self.ref[-1]:
+                        self.alignonminus = self
+                        return self
+
+        reflen = reference.reflens[self.chrom]
+
         maxreplen = abs(len(self.ref)-len(self.alt))
         PADLEN = max(100,1+5*maxreplen)
+        if self.pos - PADLEN<1:
+            PADLEN = self.pos -1
         seq1_0 = reference.getReference(self.chrom, self.pos - PADLEN, self.pos + len(self.ref) - 1)
-        s = reference.getReference(self.chrom, self.pos - PADLEN, self.pos - 1)
+        #s = reference.getReference(self.chrom, self.pos - PADLEN, self.pos - 1)
+        s = seq1_0[0:PADLEN]
         seq2_0 = s + self.alt
         N = len(s)
         left, seq1, seq2 = self.leftAlign(seq1_0, seq2_0)
-        while left <= maxreplen-1 :  # Shifted  all the way to the beginning, make sure there is not more to shift
+        while left <= maxreplen and self.pos-PADLEN > 0:  # Shifted  all the way to the beginning, make sure there is not more to shift
             PADLEN += PADLEN
+            if self.pos - PADLEN < 1:  # This will only occur for Mitochondria
+                PADLEN = self.pos-1
             seq1_0 = reference.getReference(self.chrom, self.pos - PADLEN, self.pos + len(self.ref) - 1)
-            s = reference.getReference(self.chrom, self.pos - PADLEN, self.pos - 1)
+            #s = reference.getReference(self.chrom, self.pos - PADLEN, self.pos - 1)
+            s = seq1_0[0:PADLEN]
             seq2_0 = s + self.alt
             left, seq1, seq2 = self.leftAlign(seq1_0, seq2_0)
             N = len(s)
 
         if len(seq1) == 0 or len(seq2) == 0:
-            left = left - 1
-            base = reference.getReference(self.chrom, self.pos + left - N, self.pos + left - N)
+            # Unless Variant got shifted all the way to position 1(left==0), there should be enough bases for padding.
+            if left > 0:
+                left = left - 1
+                #            base = reference.getReference(self.chrom, self.pos + left - PADLEN, self.pos + left - PADLEN)
+                base = seq1_0[left]  # if eliminate 1st common base, take seq1_0[0] ..etc
+            else:  # left == 0 means no shared bases in chunk, so it means variant fills the chunk .. all the way to the first base
+                base = ''
             seq1, seq2 = base + seq1, base + seq2
+        else:
+            sys.stderr.write(
+                "WARNING: Attempted to left shift non-indel variant .. bug? for variant:" + self.id + "\n")
+
+
         ret = Variant(self.chrom, self.pos + left - N, seq1, seq2)
         ret.flags = self.flags
         ret.flagvalues = self.flagvalues
+        self.alignonminus = ret
         return ret
 
     # Right-aligning two sequences
@@ -183,7 +269,7 @@ class Record(object):
     def __init__(self, line, options, targetBED, reference):
 
         self.targetBED = targetBED
-        # Reference genome
+        # Reference genome pysam/tabix object
         self.reference = reference
         # Parsing VCF format
         if options.args['inputformat'].upper() == 'VCF':
@@ -276,24 +362,21 @@ class Record(object):
 
             # Filtering by BED file, if required
             if targetBED is not None:
-                goodchrom = ""+var.chrom
-                if goodchrom.startswith("chr"):
-                    goodchrom_core = goodchrom[3:len(goodchrom)]
-                else:
-                    goodchrom_core = goodchrom
-                    goodchrom = "chr" + goodchrom
-                if not (goodchrom in targetBED.contigs or goodchrom_core in targetBED.contigs):
+                goodchrom = convert_chrom(var.chrom+"", targetBED.contigs)
+                if goodchrom is None:
                     continue
                 if not var.isInsertion():
-                    start = var.pos
+                    start = var.pos - 1  # correct for 0-base
                     end = var.pos + len(var.ref) - 1
                 else:
-                    start = var.pos - 1
+                    start = var.pos - 2 # correct for insertion AND 0-base
                     end = var.pos
                 foundstart = False
-                for _ in self.targetBED.fetch(region=goodchrom + ':' + str(start) + '-' + str(start)): foundstart = True
+                for _ in self.targetBED.fetch(region=goodchrom + ':' + str(start) + '-' + str(start)):
+                    foundstart = True
                 foundend = False
-                for _ in self.targetBED.fetch(region=goodchrom + ':' + str(end) + '-' + str(end)): foundend = True
+                for _ in self.targetBED.fetch(region=goodchrom + ':' + str(end) + '-' + str(end)):
+                    foundend = True
                 if not (foundstart or foundend): 
                     if not (var.isDeletion() or var.isInsertion()):
                         continue  # No shifting possible, so definitively outside bed region.
@@ -304,21 +387,23 @@ class Record(object):
                             continue
                         else:
                             if not var_plus.isInsertion():
-                                start = var_plus.pos
+                                start = var_plus.pos -1 # correct for -base
                                 end = var_plus.pos + len(var_plus.ref) - 1
                             else:
-                                start = var_plus.pos - 1
+                                start = var_plus.pos - 2 # correct for insertion and 0-base
                                 end = var_plus.pos
                             foundstart = False
-                            for _ in self.targetBED.fetch(region=goodchrom + ':' + str(start) + '-' + str(start)): foundstart = True
+                            for _ in self.targetBED.fetch(region=goodchrom + ':' + str(start) + '-' + str(start)):
+                                foundstart = True
                             foundend = False
-                            for _ in self.targetBED.fetch(region=goodchrom + ':' + str(end) + '-' + str(end)): foundend = True
+                            for _ in self.targetBED.fetch(region=goodchrom + ':' + str(end) + '-' + str(end)):
+                                foundend = True
                             if not (foundstart or foundend):
                                 if not var_minus.isInsertion():
-                                    start = var_minus.pos
+                                    start = var_minus.pos -1  # correct for 0-base
                                     end = var_minus.pos + len(var_minus.ref) - 1
                                 else:
-                                    start = var_minus.pos - 1
+                                    start = var_minus.pos - 2 # correct for 0-base and insertion
                                     end = var_minus.pos
                                 foundstart = False
                                 for _ in self.targetBED.fetch(region=goodchrom + ':' + str(start) + '-' + str(start)): foundstart = True
@@ -398,7 +483,8 @@ class Record(object):
                 for i in range(len(variant.flags)):
                     key = variant.flags[i]
                     value = variant.flagvalues[i]
-                    if value == '': value = '.'
+                    if value == '':
+                        value = '.'
                     if key in flags:
                         flagvalues[flags.index(key)].append(value)
                     else:
@@ -425,26 +511,33 @@ class Record(object):
             if options.args['prefix']:
                 HGVSC_key = 'CAVA_HGVSc='
                 HGVSP_key = 'CAVA_HGVSp='
+                HGVSG_key = 'CAVA_HGVSg='
+
             else:
                 HGVSC_key = 'HGVSc='
                 HGVSP_key = 'HGVSp='
+                HGVSG_key = 'HGVSg='
 
             HGVSC = ''
             HGVSP = ''
+            HGVSG = ''
             if ('TRANSCRIPT' in flags) and ('GENE' in flags) and ('CSN' in flags):
-                # List of 1 entry per variant (alt-allele) .. and whithin each multiple transcripts are separated by ','
+                # List of 1 entry per variant (alt-allele) .. and within each multiple transcripts are separated by ','
                 transcripts_list = flagvalues[flags.index('TRANSCRIPT')]
                 gene_list = flagvalues[flags.index('GENE')]
                 csn_list = flagvalues[flags.index('CSN')]
+                #repeats_list = flagvalues[flags.index('REPEATS')]
                 csn_hgvs_list = csn_list
                 #csn_hgvs_list = flagvalues[flags.index('CSNHGVS')]
                 if not (len(transcripts_list) == 0 or len(gene_list) != len(transcripts_list) or len(gene_list) != len(
                         csn_list)):
                     for ihg in range(0, len(transcripts_list)):  # Loop over alt-alleles
-                        hgtranscripts = transcripts_list[ihg].split(":")
+                        hgtranscripts = transcripts_list[ihg].split(":")  # split over alt-alleles
                         hggenes = gene_list[ihg].split(":")
                         hgcsns = csn_list[ihg].split(":")
                         hgcsns_hgvs = csn_hgvs_list[ihg].split(":")
+                        #hgrepeats = repeats_list[ihg].split(":")
+
                         if not (len(hgtranscripts) == len(hggenes) and len(hgtranscripts) == len(hgcsns)):
                             print("ERROR transcripts GENE and CSN not same length\n")
                             print("--------------------------------------------------------------------\n")
@@ -458,6 +551,7 @@ class Record(object):
                                 hgtranscript = hgtranscripts[itr]
                                 hggene = hggenes[itr]
                                 hgcsn_hgvs = hgcsns_hgvs[itr]
+                                #hgrepeat = hgrepeats[itr]
                                 tHGVSC = hgtranscript
                                 tHGVSC += '(' + hggene + '):'
                                 try:
@@ -469,7 +563,10 @@ class Record(object):
                                 del_nuc = re.match(r"^(.*del[ACGTacgtnN]+)$", cdna)
                                 if del_nuc:
                                     cdna = del_nuc.group(1)
-                                tHGVSC += cdna
+                                #if len(hgrepeat)>1:
+                                #    trHGVSC += hgrepeat
+                                else:
+                                    tHGVSC += cdna
                                 if tHGVSC == '.(.):.':
                                     tHGVSC = '.'
                                 if prot == '.' or prot == '':
@@ -518,9 +615,9 @@ class Record(object):
 
             # Add multi-transcripts/multi-allele HGVS to output record
             if added == '':
-                added = HGVSC + ';' + HGVSP
+                added = HGVSC + ';' + HGVSP + ';' + HGVSG
             else:
-                added += ';' + HGVSC + ';' + HGVSP
+                added += ';' + HGVSC + ';' + HGVSP + ';' + HGVSG
 
             # Adding second part of the VCF record (starting from the INFO field)
             if self.info == '.' or self.info == '':
@@ -609,7 +706,8 @@ class Record(object):
                                                     'IMPACT', 'ALTANN', 'ALTCLASS', 'ALTSO', 'ALTFLAG', 'PROTPOS',
                                                     'PROTREF', 'PROTALT']:
                             value = variant.flagvalues[j]
-                            if value == '': value = '.'
+                            if value == '':
+                                value = '.'
                             rest += '\t' + value
                             continue
 
@@ -662,7 +760,9 @@ class Record(object):
 
 
 #######################################################################################################################
-
+class Tr_store:
+    lasttr = dict
+    
 # Class representing a single Ensembl transcript
 class Transcript(object):
     # Constructor
@@ -684,6 +784,7 @@ class Transcript(object):
         for i in range(1, len(cols) - 11, 2):
             self.exons.append(Exon(int((i + 1) / 2), int(cols[10 + i]), int(cols[11 + i])))   # Start is 0-based, ENd is 1-based -- like a bed file
         self.three_prime_len = 0
+        self.exonseqs = None  # list of the exons for the reference sequence
         for ex in self.exons:
             if self.strand == 1:
                 if self.codingEndGenomic >= ex.start+1:
@@ -703,63 +804,142 @@ class Transcript(object):
     # Getting the full coding sequence of the transcript
     # Note that the coding sequence starts at ATG, but ends all the way to the end of the UTR (to allow frameshifting to include new stop)
 
-    def getCodingSequence(self, reference, variant, exonseqs):
-        ret = ''
-        ret_exonseqs = []
+# Get coding sequence of the Alternate Transcript.
 
+    def getCodingSequence(self, reference, variant, exonseqs):
+        ret = ''  # transcript sequence including alt-allele
+        ret_ref = ''  # transcript sequence with ref allele
+        ret_exonseqs = []
+        coding_start_alt = self.codingStart
+        trans_pos = 0
+        if exonseqs is None and self.exonseqs is not None:
+            exonseqs = self.exonseqs
         for i in range(len(self.exons)):
+            # Exons are ordered 5' to 3; (different order for strand = 1 or -1)
             exon = self.exons[i]
+            if exonseqs is None:
+                # bef = reference.getReference(self.chrom, exon.start + 1, variant.pos - 1)  # 1-base positions
+                # aft = reference.getReference(self.chrom, variant.pos + len(variant.ref), exon.end)  # 1-base positions
+                exonseqF = reference.getReference(self.chrom, exon.start + 1, exon.end)
+                if self.strand == 1:
+                    exonseq = exonseqF
+                else:
+                    exonseq = exonseqF.reverseComplement()
+            else:
+                exonseq = exonseqs[i]
 
             if variant is not None:
-                if exon.start < variant.pos <= exon.end:
+                # Should not be calling this function for Variant that overlaps the splice site.
+                # .. e.g. will not work if variant.pos<exon.start+1 and variant.pos+len(variant.ref)>= exon.start+1 (left exon)
+                # .. or variant.pos<=exon.end and variant.pos+len(variant.ref)>exon.end (right end of exon)
+                if exon.start < variant.pos <= exon.end:  #  same as exon.start+1 <= variant.pos <= exon.end
                     if self.strand == 1:
-                        ret += reference.getReference(self.chrom, exon.start + 1,
-                                                      variant.pos - 1) + variant.alt + reference.getReference(
-                            self.chrom, variant.pos + len(variant.ref), exon.end)
+                        trans_pos+= (variant.pos-exon.start)
                     else:
-                        temp = Sequence(reference.getReference(self.chrom, exon.start + 1,
-                                                               variant.pos - 1) + variant.alt + reference.getReference(
-                            self.chrom, variant.pos + len(variant.ref), exon.end))
-                        ret += temp.reverseComplement()
+                        trans_pos += (exon.end+1 - variant.pos)
+                    if trans_pos<coding_start_alt:
+                        coding_start_alt += len(variant.alt)
+                    if exonseqs is None:
+                        # before variant : 1-base positions, + strand. Exon.start points to before exon
+                        #bef = reference.getReference(self.chrom, exon.start + 1, variant.pos - 1)
+                        # after variant: 1-base positions, + strand
+                        #aft = reference.getReference(self.chrom, variant.pos + len(variant.ref), exon.end)
+                        exonseqF = reference.getReference(self.chrom, exon.start + 1, exon.end)
+                        if self.strand == 1:
+                            exonseq = exonseqF
+                        else:
+                            exonseq = exonseqF.reverseComplement()
+                    else:
+                        exonseq = exonseqs[i]
+
+                    if self.strand == 1:
+                        bef_end_index = variant.pos - exon.start -1 # Points to variant pos .. this index will not be included in sequence
+                        upstream = exonseq[0:bef_end_index]  # note [0:0] == '', so if variant.pos is first base of exon, bef ==''
+                        aft_start_index = variant.pos+len(variant.ref)- (exon.start+1)  # index points after variant, or other side of insertion.
+                        downstream = exonseq[aft_start_index:]   # if variant.ref extend outside exon, will only grab sequence inside exon .. but realistically
+                                                            # the splicing won't occur.. this is caught earlier in CAVA by checking type of variant
+                                                            # and not protein annotating variants that span Extron-intron or Intron-Exon
+                        temp_alt = upstream + variant.alt + downstream
+                        if variant.pos+len(variant.ref)-1>exon.end: # This won't splice, so should not be calling this function
+                            if i != len(self.exons) -1: # if it's the last exon, it's OK.. won't affect protein ..
+                                sys.stderr.write("CAVA: ERROR: Bug, tried to get protein sequence for variant spanning splice site\n")
+                            temp_ref = upstream + variant.ref[0:exon.end + 1 - variant.pos]
+                        else:
+                            temp_ref = upstream + variant.ref+ downstream
+                    else:
+                        bef_end_index = exon.length - (variant.pos - exon.start -1)
+                        downstream = exonseq[bef_end_index:]  ## if bef_end_index == exon.length ==> ==''
+                        aft_start_index = exon.end -variant.pos-len(variant.ref) +1
+                        if aft_start_index>0:
+                            upstream = exonseq[:aft_start_index]  # if SNP is at end of exon exonseq[:0] == '', correctly
+                        else:
+                            upstream = Sequence('')
+                        temp_alt = upstream + Sequence(variant.alt).reverseComplement() + downstream
+                        if variant.pos+len(variant.ref)-1>exon.end: # This won't splice, so should not be calling this function
+                            sys.stderr.write("CAVA: ERROR: Bug, tried to get protein sequence for variant spanning splice site\n")
+                            temp_ref = upstream + Sequence(variant.ref[0:exon.end + 1 - variant.pos]).reverseComplement
+                        temp_ref = upstream + Sequence(variant.ref).reverseComplement() + downstream
+
+                    ret_ref += temp_ref
+                    ret += temp_alt
+                    if exonseqs is None:
+                        ret_exonseqs.append(temp_ref)
                     continue
+
+            trans_pos += abs(exon.end-exon.start)
 
             if self.strand == 1:
                 if exonseqs is None:
                     exonseq = reference.getReference(self.chrom, exon.start + 1, exon.end)
-                    ret += exonseq
                     ret_exonseqs.append(exonseq)
                 else:
-                    ret += exonseqs[i]
+                    exonseq = exonseqs[i]
             else:
                 if exonseqs is None:
                     exonseq = reference.getReference(self.chrom, exon.start + 1, exon.end).reverseComplement()
-                    ret += exonseq
                     ret_exonseqs.append(exonseq)
                 else:
-                    ret += exonseqs[i]
+                    exonseq = exonseqs[i]
+            ret += exonseq
+            ret_ref += exonseq
 
-        ret = ret[self.codingStart - 1:]
+        ret_transcript_alt = ret + ""
+        # HS: fixed bug that if variant was before coding start, "ret" would not point to ATG
+        ret = ret[coding_start_alt  - 1:]
 
+        self.transcriptseq = ret_ref
+        if self.exonseqs is None:
+            self.exonseqs = ret_exonseqs
         if exonseqs is None:
-            return ret, ret_exonseqs
+            return ret, ret_exonseqs, ret_transcript_alt, ret_ref
         else:
-            return ret, exonseqs
+            return ret, exonseqs,     ret_transcript_alt, ret_ref
+
+    def getTranscriptSeq(self,reference):
+        if self.transcriptseq is None:
+            codingsequencealt, exonseqalt, transcript_alt_seq, transcript_seq = self.getCodingSequence(reference,None,None)
+            # self.transcriptseq = transcript_seq  .. this is done inside self.getCodingSequence
+        return self.transcriptseq
 
     # Getting the translated protein sequence of the transcript
     # with the variant included as well as a list of the (reference) exon sequence.
+    # The exonseqs should NOT include the alt allele
+    # Ideally, call this function first with variant = None to get exonseq .. to use in 2nd call of this function.
+
     def getProteinSequence(self, reference, variant, exonseqs, codon_usage):
         # Translating coding sequence
         codon_usage = codon_usage
-        codingsequence, exonseqa = self.getCodingSequence(reference, variant, exonseqs)
-        if (self.chrom == 'chrM' or
-                self.chrom == 'chrMT' or
-                self.chrom == 'M' or
-                self.chrom == 'MT'):
-            ret = Sequence(codingsequence).translate('4')
+        # returns exonsseq of the alternate allele unless variant is None
+        codingsequencealt, exonseqalt, transcript_alt_seq, transcript_seq = self.getCodingSequence(reference, variant, exonseqs)
+        if self.chrom in ['chrM','chrMT' , 'M','MT']:
+            ret = Sequence(codingsequencealt).translate('4')
         else:
-            ret = Sequence(codingsequence).translate(codon_usage)
-        ret = trim_prot_after_stop(ret)  # trim up to and including the first X (if any)
-        return ret, exonseqa
+            ret = Sequence(codingsequencealt).translate(codon_usage)
+        # Some 15+ human genes genes recode  the UGA stop codons as selenocysteines, so cannot remove the "X" .. must trust the annotation
+        #  When removing leading edge of protein, the early "X" will be removed and not considered mutations.
+        # ret = trim_prot_after_stop(ret)  # trim up to and including the first X (if any)
+
+        return ret, exonseqalt
 
     # Checking if a given position is outside the region between the start and stop codon
     def isPositionOutsideCDS(self, pos):
@@ -999,7 +1179,7 @@ class Sequence(str):
                 'TTC': 'Phe', 'TTT': 'Phe', 'TTA': 'Leu', 'TTG': 'Leu',
                 'TAC': 'Tyr', 'TAT': 'Tyr', 'TAA': 'X', 'TAG': 'X',
                 'TGC': 'Cys', 'TGT': 'Cys', 'TGA': 'X', 'TGG': 'Trp'}
-        if letter == '4':
+        if letter == '4': # Mitochondrgenetic code for vertebrates
             gencode = {
                 'ATA': 'M', 'ATC': 'I', 'ATT': 'I', 'ATG': 'M',
                 'ACA': 'T', 'ACC': 'T', 'ACG': 'T', 'ACT': 'T',
@@ -1094,6 +1274,7 @@ class Options(object):
         self.defs['normalized_mitochondrial_chrom'] = ('string', 'not_normalized')
 
         self.defs['transcript2protein'] = ('string', '.')
+        self.defs['loadalltranscripts'] = ('boolean', True)
 
         # Reading options from file
         self.read()
@@ -1121,6 +1302,54 @@ class Options(object):
 #######################################################################################################################            
 
 # Other basic utility functions 
+
+#
+# Convert various chromosome nomenclatures to that found in file.
+#
+def convert_chrom(chrom, contigs):
+        # Checking if chromosome name exists
+        if chrom in contigs:
+            return chrom
+        if chrom.startswith("chr") and len(chrom)>3:
+            goodchrom = chrom[3:]
+            if goodchrom in contigs:
+                return goodchrom
+
+            if goodchrom == "MT":
+                goodchrom = 'chrM'
+                if goodchrom in contigs:
+                    return goodchrom
+                goodchrom = "M"
+                if goodchrom in contigs:
+                    return goodchrom
+                else:
+                    return None
+        elif chrom == "MT": # Cannot be chrMT .. because those starting with chr dealth above
+            goodchrom = 'chrMT'
+            if goodchrom in contigs:
+                return goodchrom
+            goodchrom = 'chrM'
+            if goodchrom in contigs:
+                return goodchrom
+            goodchrom = "M"
+            if goodchrom in contigs:
+                return goodchrom
+        elif chrom == "M":  # Cannot be chrM .. because those starting with chr dealth above
+                goodchrom = "MT"
+                if goodchrom in contigs:
+                    return goodchrom
+                goodchrom = "chrMT"
+                if goodchrom in contigs:
+                    return goodchrom
+                goodchrom = "chrM"
+                if goodchrom in contigs:
+                    return goodchrom
+        else:
+            goodchrom = "chr"+chrom
+            if goodchrom in contigs:
+                return goodchrom
+        return None
+
 
 # Reading gene, transcript or snp list from file
 def readSet(options, tag):

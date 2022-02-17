@@ -7,14 +7,15 @@ import multiprocessing
 import os
 import sys
 
-import pysam
 
-from cava.utils.data import Ensembl
-from cava.utils.data import Reference
-from cava.utils.data import dbSNP
-from . import core
-from .core import Options
-from .core import Record
+import pysam
+from .data import *
+from .core import *
+#from .data import Ensembl
+#from .data import Reference
+#from .data import dbSNP
+#from . import core
+#from .core import Options, checkOptions, Record, readSet, read_dict,countRecords,writeHeader
 
 
 # Printing out welcome meassage
@@ -143,15 +144,15 @@ def readHeader(inputfn):
 
 
 # Merging tmp files to final output file
-def mergeTmpFiles(output, format, threads):
+def mergeTmpFiles(output, fileformat, threads):
     filenames = []
     for i in range(1, threads + 1):
-        if format == 'VCF':
+        if fileformat == 'VCF':
             filenames.append(output + '_tmp_' + str(i) + '.vcf')
         else:
             filenames.append(output + '_tmp_' + str(i) + '.txt')
 
-    if format == 'VCF':
+    if fileformat == 'VCF':
         outfn = output + '.vcf'
     else:
         outfn = output + '.txt'
@@ -234,9 +235,13 @@ class SingleJob(multiprocessing.Process):
                 if line.startswith('@codon_usage'):
                     codon_usage = line[line.find('=') + 1:].strip().split(',')
                     self.codon_usage = codon_usage
+        # Reference genome
+        self.reference = Reference(options)
+        if options.args['logfile'] and threadidx == 1: logging.info('Connected to reference genome.')
 
         if (not options.args['ensembl'] == '.') and (not options.args['ensembl'] == ''):
-            self.ensembl = Ensembl(options, genelist, transcriptlist, codon_usage[0])
+            # Pass reference to ensembl, so it can know the chromosome sizes
+            self.ensembl = Ensembl(options, genelist, transcriptlist, codon_usage[0], self.reference)
             if options.args['logfile'] and threadidx == 1: logging.info('Connected to Ensembl database.')
         else:
             self.ensembl = None
@@ -247,9 +252,6 @@ class SingleJob(multiprocessing.Process):
         else:
             self.dbsnp = None
 
-        # Reference genome
-        self.reference = Reference(options)
-        if options.args['logfile'] and threadidx == 1: logging.info('Connected to reference genome.')
 
         # Target BED file
         if (not options.args['target'] == '.') and (not options.args['target'] == ''):
@@ -257,14 +259,15 @@ class SingleJob(multiprocessing.Process):
         else:
             self.targetBED = None
 
-        if not copts.stdout and threadidx == 1: initProgressInfo()
 
         # Reading (new) transcript2protein map for HGVSP annotation
         if options.args['logfile'] and threadidx == 1:
             logging.info("INFO: reading transcript2protein file\n")
-        options.transcript2protein = core.read_dict(options, 'transcript2protein')
+        options.transcript2protein = read_dict(options, 'transcript2protein')
         if options.args['logfile'] and threadidx == 1:
             logging.info("transcript2protein has " + str(len(options.transcript2protein)) + " mappings\n")
+
+        if not copts.stdout and threadidx == 1: initProgressInfo()
 
     # Running process
     def run(self):
@@ -358,20 +361,20 @@ def run(copts, version):
         logging.info('CAVA ' + version + ' started.')
 
     # Checking if options specified in the configuration file are correct
-    core.checkOptions(options)
+    checkOptions(options)
 
     # Printing out configuration, input and output file names
     if not copts.stdout:
         printInputFileNames(copts, options)
 
     # Reading gene, transcript and snp lists from files
-    genelist = core.readSet(options, 'genelist')
-    transcriptlist = core.readSet(options, 'transcriptlist')
-    snplist = core.readSet(options, 'snplist')
+    genelist = readSet(options, 'genelist')
+    transcriptlist = readSet(options, 'transcriptlist')
+    snplist = readSet(options, 'snplist')
 
     # Reading (new) transcript2protein map for HGVSP annotation
     print("INFO: reading transcript2protein file\n")
-    options.transcript2protein = core.read_dict(options, 'transcript2protein')
+    options.transcript2protein = read_dict(options, 'transcript2protein')
     print("transcript2protein has " + str(len(options.transcript2protein)) + " mappings\n")
     # Parsing @impactdef string
     if not (options.args['impactdef'] == '.' or options.args['impactdef'] == ''):
@@ -385,7 +388,7 @@ def run(copts, version):
         impactdir = None
 
     # Counting and printing out number of records of input file
-    numOfRecords = core.countRecords(copts.input)
+    numOfRecords = countRecords(copts.input)
     if not copts.stdout:
         printNumOfRecords(numOfRecords)
     if options.args['logfile']:
@@ -397,11 +400,12 @@ def run(copts, version):
     else:
         outfile = open(copts.output + '.txt', 'w')
     header = readHeader(copts.input)
-    core.writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
+    writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
     outfile.close()
 
     # Find break points in the input file
     breaks = findFileBreaks(copts.input, copts.threads)
+
 
     # Initializing annotation processes
     threadidx = 0
@@ -421,6 +425,7 @@ def run(copts, version):
     # Merging tmp files
     if copts.threads > 1:
         mergeTmpFiles(copts.output, options.args['outputformat'], copts.threads)
+
 
     # Printing out summary information and end time
     if not copts.stdout:

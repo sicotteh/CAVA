@@ -9,7 +9,8 @@ import sys
 
 
 def check_materials():
-    base_dir = os.path.dirname(os.path.dirname(__file__))
+    base_dir = os.path.dirname(os.path.dirname(__file__)) # This file in cava/test .. this points to base_dir=cava
+
 
     if not os.path.exists(os.path.join(base_dir, 'data')):
         print('Making data directory: {}'.format(os.path.join(base_dir, 'data')))
@@ -44,9 +45,11 @@ class MyTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         check_materials()
-        cls.genelist = ['BRCA2', 'BRCA1', "EPCAM", "MEN1", "SDHB", "PCSK9", "MUTYH"]
-        cls.transcriptlist = ['NM_000059.4','NM_007294.4', 'NM_002354.3', 'NM_001370259.2', 'NM_003000.3', 'NM_174936.4','NM_001048174.2']
+        #cls.genelist = ['BRCA2', 'BRCA1', "EPCAM", "MEN1", "SDHB", "PCSK9", "MUTYH"]
+        #cls.transcriptlist = ['NM_000059.4','NM_007294.4', 'NM_002354.3', 'NM_001370259.2', 'NM_003000.3', 'NM_174936.4','NM_001048174.2']
         cls.codon_usage = ['1']
+        cls.genelist=[]
+        cls.transcriptlist = []
         cls.options = Options()
         cls.ensembl = Ensembl(cls.options, cls.genelist, cls.transcriptlist, cls.codon_usage[0])
         cls.reference = Reference(cls.options)
@@ -219,6 +222,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('1-3417', rec.variants[0].getFlag('PROTPOS'))
 
     def test_hg38_del_in_Met1(self):
+        # if  you shift the variants the right-most position, the  deleted A is the "A" in ATG of the CDS
         line = "13\t32316460\tindel_in_met1\tAA\tA\t.\t.\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
@@ -360,12 +364,36 @@ class MyTestCase(unittest.TestCase):
 
 
     # BRCA1 is on the minus strand, so this variant should be left shifter and not be on the transcript.
-    def test_hhg38_del_brca1_dupTSS(self): # 3' shifting at DNA level should shift Inside transcript
+    def test_hhg38_ins_brca1_dupTSS(self): # 3' shifting at DNA level should shift Inside transcript
         line = "17\t43125364\tins_TSS_shifted_into\tC\tCGC\t.\t.\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('NM_007294.4', rec.variants[0].getFlag('TRANSCRIPT'))
-        self.assertEqual('Deletion', rec.variants[0].getFlag('TYPE'))
+        self.assertEqual('Insertion', rec.variants[0].getFlag('TYPE'))
+
+    def test_hg38_snp(self):  # SNP in SELENON gene, after a UGA codon .. will error out if trim UGA codons (should be stop)
+        line = "1\t25805147\tsbp_in_selenocysteine_code_gene\tA\tG\t.\t.\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('NM_020451.3', rec.variants[0].getFlag('TRANSCRIPT'))
+        self.assertEqual('Substitution', rec.variants[0].getFlag('TYPE'))
+
+
+    # Add Test case for variant without a padded base (as occurs when splitting a multi-allele VCF
+#
+# Add Test case for variant with extra 3' bases (all the same)
+#
+# Add a chromosome M variants at the beginning or end of the sequence.
+#
+#
+    # BRCA1 is on the minus strand, so this variant should be left shifter and not be on the transcript.
+    def test_hhg38_ins_brca1_dupTSS(self): # 3' shifting at DNA level should shift Inside transcript
+        line = "17\t43125364\tins_TSS_shifted_into\tC\tCGC\t.\t.\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('NM_007294.4', rec.variants[0].getFlag('TRANSCRIPT'))
+        self.assertEqual('Insertion', rec.variants[0].getFlag('TYPE'))
+
 
 
 class Options:
@@ -373,7 +401,8 @@ class Options:
 
     def __init__(self):
         base_dir = os.path.dirname(os.path.dirname(__file__))
-        self.args = {'ensembl': os.path.join(base_dir, 'data', 'RefSeq_small.gz'),
+        self.args = {#'ensembl': os.path.join(base_dir, 'data', 'RefSeq_small.gz'),
+                     'ensembl': os.path.join(base_dir, 'data', 'cava_db.GRCh38.MANE.sorted.gz'),
                      'logfile': None,
                      'reference': os.path.join(base_dir, 'data', 'tmp.GRCh38.fa'),
                      'inputformat': 'VCF',

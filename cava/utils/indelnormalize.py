@@ -2,52 +2,169 @@ import pysam
 import sys
 
 
+#
+# Convert various chromosome nomenclatures to that found in file.
+#
+def convert_chrom(chrom, contigs):
+        # Checking if chromosome name exists
+        if chrom in contigs:
+            return chrom
+        if chrom.startswith("chr") and len(chrom)>3:
+            goodchrom = chrom[3:]
+            if goodchrom in contigs:
+                return goodchrom
+
+            if goodchrom == "MT":
+                goodchrom = 'chrM'
+                if goodchrom in contigs:
+                    return goodchrom
+                goodchrom = "M"
+                if goodchrom in contigs:
+                    return goodchrom
+                else:
+                    return None
+        elif chrom == "MT": # Cannot be chrMT .. because those starting with chr dealth above
+            goodchrom = 'chrMT'
+            if goodchrom in contigs:
+                return goodchrom
+            goodchrom = 'chrM'
+            if goodchrom in contigs:
+                return goodchrom
+            goodchrom = "M"
+            if goodchrom in contigs:
+                return goodchrom
+        elif chrom == "M":  # Cannot be chrM .. because those starting with chr dealth above
+                goodchrom = "MT"
+                if goodchrom in contigs:
+                    return goodchrom
+                goodchrom = "chrMT"
+                if goodchrom in contigs:
+                    return goodchrom
+                goodchrom = "chrM"
+                if goodchrom in contigs:
+                    return goodchrom
+        else:
+            goodchrom = "chr"+chrom
+            if goodchrom in contigs:
+                return goodchrom
+        return None
+
+
+
 # Class representing the reference genome dataset
 class Reference(object):
     # Constructor
     def __init__(self, fasta_reference):
         # Openning faidx reference fasta representing the reference genome
         #
-        if hasattr(self.__class__, 'FastaFile') and callable(getattr(self.__class__, 'FastaFile')):
+        # Switch from hasattr to try except to be compatible with python2 version of library
+        try:
             self.fastafile = pysam.FastaFile(fasta_reference)
-        else:  # old API, version prior to 0.8.1
-            self.fastafile = pysam.Fastafile(fasta_reference)
+        except:  # old API, version prior to 0.8.1
+            try:
+                self.fastafile = pysam.Fastafile(fasta_reference)
+            except:
+                raise Exception("pysam library API changes, cannot find Fastafile of FastaFile. Use older version\n")
+        # Need pysam >= 0.7.7 for lengths and references to work.
+        lengths = self.fastafile.lengths
+        references = self.fastafile.references
+        self.reflens = dict()
+        for i in range(0,len(lengths)):
+            chrom = str(references[i])
+            self.reflens[chrom] = lengths[i]
+            self.reflens[chrom.upper()] = lengths[i]
+            self.reflens[chrom.lower()] = lengths[i]
+            if chrom.startswith("chr"):
+                self.reflens[chrom[3:]] = lengths[i]
+                self.reflens[chrom[3:].upper()] = lengths[i]
+            self.reflens[chrom[3:].lower()] = lengths[i]
+
+            if chrom in ["chrM","chrMT","M","MT","chrM"]:
+                self.reflens["chrM"] = lengths[i]
+                self.reflens["chrMT"] = lengths[i]
+                self.reflens["M"] = lengths[i]
+                self.reflens["MT"] = lengths[i]
+                self.reflens["chrm"] = lengths[i]
+                self.reflens["chrmt"] = lengths[i]
+                self.reflens["m"] = lengths[i]
+                self.reflens["mt"] = lengths[i]
+
+        self.cache = ""
+# caching will only wins if get more than 4-5 cache hits/5MB. Will not win for indel-only normalization of exome without off-target elements.
+#  in all other cases, it will win.
+        self.CACHESIZE = 5000000
+        self.PAD = 5000  # Default Left Padding for normalization of large indels(5000bp) .. so first cache hit will have padding.
+        self.chrom = ""
+        self.start0 = 0
+        self.endpos = 0
+
+    # Private method .. do not call because assume that chrom is in sequence index
+    #  also assumes end is less than chrom length.
+
+    def __getseq_from_cache_or_file(self, chrom, start, endpos):
+        # XXX-HS To make faster, could retrieve large blocks of sequence
+        # For normalization.
+        # There are about 322,000 indels per 3XE9 /person, so 0.3/1000bp
+        # so for a cache to be useful, it needs to include variants, so 30KB min.
+        #  for exomes. Most genes are < 1MB .. and 2000 bp cds.. so would only include 1-2 indels/sample
+        # Assuming the tabix index is in RAM, reading from disk is seek time (5-10ms) + read time (1MB/ms)
+        #    so reading 10-20MB takes the same amount of time as a single disk seek.
+        # For exome, there is one indel/gene and each gene is 1MB (average), so a 5MB cache insures 5X cache reuse(hits)
+        # if dealing with SNPs or whole genome data, other elements, a smaller cache will reap benefits too .. up to about 5MB.
+        if self.CACHESIZE == 0:
+            return  self.fastafile.fetch(chrom, start-1, endpos)
+        if chrom != self.chrom or start < self.start0 + 1 or endpos > self.endpos:
+            fetch_start = start - self.PAD
+            if fetch_start < 1:
+                fetch_start = 1
+            fetch_end = start + self.CACHESIZE
+            if fetch_end < endpos:
+                fetch_end = endpos + self.PAD
+            if fetch_end > self.reflens[chrom]:
+                fetch_end = self.reflens[chrom]
+            self.start0 = fetch_start - 1
+            self.endpos = fetch_end
+            self.cache = self.fastafile.fetch(chrom, self.start0, self.endpos)
+
+        return self.cache[(start - 1 - self.start0):(endpos  - self.startpos0)]
 
     # Retrieving the sequence of a genomic region
     def getReference(self, chrom, start, end):
-        # Checking if chromosome name exists
-        goodchrom = chrom
-        if not goodchrom in self.fastafile.references:
-            if goodchrom.startswith("chr"):
-                goodchrom = chrom[3:]
-            else:
-                goodchrom = 'chr' + chrom
-            if not goodchrom in self.fastafile.references:
-                if chrom == 'MT' or chrom == 'chrMT':
-                    goodchrom = 'chrM'
-                    if not goodchrom in self.fastafile.references:
-                        return None
-                else:
-                    return None
+        # XXX-HS To make faster, could retrieve large blocks of sequence
+        # For normalization.
+        # There are about 322,000 indels per 3XE9 /person, so 0.3/1000bp
+        # so for a cache to be useful, it needs to include variants, so 30KB min.
+        #  for exomes. Most genes are < 1MB .. and 2000 bp cds.. so would only include 1-2 indels/sample
+        # Assuming the tabix index is in RAM, reading from disk is seek time (5-10ms) + read time (1MB/ms)
+        #    so reading 10-20MB takes the same amount of time as a single disk seek.
+        # For exome, there is one indel/gene and each gene is 1MB (average), so a 5MB cache insures 5X cache reuse(hits)
+        # if dealing with SNPs or whole genome data, other elements, a smaller cache will reap benefits too .. up to about 5MB.
 
+        # Checking if chromosome name exists
+        goodchrom = convert_chrom(chrom,self.fastafile.references)
+        if goodchrom is None:
+            return ''
             # Fetching data from reference genome
         if end < start:
             return ''
         if start < 1:
             start = 1
 
-
-        if hasattr(self.fastafile.__class__, 'get_reference_length') and callable(getattr(self.fastafile.__class__, 'get_reference_length')):
+        try:
             last = self.fastafile.get_reference_length(goodchrom)
-        elif hasattr(self.fastafile.__class__, 'getReferenceLength') and callable(getattr(self.fastafile.__class__, 'getReferenceLength')):
-            last = self.fastafile.getReferenceLength(goodchrom)  # if pysam.__version__ in ['0.7.7', '0.7.8', '0.8.0']:
-        else:
-            sys.stderr.write("API for pysam changed, may have issues at ends of genome")
-            last = end+1
+        except:
+            try:
+                last = self.fastafile.getReferenceLength(goodchrom)  # if pysam.__version__ in ['0.7.7', '0.7.8', '0.8.0']:
+            except:
+                sys.stderr.write("API for pysam changed, may have issues at ends of genome")
+                last = end
 
-        if end > last: end = last
+        if end > last:
+            end = last
 
-        seq = self.fastafile.fetch(goodchrom, start - 1, end)
+ #       seq = self.fastafile.fetch(goodchrom, start - 1, end)
+
+        seq = self.__getseq_from_cache_or_file(goodchrom, start, end)
         return seq.upper()
 
 
@@ -55,23 +172,29 @@ class Reference(object):
 class Variant(object):
     # Constructor
     def __init__(self, chrom, pos, vcf_ref, vcf_alt):
+        vcf_ref = vcf_ref.upper()
+        vcf_alt = vcf_alt.upper()
+        self.id = chrom + ":" + str(pos)+":" +vcf_ref + "/"+vcf_alt
         self.chrom = chrom
         self.pos = pos
         self.vcf_padded_base = ''
         shift_pos, a, b = self.trimCommonStart(vcf_ref, vcf_alt)
         self.pos = self.pos + shift_pos
         shiftpos2, x, y = self.trimCommonEnd(a, b)
-        if len(x) == 0 or len(y)==0 and shift_pos>0:
+        if (len(x) == 0 or len(y)==0)  and shift_pos>0:
             self.vcf_padded_base = vcf_ref[shift_pos-1]
-
         self.ref = x
         self.alt = y
 
+    def get_id(self):
+        return self.id
     def get_vcf_pos_ref_alt(self):
         if self.is_insertion():
             return [self.pos-1,self.vcf_padded_base+self.ref,self.vcf_padded_base+self.alt]
+        elif self.is_deletion():
+            return [self.pos-1,self.vcf_padded_base+self.ref,self.vcf_padded_base+self.alt]
         else:
-            return [self.pos,self.vcf_padded_base+self.ref,self.vcf_padded_base+self.alt]
+            return [self.pos, self.ref, self.alt]  # for SNPs or fixed MNPs.
 
 
 
@@ -98,50 +221,113 @@ class Variant(object):
         else:
             return int1_end >= int2_start
 
+    def remove_same_bases_ref_alt(self):  # Only apply for SNV or MNP with padded bases to remove.
+        if len(self.ref) != len(self.alt) or len(self.ref)==0:
+            return [self.pos,self.ref,self.alt]
+        if self.ref == self.alt:
+                return [self.pos, self.ref[0], self.alt[0]]
+        left, seq1, seq2 = self.trimCommonStart(self.ref, self.alt)
+        right, newref, newalt = self.trimCommonEnd(seq1, seq2)
+        return [self.pos+left,newref,newalt]
+
+
     # Aligning variant on the plus strand
     def alignOnPlusStrand(self, reference):
+        if self.chrom not in reference.reflens or not (self.is_insertion() or self.is_deletion()):
+            [self.pos,self.ref,self.alt] = self.remove_same_bases_ref_alt()    # Trime redundant bases from SNP/MNP
+            return self
+        reflen = reference.reflens[self.chrom]
         maxreplen = abs(len(self.ref) - len(self.alt))
-        PADLEN = max(100,
-                     1 + 5 * maxreplen)  # the bigger the repeat, the less likely there are multiple exact copies, so 5 is OKfSequence
-        seq1_0 = reference.getReference(self.chrom, self.pos, self.pos + len(self.ref) - 1 + PADLEN)
-        seq2_0 = self.alt + reference.getReference(self.chrom, self.pos + len(self.ref),
-                                                   self.pos + len(self.ref) + PADLEN - 1)
+        PADLEN = max(100, 1 + 5 * maxreplen)  # the bigger the repeat, the less likely there are multiple exact copies, so 5 is OKfSequence
+#        seq1_0 = reference.getReference(self.chrom, self.pos, self.pos + len(self.ref) - 1 + PADLEN)
+#        seq2_0 = self.alt + reference.getReference(self.chrom, self.pos + len(self.ref),
+#                                                   self.pos + len(self.ref) + PADLEN - 1)
+        maxpos = self.pos + len(self.ref) - 1 + PADLEN
+        if maxpos > reflen:
+            maxpos = reflen
+        EXTRA_PREBASE = 1
+        if self.pos==1: # Cannot have extra VCF padding base at first base
+            EXTRA_PREBASE = 0
+        seq12_0 = reference.getReference(self.chrom, self.pos-EXTRA_PREBASE, maxpos)
+        # seq12_0 now includes an extra padded base
+        seq1_0 = seq12_0[EXTRA_PREBASE:]
+        seq2_0 = self.alt + seq12_0[len(self.ref)+EXTRA_PREBASE:]
         left, seq1, seq2 = self.rightAlign(seq1_0, seq2_0)
-        while left >= PADLEN - (
-                maxreplen - 1):  # Shifted almost all the way to the end, make sure there is not more to shift
+        while left >= PADLEN - (maxreplen - 1):  # Shifted almost all the way to the end, make sure there is not more to shift
             PADLEN += PADLEN
-            seq1_0 = reference.getReference(self.chrom, self.pos, self.pos + len(self.ref) - 1 + PADLEN)
-            seq2_0 = self.alt + reference.getReference(self.chrom, self.pos + len(self.ref),
-                                                       self.pos + len(self.ref) + PADLEN - 1)
+            maxpos = self.pos + len(self.ref) - 1 + PADLEN
+            if maxpos > reflen:
+                maxpos = reflen
+#            seq1_0 = reference.getReference(self.chrom, self.pos, self.pos + len(self.ref) - 1 + PADLEN)
+#            seq2_0 = self.alt + reference.getReference(self.chrom, self.pos + len(self.ref),
+#                                                       self.pos + len(self.ref) + PADLEN - 1)
+            seq12_0 = reference.getReference(self.chrom, self.pos-EXTRA_PREBASE, maxpos)
+            seq1_0 = seq12_0[EXTRA_PREBASE:]
+            seq2_0 = self.alt + seq12_0[len(self.ref)+EXTRA_PREBASE:]
             left, seq1, seq2 = self.rightAlign(seq1_0, seq2_0)
-        if len(seq1) == 0 or len(seq2) == 0:
-            left -= 1
-            base = reference.getReference(self.chrom, self.pos + left, self.pos + left)
+        if len(seq1) == 0 or len(seq2) == 0: # e.g. if insertion/deletion .. should always be the case
+            if(left >= 1 and EXTRA_PREBASE == 1):
+                #base = reference.getReference(self.chrom, self.pos + left, self.pos + left)
+                base = seq12_0[left]
+            elif left == 0 and EXTRA_PREBASE ==1:
+                base = seq12_0[0]
+            else: # Variant on First base of chrom (currently only Mitochorndria has first base not an 'N')
+                base = ""
             seq1, seq2 = base + seq1, base + seq2
         ret = Variant(self.chrom, self.pos + left, seq1, seq2)
         return ret
 
     # Aligning variant on the minus strand
     def alignOnMinusStrand(self, reference):
+        if self.pos == 1 or (self.chrom not in reference.reflens or not (self.is_insertion() or self.is_deletion())):
+            [self.pos, self.ref, self.alt] = self.remove_same_bases_ref_alt()
+            return self
+        else:
+            if self.is_insertion():
+                if not len(self.vcf_padded_base) == 0:
+                    if self.vcf_padded_base[0] != self.alt[-1]:# See if there is the potential for another copy of the alt allele
+                        return self
+            elif self.is_deletion():
+                if not len(self.vcf_padded_base) == 0: # Skip cases where initial VCF was invalid and did not have pre-base as can happen after splitting multiple alleles
+                    if self.vcf_padded_base[0] != self.ref[-1]:
+                        return self
+        reflen = reference.reflens[self.chrom]
+
         maxreplen = abs(len(self.ref) - len(self.alt))
         PADLEN = max(100, 1 + 5 * maxreplen)
+        if self.pos - PADLEN<1:
+            PADLEN = self.pos -1
+        # Assume that variant is real .. so that self.pos+len(self.ref) should be valid
         seq1_0 = reference.getReference(self.chrom, self.pos - PADLEN, self.pos + len(self.ref) - 1)
-        s = reference.getReference(self.chrom, self.pos - PADLEN, self.pos - 1)
-        seq2_0 = s + self.alt
+#        s = reference.getReference(self.chrom, self.pos - PADLEN, self.pos - 1)
+        s = seq1_0[0:PADLEN]
         N = len(s)
+        seq2_0 = s + self.alt
         left, seq1, seq2 = self.leftAlign(seq1_0, seq2_0)
-        while left <= maxreplen - 1:  # Shifted  all the way to the beginning, make sure there is not more to shift
+        while left <= maxreplen  and self.pos-PADLEN>1:  # Shifted  all the way to the beginning, make sure there is not more to shift
             PADLEN += PADLEN
+            if self.pos-PADLEN<1: # This will only occur for Mitochondria
+                PADLEN = self.pos-1
             seq1_0 = reference.getReference(self.chrom, self.pos - PADLEN, self.pos + len(self.ref) - 1)
-            s = reference.getReference(self.chrom, self.pos - PADLEN, self.pos - 1)
+            #s = reference.getReference(self.chrom, self.pos - PADLEN, self.pos - 1)
+            s = seq1_0[0:PADLEN]
             seq2_0 = s + self.alt
             left, seq1, seq2 = self.leftAlign(seq1_0, seq2_0)
             N = len(s)
 
+
         if len(seq1) == 0 or len(seq2) == 0:
-            left = left - 1
-            base = reference.getReference(self.chrom, self.pos + left - N, self.pos + left - N)
+            # Unless Variant got shifted all the way to position 1(left==0), there should be enough bases for padding.
+            if left>0:
+                left = left -1
+#            base = reference.getReference(self.chrom, self.pos + left - PADLEN, self.pos + left - PADLEN)
+                base = seq1_0[left]  # if eliminate 1st common base, take seq1_0[0] ..etc
+            else: # left == 0 means no shared bases in chunk, so it means variant fills the chunk .. all the way to the first base
+                base = ''
             seq1, seq2 = base + seq1, base + seq2
+        else:
+            sys.stderr.write("WARNING: Attempted to left shift non-indel variant .. bug? for variant:"+self.id+"\n")
+        # Even if no shifting occurs  self.pos has be be shifted by -1
         ret = Variant(self.chrom, self.pos + left - N, seq1, seq2)
 
         return ret
@@ -313,9 +499,10 @@ def scan_for_repeat(variant, reference):
         if variant.is_insertion():
             nrep_ref = 0
             nrep_alt = nrep
-        elif variant.is_deletion():
+        else: # Has to be the case that variant.is_deletion() because we excluded other options at beginning
             nrep_ref = nrep
             nrep_alt = 0
+
         newleft_rep = rep[lrep - left_pad:] + rep[0:lrep - left_pad]
         left_result = [next_left + lrep - left_pad,  # left shifted position of indel for variant obj
                        next_left + lrep - left_pad,  # left shifted position of repeat for HGVS
@@ -355,45 +542,52 @@ def testEqual(predicted, actual):
 if __name__ == "__main__":
     reference = Reference("/research/bsi/projects/staff_analysis/m037385/savi_data/hg38_nochr.fa")
     seq = "TTTTT"
-    [rep, nrep] = find_repeat_unit(seq)
+    [rep, nrep1] = find_repeat_unit(seq)
     testEqual("T", rep)
+    testEqual(5, nrep1)
 
     seq = "TCTCT"
-    [rep, nrep] = find_repeat_unit(seq)
+    [rep, nrep2] = find_repeat_unit(seq)
     testEqual("TCTCT", rep)
-    testEqual(1, nrep)
+    testEqual(1, nrep2)
 
     seq = "TCTCTC"
-    [rep, nrep] = find_repeat_unit(seq)
+    [rep, nrep3] = find_repeat_unit(seq)
     testEqual("TC", rep)
-    testEqual(3, nrep)
+    testEqual(3, nrep3)
 
     seq = "GTCGTCGTC"
-    [rep, nrep] = find_repeat_unit(seq)
+    [rep, nrep4] = find_repeat_unit(seq)
     testEqual("GTC", rep)
-    testEqual(3, nrep)
+    testEqual(3, nrep4)
 
 
     chrom="13"
     pos = 32329810
     vcf_ref = "ATA"
     vcf_alt = "A"
+    sys.stdout.write("VCF:"+chrom+":"+str(pos)+":"+vcf_ref+"/"+vcf_alt+"\n")
     var = Variant(chrom,pos,vcf_ref,vcf_alt)
+    sys.stdout.write("left_truth=32329816(vcf_pos=32329815), newl_vcf_ref=A,newl_vcf_alt=ATA\n")
+    sys.stdout.write("full_range_of_repeat=32329807-32329818:[TA] repeat\n")
+
     [left_norm,right_norm, full_norm] = scan_for_repeat(var, reference)
-    sys.stdout.write(("left_norm =") + ",".join(list(map(str,left_norm)))+ "\n")
-    sys.stdout.write(("right_norm =") + ",".join(list(map(str,right_norm))) + "\n")
-    sys.stdout.write(("full_norm =") + ",".join(list(map(str,full_norm))) + "\n")
+    sys.stdout.write("left_norm =" + ",".join(list(map(str,left_norm)))+ "\n")
+    sys.stdout.write("right_norm =" + ",".join(list(map(str,right_norm))) + "\n")
+    sys.stdout.write("full_norm =" + ",".join(list(map(str,full_norm))) + "\n")
 
-
-    norm_var = var.alignOnPlusStrand(reference)
-    [newpos,ref,alt] = norm_var.get_vcf_pos_ref_alt()
-    sys.stdout.write("right_pos = " + str(newpos) + "\n")
+    sys.stdout.write("right_truth=32329817(vcf_pos=32329816), newr_vcf_ref=ATA,newr_vcf_alt=A\n")
+    normr_var = var.alignOnPlusStrand(reference)
+    [newposr,ref,alt] = normr_var.get_vcf_pos_ref_alt()
+    sys.stdout.write("right_pos = " + str(newposr) + "\n")
     sys.stdout.write("right_ref = " + ref + "\n")
     sys.stdout.write("right_alt = " + alt + "\n")
 
-    norm_var = var.alignOnMinusStrand(reference)
-    [newpos, ref, alt] = norm_var.get_vcf_pos_ref_alt()
-    sys.stdout.write("left_pos = "+str(newpos)+"\n")
-    sys.stdout.write("left_ref = "+ref+"\n")
-    sys.stdout.write("left_alt = "+alt+"\n")
+    sys.stdout.write("left_truth=32329807(vcf_pos=32329806), newl_vcf_ref=TTA,newl_vcf_alt=T\n")
+    norml_var = var.alignOnMinusStrand(reference)
+    [newposl, ref, alt] = norml_var.get_vcf_pos_ref_alt()
+    sys.stdout.write("left_vcf_pos = "+str(newposl)+"\n")
+    sys.stdout.write("left_vcf_ref = "+ref+"\n")
+    sys.stdout.write("left_vcf_alt = "+alt+"\n")
+
 
