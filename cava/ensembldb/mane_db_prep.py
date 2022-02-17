@@ -605,9 +605,15 @@ def download_gtf(source_compressed_gtf, version):
             os.rename(os.path.basename(source_compressed_gtf), source_compressed_gtf)
 
         except Exception as e:
-            print('\n\nCannot connect to FTP site. No internet connection?\n')
-            print(f'{e}\n{url}')
-            exit(1)
+            try:
+                url = url.replace('select_','')
+                wget.download(url)
+                os.rename(os.path.basename(source_compressed_gtf), source_compressed_gtf)
+
+            except Exception as q:
+                print('\n\nCannot connect to FTP site. No internet connection?\n')
+                print(f'{e}\n{url}')
+                exit(1)
     print('')
     sys.stdout.flush()
 
