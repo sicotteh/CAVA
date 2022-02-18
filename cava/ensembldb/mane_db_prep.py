@@ -616,11 +616,6 @@ def download_gtf(source_compressed_gtf, version):
             print('\n\nCannot connect to FTP site, even after removing select. No internet connection?\n')
             print(f'{e}\n{url}')
 
-        # Just in case files not sorted
-        a = pybedtools.BedTool(source_compressed_gtf)
-        a.sort().remove_invalid().saveas('tmp.txt')
-        os.rename('tmp.txt', source_compressed_gtf)
-
 
     print('')
     sys.stdout.flush()
