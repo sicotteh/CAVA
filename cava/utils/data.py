@@ -63,7 +63,7 @@ class Ensembl(object):
         self.nbins = 0
         self.binsize = 50000
         self.chrom = None
-        if self.options.args['loadalltranscripts'] is True:
+        if 'loadalltranscripts' in self.options.args and self.options.args['loadalltranscripts'] is True:
             self.loadalltranscripts = True
         else:
             self.loadalltranscripts = False
@@ -80,7 +80,7 @@ class Ensembl(object):
         if self.loadalltranscripts is False:
             # This fetch consumes most of the runtime for CAVA (78%) as long
             # caching should be faster.
-            return self.tabixfile.fetch(chrom=chrom,start = startpos0, end = endpos1)
+            return self.tabixfile.fetch(reference=chrom, start = startpos0, end = endpos1)
         if self.chrom is None or chrom != self.chrom:
             # Flush cache and load all transcripts.
             self.chrom = chrom
@@ -95,8 +95,9 @@ class Ensembl(object):
                 binend  = int(transcriptEnd/self.binsize)
                 for bin in range(binstart,binend+1):
                     if self.transcript_bins[bin] is None:
-                        self.transcript_bins[bin] = []
-                    self.transcript_bins[bin].append([transcriptid,transcriptStart,transcriptEnd,line])
+                        self.transcript_bins[bin] = [[transcriptid,transcriptStart,transcriptEnd,line]]
+                    else:
+                        self.transcript_bins[bin].append([transcriptid,transcriptStart,transcriptEnd,line])
         lines = list()
         got_transcript = dict()
         binstart = int((startpos0+1)/ self.binsize)
@@ -155,7 +156,7 @@ class Ensembl(object):
 
         # Defining variant end points.
         # HS: Tabix uses 0-based indexing for start/pos
-        if not variant.isInsertion():
+        if not variant.is_insertion:
             start = variant.pos -1
             end = variant.pos + len(variant.ref)
         else:  # for insertion, position got shifted to be after the insertion point .. shift back
@@ -170,7 +171,7 @@ class Ensembl(object):
         reg1 = goodchrom + ':' + str(start) + '-' + str(start)
         reg2 = goodchrom + ':' + str(end) + '-' + str(end)
 
-        if not variant.isSubstitution():
+        if not variant.is_substitution:
             # HS notes:
             # tabix index is loaded in memory, and the data is buffered in 37K (2^16) blocks (from reading the pysam and htslib)
             #   the 'fetch' take about 0.004 - 0.049 ms .. MUCH faster than a single disk seek & read (10-15ms)
@@ -216,9 +217,9 @@ class Ensembl(object):
                 if key in list(hitdict2.keys()):
                     ret[key] = transcript
                 else:
-                    if not variant.isInsertion(): retOUT[key] = transcript  # partial overlap downstream of transcrupt
+                    if not variant.is_insertion: retOUT[key] = transcript  # partial overlap downstream of transcrupt
 
-            if not variant.isInsertion():
+            if not variant.is_insertion:
                 for key, transcript in hitdict2.items():  # check for partial overlap upstream of transcript
                     if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
                     if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
@@ -296,7 +297,7 @@ class Ensembl(object):
 
     def annotate(self, variant, reference, impactdir):
         # Create left-aligned and right-aligned versions of the variant
-        if variant.isDeletion or variant.isInsertion():  # optimization, MNP or substitutions cannot be shifted
+        if variant.is_deletion or variant.is_insertion:  # optimization, MNP or substitutions cannot be shifted
             variant_plus = variant.alignOnPlusStrand(reference)
             variant_minus = variant.alignOnMinusStrand(reference)
         else:
@@ -331,7 +332,7 @@ class Ensembl(object):
         transcripts_plus, transcriptsOUT_plus = self.findTranscripts(variant_plus)
         transcripts_minus, transcriptsOUT_minus = self.findTranscripts(variant_minus)
 
-        if variant.isDeletion() or variant.isComplex():
+        if variant.is_deletion or variant.is_complex:
             # If variant is Deletion(or Del+repl),
             #         being partial at 3' end has predictable functional impact
             #         Deletion 5' end should be annotated because CAP site is not always correct)
@@ -717,7 +718,7 @@ class dbSNP(object):
     # Annotating a variant based on dbSNP data
     def annotate(self, variant):
         # Checking if variant is a SNP at all
-        if variant.isSubstitution():
+        if variant.is_substitution:
             # Fetching data from dbSNP database
             goodchrom = core.convert_chrom(variant.chrom,self.tabixfile.contigs)
             if goodchrom is None:

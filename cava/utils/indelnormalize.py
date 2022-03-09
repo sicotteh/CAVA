@@ -126,7 +126,7 @@ class Reference(object):
             self.endpos = fetch_end
             self.cache = self.fastafile.fetch(chrom, self.start0, self.endpos)
 
-        return self.cache[(start - 1 - self.start0):(endpos  - self.startpos0)]
+        return self.cache[(start - 1 - self.start0):(endpos  - self.start0)]
 
     # Retrieving the sequence of a genomic region
     def getReference(self, chrom, start, end):

@@ -101,6 +101,7 @@ def findFileBreaks(inputf, threads):
     ret = []
     started = False
     counter = 0
+    first =1
 
     if inputf.endswith('.gz'):
         infile = gzip.open(inputf, 'rt')
@@ -114,6 +115,7 @@ def findFileBreaks(inputf, threads):
         if not started:
             started = True
             first = counter
+
     delta = int((counter - first + 1) / threads)
     for i in range(threads):
         if i < threads - 1:
@@ -287,7 +289,7 @@ class SingleJob(multiprocessing.Process):
 
             line = line.strip()
             if line == '': continue
-
+#            sys.stderr.write("line="+line+"\n")
             # Printing out progress information
             if not self.copts.stdout and self.threadidx == 1:
                 if counter % 1000 == 0:
@@ -356,7 +358,8 @@ def run(copts, version):
                             format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
 
     # Printing out version.py information and start time
-    if not copts.stdout: starttime = printStartInfo(version)
+    if not copts.stdout:
+        starttime = printStartInfo(version)
     if options.args['logfile']:
         logging.info('CAVA ' + version + ' started.')
 
