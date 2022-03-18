@@ -26,25 +26,31 @@ class CSNAnnot:
         self.nout1 = None
         self.nout2 = None
 
-    # Getting annotation as a single String
-    def getAsString(self):
-        if (self.nout1 is not None and self.nout1>0) and (self.nout2 is not None and self.nout2>0):
-            return ''   # Currently not used... HGVS does not support annotating variants  outside transcript
-            # in this fashion. Rather assume start/end of mRNA are uncertain and use the c.- and c.* notation
-        # Adding the first part of the csn annotation (coordinates)
-        ret = 'c.' + str(self.coord1)
+    def makeDNArange(self):
+        ret = str(self.coord1)
         if self.intr1 is not None and self.intr1 != 0:
             if self.intr1 > 0:
                 ret += '+' + str(self.intr1)
             else:
                 ret += str(self.intr1)
-        if self.coord2 is not None and (self.coord1 != self.coord2 or (self.coord1 == self.coord2 and  self.intr1 != self.intr2)):
+        #XXX the current recommendation for repeat is  single point .. not a range
+        if (self.coord2 is not None) and ( not '['  in self.dna ) and (
+                self.coord1 != self.coord2 or (self.coord1 == self.coord2 and self.intr1 != self.intr2)):
             ret += '_' + str(self.coord2)
             if self.intr2 != 0:
                 if self.intr2 > 0:
                     ret += '+' + str(self.intr2)
                 else:
                     ret += str(self.intr2)
+        return ret
+
+    # Getting annotation as a single String
+    def getAsString(self):
+        if (self.nout1 is not None and self.nout1>0) and (self.nout2 is not None and self.nout2>0):
+            return ''   # Currently not used... HGVS does not support annotating variants  outside transcript
+            # in this fashion. Rather assume start/end of mRNA are uncertain and use the c.- and c.* notation
+        # Adding the first part of the csn annotation (coordinates)
+        ret = 'c.' + self.makeDNArange()
         # Adding the second part of the csn annotation (DNA and protein level)
         ret += self.dna + self.protein
         return ret
@@ -79,17 +85,31 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
 
     # Creating protein level annotation
     where = transcript.whereIsThisVariant(variant)
-    if not '-' in where and where.startswith('Ex'):
+    if (not '-' in where and "Ex" in where):  # Purely in the one coding  exons
+        protein, protchange = makeProteinString(variant, prot, mutprot, coord1)
+        skip_repeats = False
+    elif where.startswith('5UTR-Ex'): # Need an HGVS p.? to indicate there is an effect on protein.
+        protein, protchange = '_p.?',('.','.','.')
+        skip_repeats = False
+    elif where.startswith('Ex') and where.endswith('-3UTR'):  # End of coding region.
         protein, protchange = makeProteinString(variant, prot, mutprot, coord1)
         skip_repeats = False
     else:  # large variant crossing intron/exon boundary .. or purely in intron
-        protein, protchange = '', ('.', '.', '.')
-        if (not ('-' in where)) and (where == '3UTR' or where == '5UTR' or where.startswith("In")):
+        if where.startswith("In") and not "-" in where: # pure intron .. no effect on protein .. unless it's on splice
+            protein, protchange = '', ('.', '.', '.')   # Variant is not on protein, so we cannot describe
             skip_repeats = False  #Can have repeat in single intron
-                                  # Can have repeat in the UTR, even if the UTR spans multiple exons.
-        else:
-            skip_repeats = True  # Cannot have cDNA repeat across in intron/exon boundary
-
+        elif where.startswith('Ex') and '-Ex' in where: # Multi-exon variant.
+            protein, protchange = '_p.?', ('.', '.', '.')
+            skip_repeats = False  # Can have repeat in the UTR, even if the UTR spans multiple exons.
+        elif "Ex" in where or "-" in where: #Multi-region variant
+            protein, protchange = '_p.?', ('.', '.', '.')
+            skip_repeats = False  # Allow cDNA repeat across in intron/exon boundary
+        elif where == "3UTR" or where == "5UTR": # No effect on protein
+            protein, protchange = '', ('.', '.', '.')
+            skip_repeats = False  # Allow cDNA repeat across in intron/exon boundary
+        else: # Complicated multi-exon variants.
+            protein, protchange = '_p.?', ('.', '.', '.')
+            skip_repeats = False  # Allow cDNA repeat across in intron/exon boundary
 
     try:
         dna, dna_ins = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2, nout1, nout2, skip_repeats)
@@ -99,25 +119,32 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
     # Transforming coordinates if the variant is a an insertion
     # of a multi-base repeat so that the range points to the repeat unit..
     # .. as opposed to the insertion site.
-    skipped_repeat  = False
-    if len(dna_ins)>0 and dna_ins.find('[') >=0: # repeated sequence,repeat_unit[repeat_len]
-        coord1_ins, intr1_ins, coord2_ins, intr2_ins = coord1, intr1, coord2, intr2
-        [left_result,right_result,full_result] = scan_for_repeat(variant, transcript, reference)
+    if (variant.is_insertion is True or variant.is_deletion is True) and len(dna_ins)>0 and dna_ins.find('[') >=0: # repeated sequence,repeat_unit[repeat_len]
+
+        [left_result, right_result, full_result] = scan_for_repeat(variant, reference)
         if transcript.strand == 1:
-            range_start = left_result[1]
-            repeat_unit = left_result[4]
-            n_repeat_ref = left_result[2]
-            n_repeat_alt = left_result[3]
-            range_end = range_start+len(repeat_unit)*n_repeat_ref -1
-            # Check again to make sure that shifted range did not end up in coding region and repeat length is not multiple of 3.
-            coord1new, intr1new, nout1new = transformToCSNCoordinate(range_start, transcript)
-            coord2new, intr2new, nout2new = transformToCSNCoordinate(range_end, transcript)
-            if len(repeat_unit) % 3 != 0 :
-                if (range_start>= transcript.codingStartGenomic and range_start <= transcript.codingEndGenomic) or \
-                        (range_end>= transcript.codingStartGenomic and range_end <= transcript.codingEndGenomic) :
-                    if ((intr1new is None or intr1new ==0) or (intr2new is None or intr2new == 0)): # if not at least one end in CDS
-                        skipped_repeat = True
-            if skipped_repeat is False:
+            if left_result is None or left_result[2]==0:  # no repeats on ref
+                skip_repeats =  True
+            elif left_result[2]==1 and left_result[3] == 0:  # no repeats on ref
+                skip_repeats =  True
+            elif left_result[2]==1 and left_result[3] == 2 : # Duplication
+                skip_repeats = True
+            else:
+                range_start = left_result[1]
+                repeat_unit = left_result[4]
+                n_repeat_ref = left_result[2]
+                n_repeat_alt = left_result[3]
+                range_end = range_start+len(repeat_unit)*n_repeat_ref -1
+                # Check again to make sure that shifted range did not end up in coding region and repeat length is not multiple of 3.
+                coord1new, intr1new, nout1new = transformToCSNCoordinate(range_start, transcript)
+                coord2new, intr2new, nout2new = transformToCSNCoordinate(range_end, transcript)
+                if len(repeat_unit) % 3 != 0 :
+                    if (range_start>= transcript.codingStartGenomic and range_start <= transcript.codingEndGenomic) or \
+                            (range_end>= transcript.codingStartGenomic and range_end <= transcript.codingEndGenomic) :
+                        if ((intr1new is None or intr1new ==0) or (intr2new is None or intr2new == 0)): # if not at least one end in CDS
+                            skip_repeats = True
+
+            if skip_repeats is False:
                 coord1, intr1, nout1 = coord1new, intr1new, nout1new
                 coord2, intr2, nout2 = coord2new, intr2new, nout2new
                 dna = repeat_unit + '[' + str(n_repeat_ref) + ']%3B[' + str(n_repeat_alt) + ']'
@@ -128,19 +155,27 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                 except TypeError:
                     dna, dna_ins = 'X', 'X'
         else: # strand == -1
-            range_end = right_result[1]
-            repeat_unit = right_result[4]
-            n_repeat_ref =right_result[2]
-            n_repeat_alt = right_result[3]
-            range_start = range_end - (len(repeat_unit)*n_repeat_ref -1)
-            coord1new, intr1new, nout1new = transformToCSNCoordinate(range_end, transcript)
-            coord2new, intr2new, nout2new = transformToCSNCoordinate(range_start, transcript)
-            if len(repeat_unit) % 3 != 0 :
-                if (range_start>= transcript.codingStartGenomic and range_start <= transcript.codingEndGenomic) or \
-                        (range_end>= transcript.codingStartGenomic and range_end <= transcript.codingEndGenomic) :
-                    if ((intr1new is None or intr1new ==0) or (intr2new is None or intr2new == 0)): # if not at least one end in CDS
-                        skipped_repeat = True   # Cannot allow not multiple of 3 in CDS
-            if skipped_repeat is False:
+            if right_result is None or right_result[2] ==0: # ref is not repeat
+                skip_repeats = True
+            elif right_result[2] == 1 and right_result[3] == 2: # Duplication
+                skip_repeats = True
+                dna, dna_ins = 'dup','dup'
+            elif right_result[2] == 1 and right_result[3] == 0:  # Simple deletion
+                skip_repeats = True
+            else:
+                range_end = right_result[1]
+                repeat_unit = right_result[4]
+                n_repeat_ref =right_result[2]
+                n_repeat_alt = right_result[3]
+                range_start = right_result[0]+len(repeat_unit)-1
+                coord1new, intr1new, nout1new = transformToCSNCoordinate(range_end, transcript)
+                coord2new, intr2new, nout2new = transformToCSNCoordinate(range_start, transcript)
+                if len(repeat_unit) % 3 != 0 :
+                    if (range_start<= transcript.codingStartGenomic and range_start >=transcript.codingEndGenomic) or \
+                            (range_end<= transcript.codingStartGenomic and range_end >= transcript.codingEndGenomic) :
+                        if ((intr1new is None or intr1new ==0) or (intr2new is None or intr2new == 0)): # if not at least one end in CDS
+                            skip_repeats = True   # Cannot allow not multiple of 3 in CDS
+            if skip_repeats is False:
                 dna = core.Sequence(repeat_unit).reverseComplement() + '[' + str(n_repeat_ref) + ']%3B['+ str(n_repeat_alt) + ']'
                 coord1, intr1, nout1 = coord1new, intr1new, nout1new
                 coord2, intr2, nout2 = coord2new, intr2new, nout2new
@@ -151,18 +186,32 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                 except TypeError:
                     dna, dna_ins = 'X', 'X'
     # shift coordinates if have to point to previous bases for dup or inv.
-    if dna_ins == 'dup' or dna_ins == 'inv':
+    if dna_ins == 'dup':
         # Shift position for insertions longer than 1 bp that are "dup"
         # if the repeat unit is "1", coord1 will already point to the bp before the insertion site.
         coord1_ins, intr1_ins, coord2_ins, intr2_ins = coord1, intr1, coord2, intr2
         # Point to range before insertion site, in cDNA coordinates, but do not skip over introns
         coord1, intr1, coord2, intr2, nout1, nout2 = duplicationCoordinates(variant, transcript)
+        csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins, dna_ins)
+    elif dna_ins == 'insinv':
+        coord1_ins, intr1_ins, coord2_ins, intr2_ins = coord1, intr1, coord2, intr2
+        # Point to range before insertion site, in cDNA coordinates, but do not skip over introns
+        coord1_prev, intr1_prev, coord2_prev, intr2_prev, nout1_prev, nout2_prev = duplicationCoordinates(variant, transcript)
+        csn = CSNAnnot(coord1_prev, intr1_prev, coord2_prev, intr2_prev, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
+                       dna_ins)
+        dna = 'ins'+csn.makeDNArange()+'inv'
+        csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
+                       dna_ins)
     elif not ('[' in dna_ins): # del, ins*,delins*
         coord1_ins, intr1_ins, coord2_ins, intr2_ins = '', '', '', ''
+        csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
+                       dna_ins)
+    else:
+        coord1_ins, intr1_ins, coord2_ins, intr2_ins = coord1, intr1, coord2, intr2
+        csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
+                       dna_ins)
 
 
-    # Creating and returning csnAnnot object
-    csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins, dna_ins)
     csn.nout1 = nout1
     csn.nout2 = nout2
 
@@ -296,11 +345,14 @@ def find_repeat_unit(extraseq):
     #              shift all the way right, then all the way left.. and
     #              scan for smallest possible repeat pattern that covers the interval
     #              Once have that pattern, scan for possible expansion of range
-def scan_for_repeat(variant, transcript, reference):
+def scan_for_repeat(variant, reference):
 
     if not (variant.is_deletion or variant.is_insertion):
         return [None,None,None]
     else:
+        if variant.left_result is not None:
+            return [variant.left_result, variant.right_result, variant.full_result]
+
         if variant.is_insertion:
             rep0 = variant.alt
             pos_left_of_variant = variant.pos - 1  # where do you look for previous repeat
@@ -319,10 +371,21 @@ def scan_for_repeat(variant, transcript, reference):
         left_end = pos_left_of_variant + 1  # Just adding +1 to get loop initialized
         next_left = pos_left_of_variant - len(rep) + 1
         match_rep = True
+
+        goodchrom = core.convert_chrom(variant.chrom, reference.fastafile.references)
+        if goodchrom is None:
+            return [None,None,None]
         while match_rep is True:  # Scan for repeats and load bigger chunks of data as scan toward the end.
+            if left_end == 1:
+                break
             left_right_end = left_end - 1
             left_end = left_end - 40 * lrep
-            left_context = reference.getReference(variant.chrom, left_end, left_right_end) + left_context
+            if left_end < 0:
+                left_end = 1
+            try:
+                left_context = reference.getReference(goodchrom, left_end, left_right_end) + left_context
+            except:
+                return [None,None,None]
             while match_rep is True and next_left > left_end + lrep:  # scan for repeat in current chunk
                 pseq = left_context[next_left - left_end:(next_left + lrep - left_end)]
                 if pseq != rep:
@@ -341,11 +404,21 @@ def scan_for_repeat(variant, transcript, reference):
         next_right = right_left_end  # start position of next repeat
         match_rep = True
         right_context = ""
+
+        try:
+            chrom_len = reference.fastafile.get_reference_length(goodchrom)
+        except:
+            return [None, None, None]
         while match_rep is True:
             right_left_end = right_end + 1
             right_end = right_end + 40 * lrep
-            right_context = right_context + reference.getReference(variant.chrom, right_left_end,
-                                                                   right_end)  # positions are inclusive
+            if right_end > chrom_len:
+                right_end = chrom_len
+            if right_left_end<=right_end:
+                # positions are inclusive
+                right_context = right_context + reference.getReference(goodchrom, right_left_end, right_end)
+            else:
+                match_rep = False
             while match_rep is True and next_right + lrep - 1 <= right_end - lrep:
                 pseq = right_context[next_right - right_left_end:(next_right + lrep - right_left_end)]
                 if pseq != rep:
@@ -415,6 +488,7 @@ def scan_for_repeat(variant, transcript, reference):
                        variant.alt +
                        right_context[:(next_right - right_left_end + right_pad)]
                        ]  # sequence
+        [variant.left_result, variant.right_result, variant.full_result] = [left_result,right_result,full_result]
         return [left_result,right_result,full_result]
 
 #
@@ -549,7 +623,7 @@ def scan_for_repeat(variant, transcript, reference):
 #
 def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2, nout1, nout2, skip_repeats = False):
     if variant.alt.startswith('<') and variant.alt.endswith('>') and not ( "," in variant.alt):  # support <NON_REF>' <*> or SV
-        return ''
+        return '',''
     # Returning DNA level annotation if variant is a base substitution
     if variant.is_substitution:
         if transcript.strand == 1:
@@ -568,12 +642,14 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
 
     if variant.is_insertion:
         if repn >1 and skip_repeats is False: # Should try to represent as repeat if allowable
+            # because repn>1, it is not a dup.. otherwise assume repeats take precedence over inversions
             in_coding_region = variant.pos-1 >= transcript.codingStartGenomic and variant.pos<=transcript.codingEndGenomic
             fully_inside_exon = (coord1 is not None and (intr1 is None or intr1 == 0)) and (
                         coord2 is None or (intr2 is None or intr2 == 0))
             at_least_partly_inside_exon = (coord1 is not None and (intr1 is None or intr1 == 0)) or (
                 coord2 is not None and (intr2 is None or intr2 == 0))
             # within cDNA, only multiple of 3 can be represented by repeat when fully or inside exon
+            # outside transcript or in intron can have any repeat_unit len
             if in_coding_region is False or \
                     ((replen % 3 == 0 and fully_inside_exon is True) or  at_least_partly_inside_exon is False):
                 if transcript.strand == 1:
@@ -582,61 +658,121 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
                 else:
                     rep_str = core.Sequence(rep_unit).reverseComplement()+ '[' + str(repn) + ']'
                     return rep_str,rep_str
-            # else: Otherwise, try to represent as dup or  -- if all fails -- as dup.
-        insert = core.Sequence(variant.alt)
-        # the two cDNA coordinate point to 1=before the  insertion site .. and 1 after the insertion site
+            else: # Not a repeat multiple of 3 and at least partially in coding region.
+                skip_repeats = True
 
-        # 2nd return value is set to !='' if variant is a dup and position needs to be altered.
-        #  ... this will be done later.
+        # If pass this level, either it is a possible and allowed repeat .. with the whole insert length .. or another kind of insertion
         if transcript.strand == 1:
             # If get here, We are guaranteed that the variants is right shitfed if the transcript strand is +
             # so We only have to check for repeats before insertion point.
             # coord1 points to the repeated base i 1-base coordinates (does not point after insertion site like variant.pos)
             #if variant.pos - len(insert) >= transcript.transcriptStart and variant.pos - 1 <= transcript.transcriptEnd:
-            if variant.pos - len(insert) >= 0:
-                before = reference.getReference(variant.chrom, variant.pos - len(insert), variant.pos - 1)
+
+            goodchrom = core.convert_chrom(variant.chrom, reference.fastafile.references)
+            if goodchrom is None:
+                # Probably should have an error message
+                return 'ins'+variant.alt,''
+            if variant.pos - len(variant.alt) >= 0:
+                if len(variant.alt) == 1 and variant.vcf_padded_base != '':
+                    before = variant.vcf_padded_base  # realigned variant may not have padded base
+                else:
+                    before = reference.getReference(goodchrom, variant.pos - len(variant.alt), variant.pos - 1)
             else: # right shifted variant insertion at beginning of chromosome, cannot be dup.
                 return 'ins'+variant.alt,''
             # Checking if variant is a duplication, but no more
-            if insert == before: # Dup
-                return 'dup','dup'  # Dups, but coordinate of insertion will be adjusted to point to a range
-            if len(insert)==1:
-                return 'ins'+variant.alt,''  # cannot be an inversion
-            rev = insert.reverseComplement()
-            if rev == before:
-                return 'inv','inv'
-            return 'ins',''
+            if variant.alt == before:
+                # At least a duplication, but if get here .. this function was called for 2nd time.
+                if skip_repeats is True:
+                    return 'dup','dup'  # Dups, but coordinate of insertion will be adjusted to point to a range
+                else:
+                    return '[2]','[2]'
+            if len(variant.alt)==1:
+                return 'ins'+variant.alt,''  # cannot be an inversion of length 1
+            rev = variant.alt.reverseComplement()
+            if rev == before:  # Insertion of an inverted copy of the sequence just 5' of insertion site
+                return 'insinv','insinv'
+            return 'ins'+variant.alt,''
         else:  # transcript.strand == -1
+            rev = variant.alt.reverseComplement()
             # If get here, We are guaranteed that the variants is left shifted if the transcript strand is -1
             #if (variant.pos + (len(insert)-1) <= transcript.transcriptEnd): #' 5' shift (right)
             try:
-                after = reference.getReference(variant.chrom, variant.pos, variant.pos + len(insert)- 1 )
+                after = reference.getReference(variant.chrom, variant.pos, variant.pos + len(variant.alt)- 1 )
             except: # Sequence right at the end, cannot be dup
-                return 'ins' + variant.alt.reverseComplement(), ''
+                return 'ins' + rev, ''
         # Checking if variant is a duplication
-            if insert == after:
-                return 'dup', 'dup'
-            rev = insert.reverseComplement()
-            if rev == after:
-                if len(rev)>1:
-                    return 'inv','inv'
+            if variant.alt == after:
+                if skip_repeats is True:
+                    return 'dup', 'dup'
                 else:
-                    return 'inv',''  # it's an inversion, but do not need to change coordinates
+                    return '[2]', '[2]'
+            if len(rev) == 1: # Cannot be inversion of length 1
+                return 'ins'+rev,''
+            if rev == after:
+                return 'insinv','insinv'
             return 'ins' + variant.alt.reverseComplement(), ''
 
     # Returning DNA level annotation if variant is a deletion
     if variant.is_deletion:
-        return 'del',''
-        #if len(variant.ref) > 4:
-        #    return 'del' + str(len(variant.ref)), ''
-        #if transcript.strand == 1:
-        #    return 'del' + variant.ref, ''
-        #else:
-        #    return 'del' + core.Sequence(variant.ref).reverseComplement(), ''
+        if skip_repeats is True:
+            return 'del',''
+        else:
+            in_coding_region = variant.pos >= transcript.codingStartGenomic and variant.pos<=transcript.codingEndGenomic
+            fully_inside_exon = (coord1 is not None and (intr1 is None or intr1 == 0)) and (
+                        coord2 is None or (intr2 is None or intr2 == 0))
+            at_least_partly_inside_exon = (coord1 is not None and (intr1 is None or intr1 == 0)) or (
+                coord2 is not None and (intr2 is None or intr2 == 0))
+            # within cDNA, only multiple of 3 can be represented by repeat when fully or inside exon
+            if (in_coding_region is False) or \
+                    ((replen % 3 == 0 and fully_inside_exon is True) or  at_least_partly_inside_exon is False):
+                if repn>1: #enough evidence that it could be a repeat to warrant scanning ref for repeats
+                    if transcript.strand == 1:
+                        rep_str = rep_unit+'['+str(repn)+']'
+                        return rep_str,rep_str
+                    else:
+                        rep_str = core.Sequence(rep_unit).reverseComplement()+ '[' + str(repn) + ']'
+                        return rep_str,rep_str
+ #               else if only one copy of repeat unit, check the sequence 5' of variant
+            else: # Cannot annotate as repeat
+                return 'del',''
+        # only get here if repn==1 and repeat unit is the same size as the deletion
+        if transcript.strand == 1:
+            # If get here, We are guaranteed that the variants is right shitfed if the transcript strand is +
+            # so We only have to check for repeats before insertion point.
+            # coord1 points to the repeated base i 1-base coordinates (does not point after insertion site like variant.pos)
+            #if variant.pos - len(insert) >= transcript.transcriptStart and variant.pos - 1 <= transcript.transcriptEnd:
+
+            goodchrom = core.convert_chrom(variant.chrom, reference.fastafile.references)
+            if goodchrom is None:
+                # Probably should have an error message
+                return 'del',''
+            if variant.pos - replen+1 >= 0:
+                before = reference.getReference(variant.chrom, variant.pos - replen, variant.pos-1)
+            else: # right shifted variant insertion at beginning of chromosome, cannot be dup.
+                return 'del',''
+            # Checking if variant is a duplication, but no more
+            if variant.ref == before:
+                return 'del','del['+str(repn)+']'   # 2nd term is just to trigger action by calling function
+            return 'del',''
+        else:  # transcript.strand == -1 ..\\
+            # If get here, We are guaranteed that the variants is left shifted if the transcript strand is -1
+            # .. so if there are any repeat units, they are on the right.
+            try:
+                after = reference.getReference(variant.chrom, variant.pos, variant.pos + replen- 1 )
+            except: # Sequence right at the end, cannot be dup
+                return 'del',''
+        # Checking if variant is a duplication
+            if after == variant.ref:
+                return 'del', 'del['+str(repn)+']'
+            return 'del','del'
+
 
 
     # Returning DNA level annotation if variant is a complex indel
-    if variant.is_complex:
+    if variant.is_complex:  # delins or inv
+        if len(variant.ref) == len(variant.alt):
+            if variant.ref == variant.alt.reverseComplement():  # has to be longer than 1 bp (otherwise would be substitution)
+               return 'inv',''
         if transcript.strand == 1:
             return 'delins' + variant.alt, ''
         else:
@@ -1354,5 +1490,157 @@ def changeTo3lettersTer(aas):
         '*': 'Ter', 'X': 'Ter', 'x': 'Ter', '?': '?', 'U' : 'Sel'}
     for aa in aas: ret += codes[aa]
     return ret
+
+#
+# Right shift all genomic data, this allows dups and inv to be detected
+#
+
+def make_genomic_DNA_annotation(variant, reference):
+    # Returning DNA level annotation if variant is a base substitution
+    if variant.is_substitution:
+        return variant.ref + '>' + variant.alt, ''
+
+    # Returning genomic DNA level annotation if variant is an insertion
+    rep_unit = variant.alt
+    repn = 1
+    if variant.is_insertion:
+        [rep_unit, repn] = find_repeat_unit(variant.alt)
+    elif variant.is_deletion:
+        [rep_unit, repn] = find_repeat_unit(variant.ref)
+    replen = len(rep_unit)
+
+    if variant.is_insertion:
+        if repn >1: # Should try to represent as repeat if allowable
+            rep_str = rep_unit+'['+str(repn)+']'
+            return rep_str,rep_str
+        insert = variant.alt
+        if variant.pos - len(insert) >= 0:
+            if len(insert)==1 and len(variant.vcf_padded_base)>0:
+                before = variant.vcf_padded_base
+            else:
+                before = reference.getReference(variant.chrom, variant.pos - len(insert), variant.pos - 1)
+        else: # right shifted variant insertion at beginning of chromosome, cannot be dup.
+            return 'ins'+variant.alt,''
+        # Checking if variant is a duplication, but no more
+        if insert == before: # At the minimum a dup ... so trigger the repeat scanning
+            return '[2]','[2]'  # Dups, but coordinate of insertion will be adjusted to point to a range
+        if len(insert)==1:
+            return 'ins'+variant.alt,''  # cannot be an inversion (no len=1 inversions)
+        rev = insert.reverseComplement()
+        if rev == before: # Insertion of an inverted copy of the sequence just 5' of insertion site
+            return 'ins'+str(variant.pos-len(variant.alt))+ '_' + str(variant.pos-1)+'inv',''
+        return 'ins',''
+
+    if variant.is_deletion:
+        return 'del',''
+
+
+    # Returning DNA level annotation if variant is a complex indel
+    if variant.is_complex:
+        return 'delins' + variant.alt, ''
+
+
+GRCh38 = {"1" :  "NC_000001.11", "2" :  "NC_000002.12", "3" :  "NC_000003.12",
+"4" :  "NC_000004.12", "5" :  "NC_000005.10", "6" :  "NC_000006.12", "7" :  "NC_000007.14",
+"8" :  "NC_000008.11", "9" :  "NC_000009.12", "10" :  "NC_000010.11", "11" :  "NC_000011.10",
+"12" :  "NC_000012.12", "13" :  "NC_000013.11", "14" :  "NC_000014.9", "15" :  "NC_000015.10",
+"16" :  "NC_000016.10", "17" :  "NC_000017.11", "18" :  "NC_000018.10", "19" :  "NC_000019.10",
+"20" :  "NC_000020.11", "21" :  "NC_000021.9", "22" :  "NC_000022.11",
+"X" :  "NC_000023.11", "Y" :  "NC_000024.10", 'MT': "NC_012920.1"}
+GRCh37 ={ "1" :  "NC_000001.10", "2" :  "NC_000002.11", "3" :  "NC_000003.11", "4" :  "NC_000004.11",
+"5" :  "NC_000005.9", "6" :  "NC_000006.11", "7" :  "NC_000007.13", "8" :  "NC_000008.10",
+"9" :  "NC_000009.11", "10" :  "NC_000010.10", "11" :  "NC_000011.9", "12" :  "NC_000012.11",
+"13" :  "NC_000013.10", "14" :  "NC_000014.8", "15" :  "NC_000015.9", "16" :  "NC_000016.9",
+"17" :  "NC_000017.10", "18" :  "NC_000018.9", "19" :  "NC_000019.9", "20" :  "NC_000020.10",
+"21" :  "NC_000021.8", "22" :  "NC_000022.10", "X" :  "NC_000023.10", "Y" :  "NC_000024.9",
+'MT': "NC_012920.1"}
+
+builds = {"GRCh38" : GRCh38, "GRCh37" : GRCh37, "hg19" : GRCh37, "hg38" : GRCh38 }
+
+
+def get_contig_from_build(chrom, build):
+    if build in builds:
+        chrom_to_NC = builds[build]
+        newchrom = chrom
+        if newchrom.startswith("chr"):
+            newchrom = newchrom[3:]
+        if newchrom == "M":
+            newchrom = "MT"
+        contig = chrom_to_NC[newchrom]
+    else:
+        contig = chrom
+    return contig
+
+
+# Getting CSN annotation of a given variant
+# THIS only gets called with transcript.strand==1 ==> right shifted variants
+#                        or transcript.strand==-1 ==> left shifted variants
+def get_genomic_Annotation(variant, build, reference):
+    # Creating DNA level annotation
+    if build in builds:
+        chrom_to_NC = builds[build]
+        chrom = variant.chrom
+        if chrom.startswith("chr"):
+            chrom = chrom[3:]
+        if chrom == "M":
+            chrom = "MT"
+        contig = chrom_to_NC[chrom]
+    else:
+        contig = variant.chrom
+    if variant.alt.startswith("<") and variant.alt.endswith(">") and not ("," in variant.alt): # Tolerate gVCF or any symbolic ID (e.g. CNV)
+        if variant.alt == '<*>' or variant.alt == '<NON_REF>':
+            return contig + ":g."+str(variant.pos)+variant.ref+"="
+    if variant.is_substitution:
+        return contig + ":g." + str(variant.pos) + variant.ref + ">" + variant.alt
+
+    if variant.is_complex: #delins or inv
+        if len(variant.ref) == len(variant.alt):
+            if variant.ref == variant.alt.reverseComplement(): # has to be longer than 1 bp (otherwise would be substitution)
+                return contig + ":g." + str(variant.pos)+ '_' +str(variant.pos+(len(variant.ref)-1))+ 'inv'
+        return contig + ":g." + str(variant.pos)+ '_' +str(variant.pos+(len(variant.ref)-1))+ "delins" + variant.alt
+
+    # Scan for dup or inversions.. which have priority over insertions
+    if variant.is_insertion:
+        dna, dna_ins = make_genomic_DNA_annotation(variant, reference)
+        if dna == 'dup' or dna == 'inv':
+            if len(variant.alt) == 1:
+                return contig + ":g." + str(variant.pos -1) +dna
+            else:
+                return contig + ":g." + str(variant.pos-len(variant.alt)) + '_' + str(variant.pos-1) +  dna
+        elif dna.startswith('ins') and dna.endswith('inv'):
+            return contig + ":g." + str(variant.pos - 1) + '_' + str(variant.pos) + dna
+
+    [left_result,right_result,full_result] = scan_for_repeat(variant, reference)  # transcript is not actually needed for scan_for_repeat
+    range_start = right_result[1]
+    repeat_unit = right_result[4]
+    n_repeat_ref = right_result[2]
+    n_repeat_alt = right_result[3]
+    range_end = range_start+len(repeat_unit)*n_repeat_ref -1
+    if variant.is_deletion:
+        if n_repeat_ref-n_repeat_alt>=1 and n_repeat_ref >1:
+            # Current notation does not allow a range .. proposal to change that.
+            return contig + ":g." + str(range_start) + repeat_unit + '[' + str(n_repeat_ref)+']%3B['+str(n_repeat_alt)+']'
+        else:
+            if len(repeat_unit) >1:
+                return contig + ":g." + str(variant.pos) + '_' + str(variant.pos+len(variant.ref)-1) + 'del'
+            else:
+                return contig + ":g." + str(variant.pos)  + 'del'
+
+    else: # variant.is_insertion
+        if n_repeat_ref == 1 and n_repeat_alt == 2:  #Duplication
+            if len(repeat_unit) > 1:
+                return contig + ":g." + str(variant.pos - len(repeat_unit)) + '_' + str(variant.pos-1) + 'dup'
+            else:
+                return contig + ":g." + str(variant.pos-1) + 'dup'
+        elif n_repeat_alt-n_repeat_ref>=1 and n_repeat_ref>0 and n_repeat_alt>1:
+ #XXXfuture           if range_end - range_start>1:
+ #XXXfuture               return contig + ":g." + str(range_start) + '_' + str(range_end) + \
+ #XXXfuture                      repeat_unit + '[' + str(n_repeat_ref)+']%3B['+str(n_repeat_alt)+']'
+ #XXXfuture           else:
+            return contig + ":g." + str(range_start) + repeat_unit + '[' + str(n_repeat_ref) + ']%3B[' + str(n_repeat_alt) + ']'
+
+        else: # Only one copy inserted
+            # could NOT be insinv ..
+            return contig + ":g." + str(variant.pos-1) + '_' + str(variant.pos) + 'ins' + variant.alt
 
 #######################################################################################################################

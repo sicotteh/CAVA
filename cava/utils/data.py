@@ -474,8 +474,9 @@ class Ensembl(object):
                     ('5UTR' in loc_plus) or ('3UTR' in loc_plus) or ('-' in loc_plus) or ('In' in loc_plus) or (
                     loc_plus == 'OUT') or (loc_plus == '.'))
             if difference:
-                notexonic_minus = ( ('5UTR' in loc_minus) or ('3UTR' in loc_minus) or ('-' in loc_minus) or (
-                        'In' in loc_minus) or (loc_minus == 'OUT') or (loc_minus == '.'))
+                notexonic_minus = (
+                        ('5UTR' in loc_minus) or ('3UTR' in loc_minus) or ('-' in loc_minus) or (
+                        'In' in loc_minus) or (loc_minus == 'OUT') or (loc_minus == '.'))  # Variants overlapping the ends of the protein
             else:
                 notexonic_minus = notexonic_plus
             exonseqs = None
@@ -597,6 +598,14 @@ class Ensembl(object):
             if transcript.strand == 1:
                 class_plus, class_minus = self.correctClasses(csn_plus_str, class_plus, class_minus)
                 so_plus, so_minus = self.correctSOs(csn_plus_str, so_plus, so_minus)
+                if class_plus == "ESS" or so_plus.startswith("splice"):
+                    csn_plus_arr = csn_plus_str.split("_p.")
+                    if len(csn_plus_arr)==1 or csn_plus_arr[1] in ["=","(=)","="]:
+                        csn_plus_str = csn_plus_arr[0]  + "_p.?"
+                if class_minus == "ESS" or so_minus.startswith("splice"):
+                    csn_minus_arr = csn_minus_str.split("_p.")
+                    if len(csn_minus_arr) == 1 or csn_minus_arr[1] in ["=", "(=)","="]:
+                        csn_minus_str = csn_minus_arr[0] + "_p.?"
                 CSNstring += csn_plus_str
                 CLASSstring += class_plus
                 ALTANN = csn_minus_str
@@ -611,6 +620,14 @@ class Ensembl(object):
             else:
                 class_plus, class_minus = self.correctClasses(csn_minus_str, class_plus, class_minus)
                 so_plus, so_minus = self.correctSOs(csn_minus_str, so_plus, so_minus)
+                if class_plus == "ESS" or so_plus.startswith("splice"):
+                    csn_plus_arr = csn_plus_str.split("_p.")
+                    if len(csn_plus_arr)==1 or csn_plus_arr[1] in ["=","(=)"]:
+                        csn_plus_str = csn_plus_arr[0]  + "_p.?"
+                if class_minus == "ESS" or so_minus.startswith("splice"):
+                    csn_minus_arr = csn_minus_str.split("_p.")
+                    if len(csn_minus_arr) == 1 or csn_minus_arr[1] in ["=", "(=)"]:
+                        csn_minus_str = csn_minus_arr[0] + "_p.?"
                 CSNstring += csn_minus_str
                 CLASSstring += class_minus
                 ALTANN = csn_plus_str
