@@ -1,4 +1,0 @@
-ID                      CURATED_CSN                     NEW_CSN N       NEW_HGVSC                               NEW_HGVSP   DIFF_CSN
-ID=chr3-37050680-G-GGAGAGA	NM_000249.4(MLH1):c.+27_+28insGAGAGA	c.*28_*27GA[0]%3B[3]	NC_000003.12(NM_000249.4):c.*28_*27GA[0]%3B[3]	.   ---   >>c.+27_+28insGAGAGA<<
-
-
