@@ -11,7 +11,7 @@ setup(
     python_requires=">=3.7",
     version=version,
     description='CAVA (Clinical Annotation of VAriants)',
-    #url='https://github.com/Steven-N-Hart/CAVA',
+    url='https://github.com/Steven-N-Hart/CAVA',
     author='Steven-N-Hart, Hugues-Sicotte',
     author_email='hart.steven@mayo.edu, sicotte.hugues@mayo.edu',
     license='MIT',

@@ -3,9 +3,8 @@
 
 # CSN annotation
 #######################################################################################################################
+import cava.utils.core as core
 import sys
-from . import core
-
 
 # Class representing a CSN annotation
 class CSNAnnot:
@@ -42,7 +41,7 @@ class CSNAnnot:
                     ret += '+' + str(self.intr2)
                 else:
                     ret += str(self.intr2)
-        return ret
+
 
     # Getting annotation as a single String
     def getAsString(self):
@@ -56,7 +55,9 @@ class CSNAnnot:
         return ret
 
     # Getting annotation as a list of separate values
+
     # This method is not used..
+
     def getAsFields(self):
         if not self.coord1_ins == '':
             return self.coord1_ins, self.intr1_ins, self.coord2_ins, self.intr2_ins, self.dna_ins, self.protein
@@ -67,6 +68,7 @@ class CSNAnnot:
 #######################################################################################################################
 
 # Getting CSN annotation of a given variant
+
 # THIS only gets called with transcript.strand==1 ==> right shifted variants
 #                        or transcript.strand==-1 ==> left shifted variants
 def getAnnotation(variant, transcript, reference, prot, mutprot):
@@ -221,6 +223,7 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
 # Calculating csn annotation coordinates
 def calculateCSNCoordinates(variant, transcript):
     # Returning coordinates if variant is a base substitution
+
     if variant.is_substitution:
         x, y, nout = transformToCSNCoordinate(variant.pos, transcript)
         return x, y, None, None, nout, None
@@ -803,12 +806,15 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
 # 
 # Coord1 is 1-based position in the CDS .. and is ONLY used to report Synonymous variants .. it is not used to locate deletions or frameshifts
 # 
+
 def makeProteinString(variant, prot, mutprot, coord1_str):
+
     """
 
     :param variant:
     :param prot:
     :param mutprot:
+
     :param coord1_str:
     :return: '_p.Met1?', ('1', prot[0], 'X')
     """
@@ -827,6 +833,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
 
     xindex = mutprot.find('X')
     # Edge case in HGVS, entire protein deleted .. starting
+
     if len(mutprot)==0:
         return '_p.Met1?', ('1', prot[0], '')
     if mutprot[0]=='X' and prot[0] == 'M':
@@ -952,11 +959,13 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
     #               For the case of Ins of fs.. if an early Stop occur.. and is encodable as a substitution
 
     # Any mutation where the first different AA is a new Stop ==> priority as nonsense mut (wether ins, del or fs, or complex )
+
     if len(mutprot)>0 and mutprot[0] == 'X' and len(prot)>0 and prot[0] != 'X':
         return '_p.' + changeTo3lettersTer(prot[0]) + str(leftindex) + changeTo3lettersTer(mutprot[0]), (
         str(leftindex), prot[0], 'X')
 
     # Checking if the first base altered results in a stop lost mutation
+
     if len(prot)>0 and prot[0] == 'X':  # Don't have to check for frameshift or SSR if stop codon is first mutated.
         if len(mutprot) == 0:  # 3' Extension of unknown length on reference sequence without reference sequence that can lead to extension
             return '_p.Ter' + str(leftindex) + '?ext*?', (str(leftindex), 'X', '?')
@@ -1286,6 +1295,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
         "\nBUG: Cannot compute CSN for : original prot=" + protcopy + "\n   : Cannot compute CSN for : mutated  prot=" + mutprotcopy + "\n")
 
     return "", ()
+
 
 
 # Transforming a genomic position to csn coordinate
@@ -1643,4 +1653,7 @@ def get_genomic_Annotation(variant, build, reference):
             # could NOT be insinv ..
             return contig + ":g." + str(variant.pos-1) + '_' + str(variant.pos) + 'ins' + variant.alt
 
-#######################################################################################################################
+=======
+        '*': 'Ter', 'X': 'Ter', 'x': 'Ter', '?': '?'}
+    for aa in aas: ret += codes[aa]
+    return ret
