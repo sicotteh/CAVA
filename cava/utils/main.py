@@ -6,16 +6,14 @@ import logging
 import multiprocessing
 import os
 import sys
-
-
 import pysam
-from .data import *
-from .core import *
-#from .data import Ensembl
-#from .data import Reference
-#from .data import dbSNP
-#from . import core
-#from .core import Options, checkOptions, Record, readSet, read_dict,countRecords,writeHeader
+
+from cava.utils.data import Ensembl
+from cava.utils.data import Reference
+from cava.utils.data import dbSNP
+from . import core
+from .core import Options
+from .core import Record
 
 
 # Printing out welcome meassage
@@ -237,6 +235,7 @@ class SingleJob(multiprocessing.Process):
                 if line.startswith('@codon_usage'):
                     codon_usage = line[line.find('=') + 1:].strip().split(',')
                     self.codon_usage = codon_usage
+
         # Reference genome
         self.reference = Reference(options)
         if options.args['logfile'] and threadidx == 1: logging.info('Connected to reference genome.')
@@ -244,7 +243,8 @@ class SingleJob(multiprocessing.Process):
         if (not options.args['ensembl'] == '.') and (not options.args['ensembl'] == ''):
             # Pass reference to ensembl, so it can know the chromosome sizes
             self.ensembl = Ensembl(options, genelist, transcriptlist, codon_usage[0], self.reference)
-            if options.args['logfile'] and threadidx == 1: logging.info('Connected to Ensembl database.')
+            if options.args['logfile'] and threadidx == 1:
+                logging.info('Connected to Ensembl database.')
         else:
             self.ensembl = None
 
@@ -270,6 +270,13 @@ class SingleJob(multiprocessing.Process):
             logging.info("transcript2protein has " + str(len(options.transcript2protein)) + " mappings\n")
 
         if not copts.stdout and threadidx == 1: initProgressInfo()
+
+        # Reading (new) transcript2protein map for HGVSP annotation
+        if options.args['logfile'] and threadidx == 1:
+            logging.info("INFO: reading transcript2protein file\n")
+        options.transcript2protein = core.read_dict(options, 'transcript2protein')
+        if options.args['logfile'] and threadidx == 1:
+            logging.info("transcript2protein has " + str(len(options.transcript2protein)) + " mappings\n")
 
     # Running process
     def run(self):
@@ -307,7 +314,8 @@ class SingleJob(multiprocessing.Process):
             # Only annotate records of allowed chromosome names
             if record.chrom not in self.chroms:
                 logging.warning(
-                    "\t!!!!!!Chromosome " + record.chrom + " not found, skipping annotation, but still outputting in VCF as long as within target region (if specified)!!!!!!\n")
+                    "\t!!!!!!Chromosome " + record.chrom + " not found, skipping annotation, "+
+                    "but still outputting in VCF as long as within target region (if specified)!!!!!!\n")
             else:
                 # Annotating the record based on the Ensembl, dbSNP and reference data
                 record.annotate(self.ensembl, self.dbsnp, self.reference, self.impactdir)
@@ -358,6 +366,7 @@ def run(copts, version):
                             format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
 
     # Printing out version.py information and start time
+
     if not copts.stdout:
         starttime = printStartInfo(version)
     if options.args['logfile']:
@@ -371,13 +380,14 @@ def run(copts, version):
         printInputFileNames(copts, options)
 
     # Reading gene, transcript and snp lists from files
-    genelist = readSet(options, 'genelist')
-    transcriptlist = readSet(options, 'transcriptlist')
-    snplist = readSet(options, 'snplist')
+    genelist = core.readSet(options, 'genelist')
+    transcriptlist = core.readSet(options, 'transcriptlist')
+    snplist = core.readSet(options, 'snplist')
 
     # Reading (new) transcript2protein map for HGVSP annotation
     print("INFO: reading transcript2protein file\n")
-    options.transcript2protein = read_dict(options, 'transcript2protein')
+    options.transcript2protein = core.read_dict(options, 'transcript2protein')
+
     print("transcript2protein has " + str(len(options.transcript2protein)) + " mappings\n")
     # Parsing @impactdef string
     if not (options.args['impactdef'] == '.' or options.args['impactdef'] == ''):
@@ -391,7 +401,7 @@ def run(copts, version):
         impactdir = None
 
     # Counting and printing out number of records of input file
-    numOfRecords = countRecords(copts.input)
+    numOfRecords = core.countRecords(copts.input)
     if not copts.stdout:
         printNumOfRecords(numOfRecords)
     if options.args['logfile']:
@@ -403,7 +413,7 @@ def run(copts, version):
     else:
         outfile = open(copts.output + '.txt', 'w')
     header = readHeader(copts.input)
-    writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
+    core.writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
     outfile.close()
 
     # Find break points in the input file

@@ -67,7 +67,8 @@ git clone git@github.com:Steven-N-Hart/CAVA.git
 # e.g. git checkout v.1.2.4
 python setup.py install
 ```
-If you get this error, run the following command before running the setup.py
+
+If you get an error with pycurl, run the following command before running the setup.py
 ```bash
 pip uninstall pycurl
 export PYCURL_SSL_LIBRARY=nss

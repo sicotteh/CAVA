@@ -450,6 +450,9 @@ def writeToFile(sortedRecords, filename):
     outfile = open(filename, 'w')
     for record in sortedRecords:
         s = str(record[0]).rstrip()
+        if int(record[6]) >= int(record[7]):
+            print(f'Failed to correctly parse {record}')
+            continue
         for i in range(1, len(record)): s += '\t' + str(record[i]).rstrip()
         outfile.write(s + '\n')
     outfile.close()
@@ -464,18 +467,24 @@ def readRecords(inputfn):
 
 # Process Ensembl data
 def process_data(options):
-    0
-    0
     ref_records_hg19 = 0
     enst_records_hg19 = 0
     ######################################################################
     # Download data if necessary
-    source_compressed_gtf_ens = 'MANE.GRCh38.v' + options.ensembl + '.select_ensembl_genomic.gtf.gz'
-    source_compressed_gtf_ref = 'MANE.GRCh38.v' + options.ensembl + '.select_refseq_genomic.gtf.gz'
+    #source_compressed_gtf_ens = 'MANE.GRCh38.v' + options.ensembl + '.select_ensembl_genomic.gtf.gz'
+    #source_compressed_gtf_ref = 'MANE.GRCh38.v' + options.ensembl + '.select_refseq_genomic.gtf.gz'
+    source_compressed_gtf_ens = 'MANE.GRCh38.v' + options.ensembl + '.ensembl_genomic.gtf.gz'
+    source_compressed_gtf_ref = 'MANE.GRCh38.v' + options.ensembl + '.refseq_genomic.gtf.gz'
     source_compressed_gtf_ens = os.path.join(options.output_dir, source_compressed_gtf_ens)
     source_compressed_gtf_ref = os.path.join(options.output_dir, source_compressed_gtf_ref)
-    download_gtf(source_compressed_gtf_ens, options.ensembl)
-    download_gtf(source_compressed_gtf_ref, options.ensembl)
+    try:
+        download_gtf(source_compressed_gtf_ens, options.ensembl)
+        download_gtf(source_compressed_gtf_ref, options.ensembl)
+    except Exception as e:
+        print('\n\nCannot connect to FTP site. No internet connection?\n')
+        print(f'{e}\n{url}')
+        exit(1)
+
 
     # Parse the entries & return the number of transcripts found
     genesdata = dict()
@@ -491,8 +500,8 @@ def process_data(options):
     # Use crossmap to get hg19 if desired
     #################################################################
     if options.no_hg19 is not False:
-        crossmap(source_compressed_gtf_ens)
-        crossmap(source_compressed_gtf_ref)
+        crossmap(source_compressed_gtf_ens, options.output_dir)
+        crossmap(source_compressed_gtf_ref, options.output_dir)
 
         failed_conversions['GENE'] = set()
         failed_conversions['GENETYPE'] = set()
@@ -597,22 +606,21 @@ def download_gtf(source_compressed_gtf, version):
         sys.stdout.write(f'Downloading {os.path.basename(source_compressed_gtf)}... ')
         sys.stdout.flush()
         if 'ensembl' in source_compressed_gtf:
-            url = 'ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_' + version + '/MANE.GRCh38.v' + version + '.select_ensembl_genomic.gtf.gz'
+            url = 'https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_' + version + '/MANE.GRCh38.v' + version + '.ensembl_genomic.gtf.gz'
         else:
-            url = 'ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_' + version + '/MANE.GRCh38.v' + version + '.select_refseq_genomic.gtf.gz'
+            url = 'https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_' + version + '/MANE.GRCh38.v' + version + '.refseq_genomic.gtf.gz'
         try:
             wget.download(url)
             os.rename(os.path.basename(source_compressed_gtf), source_compressed_gtf)
 
         except Exception as e:
-            print('\n\nCannot connect to FTP site. No internet connection?\n')
+            print('\n\nCannot connect to FTP site, even after removing select. No internet connection?\n')
             print(f'{e}\n{url}')
-            exit(1)
     print('')
     sys.stdout.flush()
 
 
-def crossmap(source_compressed_gtf):
+def crossmap(source_compressed_gtf, output_dir):
     requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'  # Needed for UCSC
     # only download if necessary
     if not os.path.exists(os.path.join(os.path.dirname(source_compressed_gtf), 'hg38ToHg19.over.chain.gz')):
@@ -621,7 +629,7 @@ def crossmap(source_compressed_gtf):
         url = 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/hg38ToHg19.over.chain.gz'
         try:
             p = requests.get(url, verify=False)
-            with open(os.path.join('data', 'hg38ToHg19.over.chain.gz'), 'wb') as o:
+            with open(os.path.join(output_dir, 'hg38ToHg19.over.chain.gz'), 'wb') as o:
                 o.write(p.content)
 
         except Exception as e:
@@ -630,7 +638,7 @@ def crossmap(source_compressed_gtf):
             quit()
 
     sys.stdout.write('\nMaking a hg19-conveterted GTF file\n')
-    mapTree, targetChromSizes, sourceChromSizes = read_chain_file(os.path.join('data', 'hg38ToHg19.over.chain.gz'))
+    mapTree, targetChromSizes, sourceChromSizes = read_chain_file(os.path.join(output_dir, 'hg38ToHg19.over.chain.gz'))
 
     converted_gtf = source_compressed_gtf.replace('.gtf.gz', '.hg19_converted.gtf')
     crossmap_gff_file(mapTree, source_compressed_gtf, converted_gtf)
@@ -693,9 +701,9 @@ def report_summary(enst_parsed, options, hg19=False, enst=True):
     else:
         hg19 = ''
     if enst:
-        enst = '.select_ensembl_genomic'
+        enst = '.ensembl_genomic'
     else:
-        enst = '.select_refseq_genomic'
+        enst = '.refseq_genomic'
     full_name = os.path.join(options.output_dir, 'MANE.GRCh38.v' + options.ensembl + enst + hg19)
     if enst_parsed > 0:
         print('\n######################################################################')
