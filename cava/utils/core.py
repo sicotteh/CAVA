@@ -11,6 +11,7 @@ import os
 import sys
 import time
 import re
+from . import csn
 
 
 #######################################################################################################################
@@ -63,6 +64,9 @@ class Variant(object):
             self.is_insertion = False
             self.is_complex = True
             self.is_in_frame = ((lx - ly) % 3 == 0)
+        self.left_result = None
+        self.right_result = None
+        self.full_result = None
 
 
     # Getting basic information about variant
@@ -319,6 +323,10 @@ class Record(object):
         # Reference genome pysam/tabix object
         self.reference = reference
         # Parsing VCF format
+        if 'build' in options.args:
+            self.build = options.args['build']
+        else:
+            self.build = 'GRCh38'
         if options.args['inputformat'].upper() == 'VCF':
             cols = line.strip().split("\t")
             self.chrom = cols[0]
@@ -350,6 +358,7 @@ class Record(object):
             self.pos = int(cols[2])
             self.ref = cols[3]
             alts = cols[4].split(",")
+
             self.qual = ''
             self.filter = 'PASS'
             self.info = ''
@@ -357,6 +366,10 @@ class Record(object):
         else:
             raise Exception("Invalid Input format type")
 
+        altsclean = []
+        for alt in alts:
+            if not alt.startswith('<'):
+                altsclean.append(alt)
         # Creating a Variant object for each variant/alt-allele  in the record
         # as long as they pass filtering.
         #
@@ -366,59 +379,64 @@ class Record(object):
         self.alts = []
         in_target_region = False
 
-        ntrim = trim_all_alleles(self.ref,alts)
+        ntrim = trim_all_alleles(self.ref,altsclean)
         if ntrim > 0:
             self.ref = self.ref[ntrim:]
             self.pos += ntrim
             for ia in range(0,len(alts)):
-                alts[ia] = alts[ia][ntrim:]
+                alt = alts[ia]
+                if not alt.startswith('<'):
+                    alts[ia] = alts[ia][ntrim:]
 
         for alt in alts:
             # Keep original alt alleles because each alt-allele may normalize differently and have different positions
             self.alts.append(alt)
             # Initializing each Variant object with different alt allele
-            var = Variant(self.chrom, self.pos, self.ref, alt)
+            if alt.startswith('<'):
+                var = None
+            else:
+                var = Variant(self.chrom, self.pos, self.ref, alt)
 
+                # DO  NOT FILTER
+                """
+                if 'N' in self.ref or 'N' in alt:
+                    logging.info('Variant ignored as allele contains unknown base (\'N\'): ' + self.chrom + ':' + str(
+                        self.pos) + ' ' + self.ref + '>' + alt)
+                    continue
+               
+                if alt == '.':
+                    logging.info("Variant ignored because it is monomorphic reference: " + self.chrom + ':' + str(
+                        self.pos) + ' ' + self.ref + '>' + alt)
+                    continue
+    
+                if not alt.strip('ACGT') is '' or not self.ref.strip('ACGT') is '':
+                    logging.info("Variant ignored as format of alt allele is not supported: " + self.chrom + ':' + str(
+                        self.pos) + ' ' + self.ref + '>' + alt)
+                    continue
+                """
+                # Filtering by variant type (i.e. substitution, indel, insertion, deletion, complex indel), if required
+                # Filtering via those options is NOT recommended, especially when dealing with multiple alt-alleles.
 
-            # DO  NOT FILTER
-            """
-            if 'N' in self.ref or 'N' in alt:
-                logging.info('Variant ignored as allele contains unknown base (\'N\'): ' + self.chrom + ':' + str(
-                    self.pos) + ' ' + self.ref + '>' + alt)
-                continue
-           
-            if alt == '.':
-                logging.info("Variant ignored because it is monomorphic reference: " + self.chrom + ':' + str(
-                    self.pos) + ' ' + self.ref + '>' + alt)
-                continue
-
-            if not alt.strip('ACGT') is '' or not self.ref.strip('ACGT') is '':
-                logging.info("Variant ignored as format of alt allele is not supported: " + self.chrom + ':' + str(
-                    self.pos) + ' ' + self.ref + '>' + alt)
-                continue
-            """
-            # Filtering by variant type (i.e. substitution, indel, insertion, deletion, complex indel), if required
-            # Filtering via those options is NOT recommended, especially when dealing with multiple alt-alleles.
-            if options.args['type'].upper() == 'SUBSTITUTION' and not var.is_substitution:
-                continue
-            if options.args['type'].upper() == 'INDEL' and not var.is_insertion and not var.is_deletion \
-                    and not var.is_complex:
-                continue
-            if options.args['type'].upper() == 'INSERTION' and not var.is_insertion:
-                continue
-            if options.args['type'].upper() == 'DELETION' and not var.is_deletion:
-                continue
-            if options.args['type'].upper() == 'COMPLEX' and not var.is_complex:
-                continue
-            # Adding Variant object to this record
-            # 10/2021-New benavior, adding all alt-alleles variants if any of the alleles is in the target region .. and is not explicitely filtered out by type
-            # The logic is that the user should be able to decide which variant has the best support in the sequencing data (read count)
-            # .. and not be biased by the most deleterious option.
-            # At least 1 must pass the BED filtering - if requested (otherwise all alt-alleles (whole variant) are excluded)
+                if options.args['type'].upper() == 'SUBSTITUTION' and not var.is_substitution:
+                    continue
+                if options.args['type'].upper() == 'INDEL' and not var.is_insertion and not var.is_deletion \
+                        and not var.is_complex:
+                    continue
+                if options.args['type'].upper() == 'INSERTION' and not var.is_insertion:
+                    continue
+                if options.args['type'].upper() == 'DELETION' and not var.is_deletion:
+                    continue
+                if options.args['type'].upper() == 'COMPLEX' and not var.is_complex:
+                    continue
+                # Adding Variant object to this record
+                # 10/2021-New benavior, adding all alt-alleles variants if any of the alleles is in the target region .. and is not explicitely filtered out by type
+                # The logic is that the user should be able to decide which variant has the best support in the sequencing data (read count)
+                # .. and not be biased by the most deleterious option.
+                # At least 1 must pass the BED filtering - if requested (otherwise all alt-alleles (whole variant) are excluded)
             self.variants.append(var)
 
             # Filtering by BED file, if required
-            if targetBED is not None:
+            if targetBED is not None and var is not None:
                 goodchrom = convert_chrom(var.chrom+"", targetBED.contigs)
                 if goodchrom is None:
                     continue
@@ -434,7 +452,7 @@ class Record(object):
                 foundend = False
                 for _ in self.targetBED.fetch(region=goodchrom + ':' + str(end) + '-' + str(end)):
                     foundend = True
-                if not (foundstart or foundend): 
+                if not (foundstart or foundend):
                     if not (var.is_deletion or var.is_insertion):
                         continue  # No shifting possible, so definitively outside bed region.
                     else:
@@ -472,8 +490,6 @@ class Record(object):
             else:
                 in_target_region = True
 
-
-
         if in_target_region is False:
             self.variants = []
 
@@ -481,12 +497,21 @@ class Record(object):
     def annotate(self, ensembl, dbsnp, reference, impactdir):
         # Annotating each variant in the record
         for variant in self.variants:
-            variant.annotate(ensembl, dbsnp, reference, impactdir)
+            if variant is not None:
+                variant.annotate(ensembl, dbsnp, reference, impactdir)
+                if variant.alignonplus is not None:
+                    variant.addFlag('HGVSg', csn.get_genomic_Annotation(variant.alignonplus, self.build ,reference))
+                else:
+                    variant.addFlag('HGVSg', csn.get_genomic_Annotation(variant, self.build, reference))
 
     # Writing record (a ref, multiple alts) to output file
     def output(self, outformat, outfile, options, genelist, transcriptlist, snplist, stdout):
         outvariants = []
         outalts = []
+        build = "GRCh38"
+        if "build" in options.args:
+            build = options.args["build"]
+
         # Values of Entries for Separate Alleles are separated by ','
         # Entries for Multiple transcripts (for 1 allele) are separated by ':'
         #  This allows each allele to have different transcripts
@@ -494,40 +519,57 @@ class Record(object):
 
         for i in range(len(self.variants)):
             variant = self.variants[i]
-            alt = variant.alt
-
-            isTRANSCRIPT = ('TRANSCRIPT' in variant.flags)
-            if isTRANSCRIPT:
-                annTRANSCRIPT = variant.flagvalues[variant.flags.index('TRANSCRIPT')]
+            if variant is None:
+                outalts.append(self.alts[i])
             else:
-                annTRANSCRIPT = ''
-            isDBSNP = ('DBSNP' in variant.flags)
-            if isDBSNP:
-                annDBSNP = variant.flagvalues[variant.flags.index('DBSNP')]
-            else:
-                annDBSNP = ''
+                isTRANSCRIPT = ('TRANSCRIPT' in variant.flags)
+                if isTRANSCRIPT:
+                    annTRANSCRIPT = variant.flagvalues[variant.flags.index('TRANSCRIPT')]
+                else:
+                    annTRANSCRIPT = ''
+                isDBSNP = ('DBSNP' in variant.flags)
+                if isDBSNP:
+                    annDBSNP = variant.flagvalues[variant.flags.index('DBSNP')]
+                else:
+                    annDBSNP = ''
 
-            if len(genelist) > 0 or len(transcriptlist) > 0:
-                if annTRANSCRIPT == '': continue
+                if len(genelist) > 0 or len(transcriptlist) > 0:
+                    if annTRANSCRIPT == '':
+                        continue
 
-            # Removing non-annotated variants, if required
-            if 'nonannot' in options.args and options.args['nonannot'] is False and \
-                    not ((isTRANSCRIPT and not annTRANSCRIPT == '') or (isDBSNP and not annDBSNP == '')):
-                continue
+                # Removing non-annotated variants/alleles, if required
+                if 'nonannot' in options.args and options.args['nonannot'] is False and \
+                        not ((isTRANSCRIPT and not annTRANSCRIPT == '') or (isDBSNP and not annDBSNP == '')):
+                    continue
 
-            # Filtering by gene, transcript or snp list, if required
-            if isDBSNP:
-                if len(snplist) > 0 and annDBSNP not in snplist: continue
+                # Filtering by gene, transcript or snp list, if required
+                if isDBSNP:
+                    if len(snplist) > 0 and annDBSNP not in snplist: continue
 
-            outvariants.append(variant)
-            outalts.append(self.alts[i])  # Original Alts.
 
-        # Skipping record if all variants have been removed
-        if len(outvariants) == 0:
+                outvariants.append(variant)
+                outalts.append(self.alts[i])  # Original Alts.
+
+        # Skipping record if all alt-allelic variants have been removed
+        if len(outvariants) == 0 or len(outalts)==1 and outalts[0].startswith("<"):
             return
 
         # Writing output in VCF format
         if outformat.upper() == 'VCF':
+            infos = self.info.split(';')
+            newinfos = []
+            rmfields = ['HGVSg','CAVA_HGVSg','HGVSp','CAVA_HGVSp','HGVSc','CAVA_HGVSc',
+                'TYPE', 'TRANSCRIPT', 'GENE', 'GENEID', 'TRINFO', 'LOC', 'CSN',
+                        'PROTPOS', 'PROTREF', 'PROTALT', 'CLASS', 'SO', 'ALTFLAG',
+                        'CAVA_TYPE', 'CAVA_TRANSCRIPT', 'CAVA_GENE', 'CAVA_GENEID', 'CAVA_TRINFO',
+                        'CAVA_LOC', 'CAVA_CSN',
+                        'CAVA_PROTPOS', 'CAVA_PROTREF', 'CAVA_PROTALT', 'CAVA_CLASS', 'CAVA_SO', 'CAVA_ALTFLAG']
+            for item in infos:
+                items = item.split("=")
+                if not ( items[0] in rmfields):
+                    newinfos.append(item)
+            self.info = ';'.join(newinfos)
+
 
             # Creating first part of the VCF record (up to FILTER field)
 
@@ -570,16 +612,20 @@ class Record(object):
             if 'prefix' in options.args and options.args['prefix'] is True:
                 HGVSC_key = 'CAVA_HGVSc='
                 HGVSP_key = 'CAVA_HGVSp='
-                HGVSG_key = 'CAVA_HGVSg='
+ #               HGVSG_key = 'CAVA_HGVSg='
 
             else:
                 HGVSC_key = 'HGVSc='
                 HGVSP_key = 'HGVSp='
-                HGVSG_key = 'HGVSg='
+ #               HGVSG_key = 'HGVSg='
 
             HGVSC = ''
             HGVSP = ''
-            HGVSG = ''
+            # hgvsgs = flagvalues[flags.index('HGVSg')]
+            # HGVSG = ''
+            # if hgvsgs is not None:
+            #     HGVSG = hgvsgs[0]
+            contig = csn.get_contig_from_build(outvariants[0].chrom,build)
             if ('TRANSCRIPT' in flags) and ('GENE' in flags) and ('CSN' in flags):
                 # List of 1 entry per variant (alt-allele) .. and within each multiple transcripts are separated by ','
                 transcripts_list = flagvalues[flags.index('TRANSCRIPT')]
@@ -611,8 +657,10 @@ class Record(object):
                                 hggene = hggenes[itr]
                                 hgcsn_hgvs = hgcsns_hgvs[itr]
                                 #hgrepeat = hgrepeats[itr]
-                                tHGVSC = hgtranscript
-                                tHGVSC += '(' + hggene + '):'
+                                if len(hgtranscript)==0 or hgtranscript == '.':
+                                    tHGVSC = '.(.):'
+                                else:
+                                    tHGVSC = contig + '(' + hgtranscript + '):'
                                 try:
                                     cdna, prot = hgcsn_hgvs.split('_p.')
                                 except ValueError:  # Example c.802-51_802-14del38, splice
@@ -627,7 +675,7 @@ class Record(object):
                                 #else:
                                 #   tHGVSC += cdna
                                 tHGVSC += cdna
-                                if tHGVSC == '.(.):.':
+                                if cdna == '.' or  len(cdna)==0 or tHGVSC == '.(.):.' or tHGVSC == '.(.):':
                                     tHGVSC = '.'
                                 if prot == '.' or prot == '':
                                     tHGVSP = '.'
@@ -675,9 +723,9 @@ class Record(object):
 
             # Add multi-transcripts/multi-allele HGVS to output record
             if added == '':
-                added = HGVSC + ';' + HGVSP + ';' + HGVSG
+                added = HGVSC + ';' + HGVSP
             else:
-                added += ';' + HGVSC + ';' + HGVSP + ';' + HGVSG
+                added += ';' + HGVSC + ';' + HGVSP
 
             # Adding second part of the VCF record (starting from the INFO field)
             if self.info == '.' or self.info == '':
@@ -781,8 +829,10 @@ class Record(object):
                         HGVSP = 'None'
                     else:
                         hgtranscript = transcripts_list[i]
-                        HGVSC = hgtranscript
-                        HGVSC += '(' + gene_list[i] + '):'
+                        if len(hgtranscript) == 0 or hgtranscript == '.':
+                            HGVSC = '.(.):'
+                        else:
+                            HGVSC = contig + '(' + hgtranscript + '):'
                         try:
                             cdna, prot = csn_list[i].split('_p.')
                             prot = prot.replace('X', "Ter")
@@ -790,7 +840,7 @@ class Record(object):
                             cdna = csn_list[i]
                             prot = '.'
                         HGVSC += cdna
-                        if HGVSC == '.(.):.' or HGVSC == '():':
+                        if len(cdna)==0 or cdna == '.' or HGVSC == '.(.):.' or HGVSC == '():' or HGVSC == '.(.):':
                             HGVSC = '.'
                         if prot == '.' or prot == '':
                             HGVSP = '.'
@@ -812,7 +862,7 @@ class Record(object):
                                             "WARNING: transcript " + hgtranscript + " not in transcript2protein file\n")
                     # Writing record to the output file
                     if stdout:
-                        print(record + rest + "\t" + HGVSC + "\t" + HGVSP)
+                        print(record + rest + "\t" + HGVSC + "\t" + HGVSP )
                     else:
                         outfile.write(record + rest + "\t" + HGVSC + "\t" + HGVSP + '\n')
 
@@ -1535,6 +1585,7 @@ def writeHeader(options, header, outfile, stdout, version):
     headerinfo += '##INFO=<ID=' + prefix + 'DBSNP,Number=.,Type=String,Description=\"rsID from dbSNP\",Source=\"CAVA\",Version=\"' + version + '\">\n'
     headerinfo += '##INFO=<ID=' + prefix + 'HGVSc,Number=.,Type=String,Description=\"HGVS Nomenclature for cDNA changes\",Source=\"CAVA\",Version=\"' + version + '\">\n'
     headerinfo += '##INFO=<ID=' + prefix + 'HGVSp,Number=.,Type=String,Description=\"HGVS Nomenclature for protein changes\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=' + prefix + 'HGVSg,Number=.,Type=String,Description=\"HGVS Nomenclature for genomic changes, right-shifted\",Source=\"CAVA\",Version=\"' + version + '\">\n'
 
     dateline = '##fileDate=' + time.strftime("%Y-%m-%d")
 
@@ -1586,7 +1637,7 @@ def writeHeader(options, header, outfile, stdout, version):
         if (not options.args['dbsnp'] == '.') and (not options.args['dbsnp'] == ''):
             hstr += '\tDBSNP'
 
-        hstr += '\tHGVSC\tHGVSP'
+        hstr += '\tHGVSG\tHGVSC\tHGVSP'
 
         if stdout:
             print(hstr)
