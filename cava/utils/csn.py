@@ -41,6 +41,7 @@ class CSNAnnot:
                     ret += '+' + str(self.intr2)
                 else:
                     ret += str(self.intr2)
+        return ret
 
 
     # Getting annotation as a single String
@@ -1653,7 +1654,4 @@ def get_genomic_Annotation(variant, build, reference):
             # could NOT be insinv ..
             return contig + ":g." + str(variant.pos-1) + '_' + str(variant.pos) + 'ins' + variant.alt
 
-=======
-        '*': 'Ter', 'X': 'Ter', 'x': 'Ter', '?': '?'}
-    for aa in aas: ret += codes[aa]
-    return ret
+
