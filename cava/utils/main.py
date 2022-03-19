@@ -265,7 +265,7 @@ class SingleJob(multiprocessing.Process):
         # Reading (new) transcript2protein map for HGVSP annotation
         if options.args['logfile'] and threadidx == 1:
             logging.info("INFO: reading transcript2protein file\n")
-        options.transcript2protein = read_dict(options, 'transcript2protein')
+        options.transcript2protein = core.read_dict(options, 'transcript2protein')
         if options.args['logfile'] and threadidx == 1:
             logging.info("transcript2protein has " + str(len(options.transcript2protein)) + " mappings\n")
 
@@ -373,7 +373,7 @@ def run(copts, version):
         logging.info('CAVA ' + version + ' started.')
 
     # Checking if options specified in the configuration file are correct
-    checkOptions(options)
+    core.checkOptions(options)
 
     # Printing out configuration, input and output file names
     if not copts.stdout:
