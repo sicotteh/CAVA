@@ -1,3 +1,57 @@
+2/15/2022
+	added a number of unit tests
+	 
+	New Features:
+	CAVA_HGVSg added with support for ins,del,dup, repeats,
+	CAVA_HGVSc now supports repeats.
+	Support gVCF <NON_REF> or <*> alleles (they are just put back in the output)
+	Clean results from previous CAVA annotation runs from INFO field before adding new ones.
+	added "@build" options to config file (defaults to GRCh38)
+	 
+	Bug fixes:
+	 
+	Changed protein prediction for variants in first codon from 'p.?' to 'p.Met1?'
+	Fixed reference format to be NC_...(NM...):c.* instead of NM(gene):c.* to allow support for introns.
+	hgvs around splice sites properly done for ins/dups/repeats and added numerous unit tests.
+	Support for variants at the ends of chromosome M (does not circularize though).. 
+		circularization is not a big issue since there are no transcripts annotated near the ends.
+
+	updated to new HGVS for dup and del (omit sequence after dup/del as they are redundant e.g. no 123dupT .. just 123dup)
+	updated to use cDNA notation for start and stop range for insertions and repeats (122_123insCC, not 123insCC)
+	repeats annotation can change the alleles compared to ref after shifting (as per HGVS)
+	variants 1 bp before Methionine, and right in first codon.
+	Fixed 1-off problem with extensions (bug introduced when 'ext' were introduced in previous version)
+	added cDNA inversions to CSN (prioritize over ins)
+	added repeats and properly prioritize ahead of dup/ins and do not apply in coding regions.
+	fix annotation in CSN for variants after stop codon (+3 becomes *3)
+	Fixed bugs for indels in 1st codon.
+	Added proper treatment of genes with Selenocysteine and trust cDNA/stop annotation (do not scan for stop codon .. to support selenocysteine genes)
+	centralize chromosome mappings between 'chrNumber' and 'Number' and various chromosome M (MT,chrM,chrMT,M) nomenclatures
+	Proper annotations of variants partly overlapping ends of transcript (the pos in -pos or *pos can extend past edge of annotated transcript as these are uncertain (as per communication with HGVS team).
+	fixed CAVA_HGVSc to appropriately limit repeats with multiple of 3 in coding sequene
+	Fixed CSN to make any variants modifying the first AA to be Met1?
+	Fixed CSN to make essential splice site modifications to have _p.?
+	Fixed repeat calculation code (both genomic and cDNA) since last checkout.
+Notes on repeats: [n];[m] format in HGVSc and HGVSg
+	for repeats, there is a proposal for HGVS to change nomenclature to be a RANGE of the repeats rather than the start of the repeat.
+	    the code changes (two places) are already in place .. just commented out.
+	The nomenclature was not clear on wether insertion of repeats that did not exist on the reference should be treated as repeats.
+		It was decided to NOT annotate those as repeats . since biologically, that is not a repeat expansion.
+	 
+Speed improvements based on profiling with py-top:
+	Cache variant getters (e.g. isInsertion() becomes .is_insertion , isDeletion() calls becomes check of .is_deletion flat)
+	Cache 1bp before indels instead of refetching.
+	Cache Sequence Fetch in big chunks (marginal improvement for exome, big improvement for whole genome).
+	
+	Cache transcripts loading and building, so it is only done once. Big speedup.
+	Speed up left/right shifting by using fetching chunks of sequence rather than small bits at a time.
+	.. Also merge fetching of lef/right sequence in one big chunk surrounding variant.
+	Speed up protein annotation by rewriting some code to trim non-mutated AA (based on profiling)
+	Includes code for HGVS DNA nomenclature (but not added yet).
+	Avoid repeatedly calling  function multiple times on the same data by passing parameters around.
+	 
+	cached repeat normalization code to only run once.
+	calculateCSNCoordinatesthe 
 11/05/2021
 3 bugs are being fixed
 1.

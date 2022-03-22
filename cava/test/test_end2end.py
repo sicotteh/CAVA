@@ -61,11 +61,14 @@ class MyTestCase(unittest.TestCase):
         rec.annotate(self.ensembl, None, self.reference, None)
         rec.variants[0].getFlag('CSN')
         self.assertEqual('c.5565A>T_p.Ile1855=', rec.variants[0].getFlag('CSN'))
+
+
     def test_hg38_negStrand_simplemissense(self):
         line = "17\t43051071\tVCV000017694.14\tA\tC\t.\t.\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         rec.variants[0].getFlag('CSN')
+        # Non-Start Metionine mutation
         self.assertEqual('c.5324T>G_p.Met1775Arg', rec.variants[0].getFlag('CSN'))
 
     def test_hg38_negStrand_simplestop(self):

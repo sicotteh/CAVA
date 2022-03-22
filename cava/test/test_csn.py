@@ -45,7 +45,7 @@ class TestmakeProteinString(unittest.TestCase):
         print("Testing deletion of Initial Methionine")
         variant = Variant("chr1", 1000, "C", "T")
         actual = makeProteinString(variant, "MLRX", "LRX", 1)
-        expected = ('_p.?', ('1', 'M', '-'))
+        expected = ('_p.Met1?', ('1', 'M', '-'))
         self.assertEqual(actual, expected)
 
     def test_makeProteinString_del2(self):
@@ -87,21 +87,21 @@ class TestmakeProteinString(unittest.TestCase):
         print("Testing checking extension")
         variant = Variant("chr1", 1000, "C", "T")
         actual = makeProteinString(variant, "MLRX", "MLRQX", 12)
-        expected = ('_p.Ter4GlnextX2', ('4', 'X', 'QX'))
+        expected = ('_p.Ter4GlnextTer1', ('4', 'X', 'QX'))
         self.assertEqual(actual, expected)
 
     def test_makeProteinString_checkLongExtInPhase(self):
         print("Testing checking long extension in phase")
         variant = Variant("chr1", 1000, "C", "T")
         actual = makeProteinString(variant, "MLRX", "MLRQLVYX", 12)
-        expected = ('_p.Ter4GlnextX5', ('4', 'X', 'QLVYX'))
+        expected = ('_p.Ter4GlnextTer4', ('4', 'X', 'QLVYX'))
         self.assertEqual(actual, expected)
 
     def test_makeProteinString_checkLongExtnotPhase(self):
         print("Testing checking long extension not in phase")
         variant = Variant("chr1", 1000, "C", "T")
         actual = makeProteinString(variant, "MLRX", "MLRQLVYX", 11)
-        expected = ('_p.Ter4GlnextX5', ('4', 'X', 'QLVYX'))
+        expected = ('_p.Ter4GlnextTer4', ('4', 'X', 'QLVYX'))
         self.assertEqual(actual, expected)
 
     def test_makeProteinString_checkShortFS(self):
@@ -243,7 +243,7 @@ class TestmakeProteinString(unittest.TestCase):
         print("Testing mutation of  Methionine")
         variant = Variant("chr1", 1000, "C", "T")
         actual = makeProteinString(variant, "MLRX", "LLRX", 1)
-        expected = ('_p.?', ('1', 'M', 'L'))
+        expected = ('_p.Met1?', ('1', 'M', 'L'))
         self.assertEqual(actual, expected)
 
 
@@ -251,5 +251,5 @@ class TestmakeProteinString(unittest.TestCase):
         print("Testing mutation of  2 AA (including Methionine)")
         variant = Variant("chr1", 1000, "CTCT", "TCAG")
         actual = makeProteinString(variant, "MLRX", "LRRX", 1)
-        expected = ('_p.?', ('1-2', 'ML', 'LR'))
+        expected = ('_p.Met1?', ('1', 'M', 'L'))  # Once the methionine is modified, the rest of the protein translation does not matter.
         self.assertEqual(actual, expected)

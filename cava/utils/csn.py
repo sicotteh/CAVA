@@ -836,16 +836,17 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
     # Edge case in HGVS, entire protein deleted .. starting
 
     if len(mutprot)==0:
-        return '_p.Met1?', ('1', prot[0], '')
-    if mutprot[0]=='X' and prot[0] == 'M':
+        if len(prot)==1:
+            return '_p.Met1?', ('1', prot, '')
+        else:
+            return '_p.?',('1-'+str(len(prot)),prot,'')
+    elif mutprot[0]=='X' and prot[0] == 'M':
         return '_p.Met1?', ('1', prot[0], 'X')
-    if prot[0] == 'M' and mutprot[0] != 'M':
-        return '_p.Met1?', ('1', prot[0], '')
-    if mutprot[0] == 'X' and prot[0] != 'X':
+    elif mutprot[0] == 'X' and prot[0] != 'X':
         return '_p.?', ('1', prot[0], 'X')
 
-        # Checking if there was no change in protein sequence
-    if prot == mutprot:  # to reach this point, both must be len>0
+    # Dealing with synonymous variants: Checking if there was no change in protein sequence
+    if prot == mutprot:
         idx = int(coord1 / 3)
         if coord1 % 3 > 0:
             idx += 1
@@ -860,8 +861,8 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
 
     # Trimming common starting substring
     # leftindex is a 1-base position within prot
-    protcopy = prot[:]
-    mutprotcopy = mutprot[:]
+    protcopy = prot+""
+    mutprotcopy = mutprot+""
 
 
 
@@ -901,6 +902,12 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
         trim_mutprot = trim_mutprot[:-ilast]
     rightindex -= ilast
 
+    if protcopy[0] == 'M' and mutprotcopy[0] != 'M':
+        if len(trim_mutprot) == 0:
+            return '_p.Met1?', ('1', protcopy[0], '-')
+        else:  # Once initial methionine is deleted, the mutated protein does not make sense past the mutated AA.
+            return '_p.Met1?', ('1', protcopy[0], trim_mutprot[0])
+
     ####
     # Protein variants have to be considered in the following order ( no Inversion for Protein).
     ####
@@ -934,10 +941,10 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
                 else:
                     return '_p.?', ('1', trim_prot, '-')  # in-frame deletion
             else:
-                if rightindex != leftindex:  # del/ins/complex
+                if rightindex != leftindex:  # del/ins/complex/frameshift
                     return '_p.?', ('1-' + str(rightindex), trim_prot, trim_mutprot)
-                else:
-                    return '_p.?', ('1', trim_prot, trim_mutprot)
+                else:  # rightindex == leftindex  == 1
+                    return '_p.Met1?', ('1', trim_prot[0], trim_mutprot[0])
 
         else:  # Incomplete reference protein without a Methionine at the Start
             if mutprot[0] == 'M':  # Incomplete reference protein without start becoming a start
@@ -1186,7 +1193,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
             if xindex != -1:  # p.(Arg123LysfsTer34)
                 # Special Rules for when frameshift causes the Initial Met to become Stop
                 if xindex == 0 and leftindex == 1 and protcopy[0] == "M":
-                    return '_p.(Met1Ter)', ('1', 'M', 'X')
+                    return '_p.Met1?', ('1', 'M', 'X')
                 # Check to see if new Stop is a 3' extension.. can only occur if last AA is the first one changed.
                 if leftindex == len(protcopy):  # last AA of protein is first mutated ==> Extensions
                     if xindex + 1 > len(prot):  # extension, at or past end of current protein.
