@@ -485,6 +485,7 @@ def process_data(options):
         print(f'{e}\n{url}')
         exit(1)
 
+
     # Parse the entries & return the number of transcripts found
     genesdata = dict()
     transIDs = None
@@ -615,8 +616,6 @@ def download_gtf(source_compressed_gtf, version):
         except Exception as e:
             print('\n\nCannot connect to FTP site, even after removing select. No internet connection?\n')
             print(f'{e}\n{url}')
-
-
     print('')
     sys.stdout.flush()
 
