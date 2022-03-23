@@ -9,10 +9,10 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
     # Variants in UTR
     chkutr = checkUTR(transcript, variant)
     if chkutr == 'UTR5':
-        if 'Ex' in loc and (variant.isDeletion() or variant.isComplex()): return 'IM'
+        if 'Ex' in loc and (variant.is_deletion or variant.is_complex): return 'IM'
         return '5PU'
     elif chkutr == 'UTR3':
-        if 'Ex' in loc and (variant.isDeletion() or variant.isComplex()): return 'SL'
+        if 'Ex' in loc and (variant.is_deletion or variant.is_complex): return 'SL'
         return '3PU'
 
     # Variants crossing exon-intron boundaries
@@ -41,12 +41,17 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
     if protein[0] != mutprotein[0]: return 'IM'
 
     # Stop gain and stop lost variants
-    while len(protein) > 0 and len(mutprotein) > 0:
-        if protein[0] == mutprotein[0]:
-            protein = protein[1:]
-            mutprotein = mutprotein[1:]
+    # XXX-HS rewrote because this was the 3rd sink of time.
+    isame = -1
+    while len(protein) > isame+1 and len(mutprotein) > isame+1:
+        if protein[isame+1] == mutprotein[isame+1]:
+            isame = isame + 1
         else:
             break
+    if isame>=0:
+        protein = protein[isame+1:]
+        mutprotein = mutprotein[isame+1:]
+
 
     if protein == '': return '3PU'
 
@@ -57,19 +62,23 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
             mutprotein[0] == 'X' and \
             len(protein) > 0 and \
             mutprotein[0] != protein[0] and \
-            not variant.isInFrame():
+            variant.is_in_frame is False:
         return 'SG'
 
     # Frame-shift coding variants
-    if not variant.isInFrame():
+    if variant.is_in_frame is False:
         return 'FS'
 
-    while len(protein) > 0 and len(mutprotein) > 0:
-        if protein[-1] == mutprotein[-1]:
-            protein = protein[:-1]
-            mutprotein = mutprotein[:-1]
+    # XXX-HS rewrote this section because it was 3rd slowest
+    ilast  = 0
+    while ilast<len(protein) and ilast<len(mutprotein) :
+        if protein[-(ilast+1)] == mutprotein[-(ilast+1)]:
+            ilast = ilast +1
         else:
             break
+    if ilast >0:
+        protein = protein[:-ilast]
+        mutprotein = mutprotein[:-ilast]
 
     if 'X' in mutprotein:
         return 'SG'
@@ -97,10 +106,10 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
     # Variants in UTR
     chkutr = checkUTR(transcript, variant)
     if chkutr == 'UTR5':
-        if 'Ex' in loc and (variant.isDeletion() or variant.isComplex()): return 'initiator_codon_variant'
+        if 'Ex' in loc and (variant.is_deletion or variant.is_complex): return 'initiator_codon_variant'
         return '5_prime_UTR_variant'
     elif chkutr == 'UTR3':
-        if 'Ex' in loc and (variant.isDeletion() or variant.isComplex()): return 'stop_lost'
+        if 'Ex' in loc and (variant.is_deletion or variant.is_complex): return 'stop_lost'
         return '3_prime_UTR_variant'
 
     where = transcript.whereIsThisVariant(variant)
@@ -129,10 +138,13 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
 
     if where.startswith('In') or where.startswith('fsIn'): return 'intron_variant'
 
-    if variant.isInFrame():
-        if variant.isDeletion(): out.append('inframe_deletion')
-        if variant.isInsertion(): out.append('inframe_insertion')
-        if variant.isComplex():    out.append('inframe_indel')
+    if variant.is_in_frame is True:
+        if variant.is_deletion:
+            out.append('inframe_deletion')
+        if variant.is_insertion:
+            out.append('inframe_insertion')
+        if variant.is_complex:
+            out.append('inframe_indel')
     else:
         out.append('frameshift_variant')
         return '|'.join(out)
@@ -147,12 +159,16 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
 
     if (not protein == mutprotein) and len(protein) == len(mutprotein): out.append('missense_variant')
 
-    while len(protein) > 0 and len(mutprotein) > 0:
-        if protein[0] == mutprotein[0]:
-            protein = protein[1:]
-            mutprotein = mutprotein[1:]
+    # XXX-HS rewrote because this was the 3rd sink of time.
+    isame = -1
+    while len(protein) > isame+1 and len(mutprotein) > isame+1:
+        if protein[isame+1] == mutprotein[isame+1]:
+            isame = isame + 1
         else:
             break
+    if isame>=0:
+        protein = protein[isame+1:]
+        mutprotein = mutprotein[isame+1:]
 
     if protein == '': return '3_prime_UTR_variant'
 
@@ -161,12 +177,18 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
     else:
         if protein[0] == 'X' and mutprotein[0] != 'X': out.append('stop_lost')
 
-    while len(protein) > 0 and len(mutprotein) > 0:
-        if protein[-1] == mutprotein[-1]:
-            protein = protein[:-1]
-            mutprotein = mutprotein[:-1]
+# XXX rewrote because it was among top slowest parts of CAVA
+#
+
+    ilast  = 0
+    while ilast<len(protein) and ilast<len(mutprotein) :
+        if protein[-(ilast+1)] == mutprotein[-(ilast+1)]:
+            ilast = ilast +1
         else:
             break
+    if ilast >0:
+        protein = protein[:-ilast]
+        mutprotein = mutprotein[:-ilast]
 
     if 'X' in mutprotein: out.append('stop_gained')
 
@@ -180,12 +202,14 @@ def isInSpliceDonor(transcript, variant):
     if transcript.strand == 1:
         for exon in transcript.exons:
             isLastExon = (exon.index == len(transcript.exons))
-            if not isLastExon and variant.overlap(exon.end + 1, exon.end + 2): return True
+            if not isLastExon and variant.overlap(exon.end + 1, exon.end + 2):
+                return True
         return False
     else:
         for exon in transcript.exons:
             isLastExon = (exon.index == len(transcript.exons))
-            if not isLastExon and variant.overlap(exon.start - 1, exon.start): return True
+            if not isLastExon and variant.overlap(exon.start - 1, exon.start):
+                return True
         return False
 
 
@@ -193,12 +217,14 @@ def isInSpliceAcceptor(transcript, variant):
     if transcript.strand == 1:
         for exon in transcript.exons:
             isFirstExon = (exon.index == 1)
-            if not isFirstExon and variant.overlap(exon.start - 1, exon.start): return True
+            if not isFirstExon and variant.overlap(exon.start - 1, exon.start):
+                return True
         return False
     else:
         for exon in transcript.exons:
             isFirstExon = (exon.index == 1)
-            if not isFirstExon and variant.overlap(exon.end + 1, exon.end + 2): return True
+            if not isFirstExon and variant.overlap(exon.end + 1, exon.end + 2):
+                return True
 
         return False
 
@@ -223,7 +249,7 @@ def isInSplicingRegion(transcript, variant):
 #######################################################################################################################
 
 def checkUTR(transcript, variant):
-    if variant.isInsertion():
+    if variant.is_insertion:
         x = variant.pos - 1
         y = variant.pos
     else:

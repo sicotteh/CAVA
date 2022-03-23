@@ -8,11 +8,12 @@ with open('requirements.txt') as requires_file:
 
 setup(
     name='CAVA',
+    python_requires=">=3.7",
     version=version,
     description='CAVA (Clinical Annotation of VAriants)',
     url='https://github.com/Steven-N-Hart/CAVA',
-    author='Steven-N-Hart',
-    author_email='hart.steven@mayo.edu',
+    author='Steven-N-Hart, Hugues-Sicotte',
+    author_email='hart.steven@mayo.edu, sicotte.hugues@mayo.edu',
     license='MIT',
     packages=['cava', 'cava.utils', 'cava.ensembldb'],
     install_requires=requires,

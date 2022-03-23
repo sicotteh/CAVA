@@ -68,6 +68,12 @@ git clone git@github.com:Steven-N-Hart/CAVA.git
 python setup.py install
 ```
 
+If you get an error with pycurl, run the following command before running the setup.py
+```bash
+pip uninstall pycurl
+export PYCURL_SSL_LIBRARY=nss
+pip install --compile --install-option="--with-nss" --no-cache-dir pycurl  
+```
 
 
 5 RUNNING CAVA

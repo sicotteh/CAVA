@@ -6,7 +6,6 @@ import logging
 import multiprocessing
 import os
 import sys
-
 import pysam
 
 from cava.utils.data import Ensembl
@@ -100,6 +99,7 @@ def findFileBreaks(inputf, threads):
     ret = []
     started = False
     counter = 0
+    first =1
 
     if inputf.endswith('.gz'):
         infile = gzip.open(inputf, 'rt')
@@ -113,6 +113,7 @@ def findFileBreaks(inputf, threads):
         if not started:
             started = True
             first = counter
+
     delta = int((counter - first + 1) / threads)
     for i in range(threads):
         if i < threads - 1:
@@ -143,15 +144,15 @@ def readHeader(inputfn):
 
 
 # Merging tmp files to final output file
-def mergeTmpFiles(output, format, threads):
+def mergeTmpFiles(output, fileformat, threads):
     filenames = []
     for i in range(1, threads + 1):
-        if format == 'VCF':
+        if fileformat == 'VCF':
             filenames.append(output + '_tmp_' + str(i) + '.vcf')
         else:
             filenames.append(output + '_tmp_' + str(i) + '.txt')
 
-    if format == 'VCF':
+    if fileformat == 'VCF':
         outfn = output + '.vcf'
     else:
         outfn = output + '.txt'
@@ -235,9 +236,15 @@ class SingleJob(multiprocessing.Process):
                     codon_usage = line[line.find('=') + 1:].strip().split(',')
                     self.codon_usage = codon_usage
 
+        # Reference genome
+        self.reference = Reference(options)
+        if options.args['logfile'] and threadidx == 1: logging.info('Connected to reference genome.')
+
         if (not options.args['ensembl'] == '.') and (not options.args['ensembl'] == ''):
-            self.ensembl = Ensembl(options, genelist, transcriptlist, codon_usage[0])
-            if options.args['logfile'] and threadidx == 1: logging.info('Connected to Ensembl database.')
+            # Pass reference to ensembl, so it can know the chromosome sizes
+            self.ensembl = Ensembl(options, genelist, transcriptlist, codon_usage[0], self.reference)
+            if options.args['logfile'] and threadidx == 1:
+                logging.info('Connected to Ensembl database.')
         else:
             self.ensembl = None
 
@@ -247,15 +254,20 @@ class SingleJob(multiprocessing.Process):
         else:
             self.dbsnp = None
 
-        # Reference genome
-        self.reference = Reference(options)
-        if options.args['logfile'] and threadidx == 1: logging.info('Connected to reference genome.')
 
         # Target BED file
         if (not options.args['target'] == '.') and (not options.args['target'] == ''):
             self.targetBED = pysam.Tabixfile(options.args['target'], parser=pysam.asBed())
         else:
             self.targetBED = None
+
+
+        # Reading (new) transcript2protein map for HGVSP annotation
+        if options.args['logfile'] and threadidx == 1:
+            logging.info("INFO: reading transcript2protein file\n")
+        options.transcript2protein = core.read_dict(options, 'transcript2protein')
+        if options.args['logfile'] and threadidx == 1:
+            logging.info("transcript2protein has " + str(len(options.transcript2protein)) + " mappings\n")
 
         if not copts.stdout and threadidx == 1: initProgressInfo()
 
@@ -284,25 +296,26 @@ class SingleJob(multiprocessing.Process):
 
             line = line.strip()
             if line == '': continue
-
+#            sys.stderr.write("line="+line+"\n")
             # Printing out progress information
             if not self.copts.stdout and self.threadidx == 1:
                 if counter % 1000 == 0:
                     printProgressInfo(counter, int(self.numOfRecords / self.copts.threads))
 
             # Parsing record from input file
-            record = Record(line, self.options, self.targetBED)
+            record = Record(line, self.options, self.targetBED,self.reference)
 
-            # Filtering out REFCALL records
+            # Filtering out REFCALL records .. from original VCF annotation
             if record.filter == 'REFCALL': continue
 
             # Filtering record, if required
             if self.options.args['filter'] and not record.filter == 'PASS': continue
 
-            # Only include records of allowed chromosome names
+            # Only annotate records of allowed chromosome names
             if record.chrom not in self.chroms:
                 logging.warning(
-                    "\t!!!!!!Chromosome " + record.chrom + " not found, skipping annotation, but still printing!!!!!!\n")
+                    "\t!!!!!!Chromosome " + record.chrom + " not found, skipping annotation, "+
+                    "but still outputting in VCF as long as within target region (if specified)!!!!!!\n")
             else:
                 # Annotating the record based on the Ensembl, dbSNP and reference data
                 record.annotate(self.ensembl, self.dbsnp, self.reference, self.impactdir)
@@ -353,7 +366,9 @@ def run(copts, version):
                             format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
 
     # Printing out version.py information and start time
-    if not copts.stdout: starttime = printStartInfo(version)
+
+    if not copts.stdout:
+        starttime = printStartInfo(version)
     if options.args['logfile']:
         logging.info('CAVA ' + version + ' started.')
 
@@ -372,6 +387,7 @@ def run(copts, version):
     # Reading (new) transcript2protein map for HGVSP annotation
     print("INFO: reading transcript2protein file\n")
     options.transcript2protein = core.read_dict(options, 'transcript2protein')
+
     print("transcript2protein has " + str(len(options.transcript2protein)) + " mappings\n")
     # Parsing @impactdef string
     if not (options.args['impactdef'] == '.' or options.args['impactdef'] == ''):
@@ -403,6 +419,7 @@ def run(copts, version):
     # Find break points in the input file
     breaks = findFileBreaks(copts.input, copts.threads)
 
+
     # Initializing annotation processes
     threadidx = 0
     processes = []
@@ -421,6 +438,7 @@ def run(copts, version):
     # Merging tmp files
     if copts.threads > 1:
         mergeTmpFiles(copts.output, options.args['outputformat'], copts.threads)
+
 
     # Printing out summary information and end time
     if not copts.stdout:
