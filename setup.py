@@ -8,7 +8,7 @@ with open('requirements.txt') as requires_file:
 
 setup(
     name='CAVA',
-    python_requires=">=3.7",
+    python_requires=">=3.6",
     version=version,
     description='CAVA (Clinical Annotation of VAriants)',
     url='https://github.com/Steven-N-Hart/CAVA',
