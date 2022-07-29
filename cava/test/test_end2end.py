@@ -1,11 +1,10 @@
 import unittest
 from cava.utils.data import Ensembl, Reference
-from cava.utils import core
+import cava.utils.core as core
 from cava.utils.csn import find_repeat_unit
 from cava.utils.csn import scan_for_repeat
 import os
 import pycurl
-import sys
 
 
 def check_materials():
@@ -711,7 +710,7 @@ class MyTestCase(unittest.TestCase):
 # CAVA_HGVSg=NC_000001.11:g.933554dup;CAVA_HGVSc=NC_000001.11(NM_001385641.1):c.843-2223_843-2218G[6]%3B[7];
 
 
-    def test_repeat_in_intron(self):
+    def test_repeat_in_intron2(self):
         line = "chr1\t933548\trepeat_insertion_in_both\tT\tTG\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
@@ -728,7 +727,7 @@ class MyTestCase(unittest.TestCase):
 # CAVA_ALTFLAG=AnnNotClassNotSO;CAVA_HGVSg=NC_000001.11:g.1103994T[10]%3B[11];
 # CAVA_HGVSc=;CAVA_HGVSp=.
 
-    def test_repeat_in_intron(self):
+    def test_repeat_in_intron3(self):
         line = "chr1\t1103993\trepeat_insertion_in_both2\tC\tCT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
@@ -737,6 +736,62 @@ class MyTestCase(unittest.TestCase):
         # purely intronic variant, no protein and repeat-style annotation.
         self.assertEqual('c.-135-11891A[10]%3B[11]', rec.variants[0].getFlag('CSN'))
 
+
+
+    def test_makeProteinString_DelExonBoundary_normshift(self):
+        # Thanks to Kim Lauer for worked out example
+        line = "chr6\t132617149\tdelExon\tCCTACTCACTTT\tC\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        # Variant eill get right shifted into the coding region exon boundary
+        # chr6 132617153 132618145 - TAAR2: "NM_001033080.1" Ex2
+        # chr6 132624216 132624275 - TAAR2: "NM_001033080.1" Ex1
+        # variant.pos = 132617152 and variant.ref == 'ACTCACTTTCT' variant.alt=''):
+
+        self.assertEqual('c.1046_1056del_p.?', rec.variants[0].getFlag('CSN'))
+
+    def test_makeProteinString_DelExonBoundary_noshift_overlapout(self):
+        # Thanks to Kim Lauer for worked out example
+        line = "chr6\t132617148\tdelExon\tGCCTACTCACTTT\tG\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        # Variant eill get right shifted into the coding region exon boundary
+        # chr6 132617153 132618145 - TAAR2: "NM_001033080.1" Ex2
+        # chr6 132624216 132624275 - TAAR2: "NM_001033080.1" Ex1
+        # variant.pos = 132617152 and variant.ref == 'ACTCACTTTCT' variant.alt=''):
+# The MANE is missing the 3' UTR, so this deletion that encompasses the end of the coding
+# region ends up outside the transcript.
+        # This test will fail
+        self.assertEqual('c.1046_*2del_p.E349_Ter352del', rec.variants[0].getFlag('CSN'))
+
+ #   def test_makeProteinString_DelExonBoundary_noshift(self):
+ #       # Thanks to Kim Lauer for worked out example
+ #       # but it's not in my MANE version.
+ #       line = "chr7\t291482\tdelExon\tAATGTG\tA\t30\tPASS\t.\tGT\t0/1\n"
+ #       rec = core.Record(line, self.options, None, self.reference)
+ #       rec.annotate(self.ensembl, None, self.reference, None)
+ #       # Variant eill get right shifted into the coding region exon boundary
+ #       # chr7    290169  290276  +       FOXL3:NM_001374838.1    Ex1
+ #       # chr7    290652  290821  +       FOXL3:NM_001374838.1    Ex2
+ #       # chr7    291062  291485  +       FOXL3:NM_001374838.1    Ex3
+
+  #      self.assertEqual('c.702_*5del_p.?', rec.variants[0].getFlag('CSN'))
+
+    def test_IFvsSG(self):
+        line = "chr7\t142751829\tSG_not_IF\tC\tT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+
+        self.assertEqual('c.256C>T_p.Gln86Ter', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))  # was IF
+
+    def test_Met1vsquestion(self):
+        line = "chr7\t6009018\tMet1FromRory\tA\tG\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+
+        self.assertEqual('c.2T>C_p.Met1?', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('IM', rec.variants[0].getFlag('CLASS'))  # was IF
 
 class Options:
 
