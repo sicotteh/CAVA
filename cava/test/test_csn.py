@@ -253,3 +253,5 @@ class TestmakeProteinString(unittest.TestCase):
         actual = makeProteinString(variant, "MLRX", "LRRX", 1)
         expected = ('_p.Met1?', ('1', 'M', 'L'))  # Once the methionine is modified, the rest of the protein translation does not matter.
         self.assertEqual(actual, expected)
+
+

@@ -5,18 +5,22 @@
 #######################################################################################################################
 
 # Getting CLASS annotation of a given variant
+import sys
 def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
-    # Variants in UTR
+    # Variants in UTR, if "Ex" present, variant overlaps CDS
     chkutr = checkUTR(transcript, variant)
-    if chkutr == 'UTR5':
-        if 'Ex' in loc and (variant.is_deletion or variant.is_complex): return 'IM'
+    if chkutr == 'UTR5': # Even if a variant covers more than UTR5, UTR5 has priority.
+        if 'Ex' in loc and (variant.is_deletion or variant.is_complex): # "Ex" actually means coding region
+            return 'IM'
         return '5PU'
     elif chkutr == 'UTR3':
-        if 'Ex' in loc and (variant.is_deletion or variant.is_complex): return 'SL'
+        if 'Ex' in loc and (variant.is_deletion or variant.is_complex):
+            return 'SL'
         return '3PU'
 
     # Variants crossing exon-intron boundaries
-    if '-' in loc: return 'ESS'
+    if '-' in loc:
+        return 'ESS'
 
     # Intronic, splice site and essential splice site variants
     if 'In' in loc:
@@ -29,21 +33,29 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
     # Checking if variant affect the first or last three bases of an exon
     potSS = transcript.isInFirstOrLast3BaseOfExon(variant)
 
+    if mutprotein is None:
+        sys.stderr.write("CAVA:WARNING, variant led to NULL mutprotein\n")
+        return 'INT'
     protL = len(protein)
     mutprotL = len(mutprotein)
 
     # Synonymous coding variants
     if protein == mutprotein:
-        if potSS: return 'EE'
+        if potSS:
+            return 'EE'
         return 'SY'
 
     # Variants affecting the initiation amino acid
-    if protein[0] != mutprotein[0]: return 'IM'
+    if (mutprotL>0 and protL>0 and protein[0] != mutprotein[0]):
+        return 'IM'
+    if mutprotL==0 and protL>0: # if it was a SL or IM, it should have been caught earlier. This is a variant overlapping the ends
+        return ''
 
     # Stop gain and stop lost variants
     # XXX-HS rewrote because this was the 3rd sink of time.
+    # Remove AA that are identical between prot and mutprot (beginning)
     isame = -1
-    while len(protein) > isame+1 and len(mutprotein) > isame+1:
+    while protL > isame+1 and mutprotL > isame+1:
         if protein[isame+1] == mutprotein[isame+1]:
             isame = isame + 1
         else:
@@ -52,17 +64,18 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
         protein = protein[isame+1:]
         mutprotein = mutprotein[isame+1:]
 
-
-    if protein == '': return '3PU'
+    # By this point, variant is guaranteed to be inside CDS
+    if protein == '':  #mutprotein cannot be len(0) .. would have returnes SY/potSS.. so this must be an extension
+        # Can only get here if CDS has no stop codon on reference (annotation issue)
+        sys.stderr.write("ERROR:Inconsistent CAVA, looks like CDS annotation does not end in a Stop codon for "+variant.id+"\n")
+        return 'SL'
 
     if protein[0] == 'X' and len(mutprotein) == 0: return 'SL'
     if protein[0] == 'X' and mutprotein[0] != 'X': return 'SL'
 
-    if len(mutprotein) > 0 and \
-            mutprotein[0] == 'X' and \
+    if len(mutprotein) > 0 and  mutprotein[0] == 'X' and \
             len(protein) > 0 and \
-            mutprotein[0] != protein[0] and \
-            variant.is_in_frame is False:
+            mutprotein[0] != protein[0] : # as Per HGVS SG , since shortest FS is Ter2 (7-26-2022)
         return 'SG'
 
     # Frame-shift coding variants
@@ -70,6 +83,8 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
         return 'FS'
 
     # XXX-HS rewrote this section because it was 3rd slowest
+    # Trim the end of the protein and mutprotein that are identical
+    # At this point, any change is either a point mutation of insertion/deletion of multiple AA
     ilast  = 0
     while ilast<len(protein) and ilast<len(mutprotein) :
         if protein[-(ilast+1)] == mutprotein[-(ilast+1)]:
@@ -80,15 +95,18 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
         protein = protein[:-ilast]
         mutprotein = mutprotein[:-ilast]
 
-    if 'X' in mutprotein:
-        return 'SG'
+    #if 'X' in mutprotein:  # In frame insertion of a Stop Codo, but not first AA change
+    # According to HGVS, this is described as an IF (deletion/insertion)
+    #    return 'SG'
 
     # Non-synonymous coding variants
-    if protL == mutprotL:
+    if protL == mutprotL and len(protein)==1:
         if potSS:
             return 'EE'
         return 'NSY'
-
+    # IF variants from here on.
+    if potSS:
+        return 'EE'
     # In-frame variants
     if potSS:
         return 'EE'
@@ -247,7 +265,9 @@ def isInSplicingRegion(transcript, variant):
 
 
 #######################################################################################################################
-
+#
+# returns UTR3/5 if at least one end of the variant is in the UTR
+#
 def checkUTR(transcript, variant):
     if variant.is_insertion:
         x = variant.pos - 1
