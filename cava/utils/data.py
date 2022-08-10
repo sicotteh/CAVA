@@ -105,9 +105,9 @@ class Ensembl(object):
                 binend  = int(transcriptEnd/self.binsize)
                 for ebin in range(binstart,binend+1):
                     if self.transcript_bins[ebin] is None:
-                        self.transcript_bins[eebin] = [[transcriptid,transcriptStart,transcriptEnd,line]]
+                        self.transcript_bins[ebin] = [[transcriptid,transcriptStart,transcriptEnd,line]]
                     else:
-                        (self.transcript_bins[bin]).append([transcriptid,transcriptStart,transcriptEnd,line])
+                        (self.transcript_bins[ebin]).append([transcriptid,transcriptStart,transcriptEnd,line])
         lines = list()
         got_transcript = dict()
         binstart = int((startpos0+1)/ self.binsize)
