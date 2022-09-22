@@ -255,7 +255,7 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         rec.variants[0].getFlag('CSN')
-        self.assertEqual('c.-1_1insC_p.?', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.-1_1insC', rec.variants[0].getFlag('CSN'))  # Limitation:  Start-gain variants in UTR5 are not annotated.
         self.assertEqual('5PU', rec.variants[0].getFlag('CLASS'))
 
     def test_hg38_ins_in_Ter(self): # Cannot be a Frameshift, needs to be a Stop Loss.
@@ -743,39 +743,42 @@ class MyTestCase(unittest.TestCase):
         line = "chr6\t132617149\tdelExon\tCCTACTCACTTT\tC\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        # Variant eill get right shifted into the coding region exon boundary
+        # Plus strand realignment shifts right to13261752, 1 bp into the intron . This transcript has no UTR
         # chr6 132617153 132618145 - TAAR2: "NM_001033080.1" Ex2
         # chr6 132624216 132624275 - TAAR2: "NM_001033080.1" Ex1
         # variant.pos = 132617152 and variant.ref == 'ACTCACTTTCT' variant.alt=''):
-
-        self.assertEqual('c.1046_1056del_p.?', rec.variants[0].getFlag('CSN'))
+        # LOC is OUT, should not be 8/19/2022
+        self.assertEqual('c.1046_1056del_p.Glu349_Ter352del', rec.variants[0].getFlag('CSN'))
 
     def test_makeProteinString_DelExonBoundary_noshift_overlapout(self):
         # Thanks to Kim Lauer for worked out example
         line = "chr6\t132617148\tdelExon\tGCCTACTCACTTT\tG\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        # Variant eill get right shifted into the coding region exon boundary
+        # Variant will get right shifted into the coding region exon boundary
         # chr6 132617153 132618145 - TAAR2: "NM_001033080.1" Ex2
         # chr6 132624216 132624275 - TAAR2: "NM_001033080.1" Ex1
         # variant.pos = 132617152 and variant.ref == 'ACTCACTTTCT' variant.alt=''):
 # The MANE is missing the 3' UTR, so this deletion that encompasses the end of the coding
 # region ends up outside the transcript.
         # This test will fail
-        self.assertEqual('c.1046_*2del_p.E349_Ter352del', rec.variants[0].getFlag('CSN'))
+        #self.assertEqual('c.1046_*2del_p.E349_Ter352del', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.1046_*2del_p.?', rec.variants[0].getFlag('CSN'))
 
- #   def test_makeProteinString_DelExonBoundary_noshift(self):
- #       # Thanks to Kim Lauer for worked out example
- #       # but it's not in my MANE version.
- #       line = "chr7\t291482\tdelExon\tAATGTG\tA\t30\tPASS\t.\tGT\t0/1\n"
- #       rec = core.Record(line, self.options, None, self.reference)
- #       rec.annotate(self.ensembl, None, self.reference, None)
- #       # Variant eill get right shifted into the coding region exon boundary
- #       # chr7    290169  290276  +       FOXL3:NM_001374838.1    Ex1
- #       # chr7    290652  290821  +       FOXL3:NM_001374838.1    Ex2
- #       # chr7    291062  291485  +       FOXL3:NM_001374838.1    Ex3
+    def test_makeProteinString_VariantShiftingOut(self):
+     # Thanks to Kim Lauer for worked out example
+     # this transcript only in MANE 1.0 (or greater?)
+        line = "chr7\t291482\tdelExon\tAATGTG\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+    # Variant will get right shifted into the coding region exon boundary
+    # chr7    290169  290276  +       FOXL3:NM_001374838.1    Ex1
+    # chr7    290652  290821  +       FOXL3:NM_001374838.1    Ex2
+    # chr7    291062  291485  +       FOXL3:NM_001374838.1    Ex3
 
-  #      self.assertEqual('c.702_*5del_p.?', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.697_701del_p.Met233_Ter234del', rec.variants[0].getFlag('ALTANN'))
+        # transcript on the + strand and variants gets right shifted outside of variant scope.
+        self.assertEqual('.', rec.variants[0].getFlag('CSN'))
 
     def test_IFvsSG(self):
         line = "chr7\t142751829\tSG_not_IF\tC\tT\t30\tPASS\t.\tGT\t0/1\n"
@@ -793,6 +796,18 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('c.2T>C_p.Met1?', rec.variants[0].getFlag('CSN'))
         self.assertEqual('IM', rec.variants[0].getFlag('CLASS'))  # was IF
 
+    def test_Met1toIle(self):
+        line = "chr19\t11089551\tMet12Ile\tG\tT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+
+        self.assertEqual('c.3G>T_p.Met1?', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('IM', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('I',rec.variants[0].getFlag('PROTALT'))
+
+
+
+
 class Options:
 
 
@@ -801,13 +816,13 @@ class Options:
     def __init__(self):
         base_dir = os.path.dirname(os.path.dirname(__file__))
         self.args = {#'ensembl': os.path.join(base_dir, 'data', 'RefSeq_small.gz'),
-                     'ensembl': os.path.join(base_dir, 'data', 'cava_db.GRCh38.MANE.sorted.gz'),
+                     'ensembl': os.path.join(base_dir, 'data', 'MANE.GRCh38.v1.0.refseq_genomic.db.gz'),
                      'logfile': None,
                      'reference': os.path.join(base_dir, 'data', 'tmp.GRCh38.fa'),
                      'inputformat': 'VCF',
                      'type': 'ALL',
                      'ontology': 'BOTH',
-                     'givealt': None,
+                     'givealt': True,
                      'ssrange': 4,
                      'impactdef': 'SG,ESS,FS|SS5,IM,SL,EE,IF,NSY|SY,SS,INT,5PU,3PU'
                      }

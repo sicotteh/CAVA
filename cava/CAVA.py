@@ -7,7 +7,7 @@ from cava.utils import main
 with open(os.path.join(os.path.dirname(__file__), 'VERSION')) as version_file:
     version = version_file.read().strip()
 
-descr = 'CAVA (Clinical Annotation of VAriants) is a lightweight, fast and flexible NGS variant annotation tool that provides consistent transcript-level annotation.'
+descr = 'CAVA (Clinical Annotation of VAriants) is a lightweight, fast and flexible NGS variant annotation tool that provides consistent transcript-level annotation. Limitation: does not call start gain variants in the UTR5'
 epilog = '\nExample usage: python3 CAVA.py -c config.txt -i input.vcf -o output\n\n'.format(version)
 OptionParser.format_epilog = lambda self, formatter: self.epilog
 parser = OptionParser(usage='python3 CAVA.py <options>'.format(version), version=version, description=descr,

@@ -88,8 +88,11 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
 
     # Creating protein level annotation
     where = transcript.whereIsThisVariant(variant)
-    if mutprot is None: # This occurs when Variant crosses the intron-exon boundary or is multi-exon
-        protein, protchange = '_p.?', ('.', '.', '.')
+    if mutprot is None: # This occurs when Variant crosses the intron-exon boundary or is multi-exon OR variant outside CDS
+        if prot is None or len(prot)==0:
+            protein, protchange = '', ('.', '.', '.')
+        else:
+            protein, protchange = '_p.?', ('.', '.', '.')
         skip_repeats = False
     elif (not '-' in where and "Ex" in where):  # Purely in the one coding  exons
         protein, protchange = makeProteinString(variant, prot, mutprot, coord1)
@@ -1587,7 +1590,11 @@ def get_contig_from_build(chrom, build):
             newchrom = newchrom[3:]
         if newchrom == "M":
             newchrom = "MT"
-        contig = chrom_to_NC[newchrom]
+        if newchrom in chrom_to_NC:
+            contig = chrom_to_NC[newchrom]
+        else:
+            contig = chrom
+            sys.stderr.write("WARNING: CAVA: unknown chromosome, cannot map to contig :" + chrom + "\n")
     else:
         contig = chrom
     return contig

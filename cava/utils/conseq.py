@@ -9,7 +9,7 @@ import sys
 def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
     # Variants in UTR, if "Ex" present, variant overlaps CDS
     chkutr = checkUTR(transcript, variant)
-    if chkutr == 'UTR5': # Even if a variant covers more than UTR5, UTR5 has priority.
+    if chkutr == 'UTR5': # Even if a variant covers more than UTR5, UTR5 has priority. .. also includes UTR5-Ex* .. or Ex*-UTR3
         if 'Ex' in loc and (variant.is_deletion or variant.is_complex): # "Ex" actually means coding region
             return 'IM'
         return '5PU'
@@ -34,7 +34,6 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
     potSS = transcript.isInFirstOrLast3BaseOfExon(variant)
 
     if mutprotein is None:
-        sys.stderr.write("CAVA:WARNING, variant led to NULL mutprotein\n")
         return 'INT'
     protL = len(protein)
     mutprotL = len(mutprotein)
@@ -121,6 +120,7 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
 
 
 def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc):
+
     # Variants in UTR
     chkutr = checkUTR(transcript, variant)
     if chkutr == 'UTR5':
@@ -167,6 +167,13 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
         out.append('frameshift_variant')
         return '|'.join(out)
 
+    if mutprotein is None:
+        return '.'
+    if len(protein) ==0: # both ends of the variant completely outside transcript.
+        return '.'
+    if len(protein)>0 and len(mutprotein)==0: # This can only happen when beginning of protein is deleted
+        return 'initiator_codon_variant'
+
     if protein == mutprotein:
         out.append('synonymous_variant')
         return '|'.join(out)
@@ -175,7 +182,8 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
         out.append('initiator_codon_variant')
         return '|'.join(out)
 
-    if (not protein == mutprotein) and len(protein) == len(mutprotein): out.append('missense_variant')
+    if (not protein == mutprotein) and len(protein) == len(mutprotein):
+        out.append('missense_variant')
 
     # XXX-HS rewrote because this was the 3rd sink of time.
     isame = -1
@@ -197,6 +205,7 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
 
 # XXX rewrote because it was among top slowest parts of CAVA
 #
+
 
     ilast  = 0
     while ilast<len(protein) and ilast<len(mutprotein) :
