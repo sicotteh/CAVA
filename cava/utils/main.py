@@ -101,10 +101,10 @@ def findFileBreaks(inputf, threads):
     counter = 0
     first =1
 
-    if inputf.endswith('.gz'):
-        infile = gzip.open(inputf, 'rt')
+    if inputf.endswith('.gz') or inputf.endswith('.bgz'):
+        infile = gzip.open(inputf, 'rt', encoding='utf-8')
     else:
-        infile = open(inputf)
+        infile = open(inputf, encoding='utf-8')
 
     for line in infile:
         counter += 1
@@ -127,10 +127,10 @@ def findFileBreaks(inputf, threads):
 def readHeader(inputfn):
     ret = []
 
-    if inputfn.endswith('.gz'):
-        infile = gzip.open(inputfn, 'rt')
+    if inputfn.endswith('.gz')  or inputfn.endswith('.bgz'):
+        infile = gzip.open(inputfn, 'rt', encoding='utf-8')
     else:
-        infile = open(inputfn)
+        infile = open(inputfn, encoding='utf-8')
 
     for line in infile:
         line = line.strip()
@@ -157,9 +157,9 @@ def mergeTmpFiles(output, fileformat, threads):
     else:
         outfn = output + '.txt'
 
-    with open(outfn, 'a') as outfile:
+    with open(outfn, 'a', encoding='utf-8') as outfile:
         for fname in filenames:
-            with open(fname) as infile:
+            with open(fname, encoding='utf-8') as infile:
                 for line in infile:
                     outfile.write(line)
 
@@ -198,7 +198,7 @@ class SingleJob(multiprocessing.Process):
         self.numOfRecords = numOfRecords
 
         # Get Allowed chromosomes from config or use default
-        with open(copts.conf) as c:
+        with open(copts.conf, encoding='utf-8') as c:
             for line in c:
                 if line.startswith('@chrom'):
                     chroms = line[line.find('=') + 1:].strip().split(',')
@@ -208,10 +208,10 @@ class SingleJob(multiprocessing.Process):
                            '18', '19', '20', '21', '22', 'X', 'Y', 'MT']
 
         # Input file
-        if copts.input.endswith('.gz'):
-            self.infile = gzip.open(copts.input, 'rt')
+        if copts.input.endswith('.gz')  or copts.input.endswith('.bgz'):
+            self.infile = gzip.open(copts.input, 'rt', encoding='utf-8')
         else:
-            self.infile = open(copts.input)
+            self.infile = open(copts.input, encoding='utf-8')
 
         # Output file
         if copts.threads > 1:
@@ -219,18 +219,18 @@ class SingleJob(multiprocessing.Process):
                 outfn = copts.output + '_tmp_' + str(threadidx) + '.vcf'
             else:
                 outfn = copts.output + '_tmp_' + str(threadidx) + '.txt'
-            self.outfile = open(outfn, 'w')
+            self.outfile = open(outfn, 'w', encoding='utf-8')
         else:
             if options.args['outputformat'] == 'VCF':
                 outfn = copts.output + '.vcf'
             else:
                 outfn = copts.output + '.txt'
-            self.outfile = open(outfn, 'a')
+            self.outfile = open(outfn, 'a', encoding='utf-8')
 
         # Ensembl, dbSNP databases
         # Get Allowed chromosomes from config or use default
         codon_usage = ['1']
-        with open(copts.conf) as c:
+        with open(copts.conf, encoding='utf-8') as c:
             for line in c:
                 if line.startswith('@codon_usage'):
                     codon_usage = line[line.find('=') + 1:].strip().split(',')
@@ -409,9 +409,9 @@ def run(copts, version):
 
     # Writing header to output file
     if options.args['outputformat'] == 'VCF':
-        outfile = open(copts.output + '.vcf', 'w')
+        outfile = open(copts.output + '.vcf', 'w', encoding='utf-8')
     else:
-        outfile = open(copts.output + '.txt', 'w')
+        outfile = open(copts.output + '.txt', 'w', encoding='utf-8')
     header = readHeader(copts.input)
     core.writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
     outfile.close()

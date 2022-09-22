@@ -107,7 +107,11 @@ class Variant(object):
             return end >= self.pos
         if self.pos == start:
             return True
-        return self.pos + len(self.ref) - 1 >= start
+        if self.pos + len(self.ref) - 1 >= start:
+            return self.pos + len(self.ref) - 1 <=end
+        if self.pos<start and self.pos+len(self.ref)-1>end:
+            return True
+        return False
 
     # Getting the value of a given annotation flag
     def getFlag(self, flag):
@@ -147,7 +151,7 @@ class Variant(object):
         return [self.pos + left, newref, newalt]
 
     # Aligning variant on the GENOMIC plus strand, shifting 3' (right) on DNA (NOT cDNA)
-    def alignOnPlusStrand(self, reference):
+    def alignOnPlusStrand(self, reference):  # right shift, so appropriate for transcripts on plus strand.
         if self.alignonplus is not None:
             return self.alignonplus
         if self.chrom not in reference.reflens or not (self.is_insertion or self.is_deletion):
@@ -200,7 +204,7 @@ class Variant(object):
         self.alignonplus = ret
         return ret
 
-    # Aligning variant on the minus strand
+    # Aligning variant on the minus strand (left shift), so appropriate for variants on mimis strand.
     def alignOnMinusStrand(self, reference):
         if self.alignonminus is not None:
             return self.alignonminus
@@ -887,7 +891,7 @@ class Transcript(object):
         self.TRINFO = cols[3]
         self.chrom = cols[4]
         self.strand = int(cols[5])
-        self.transcriptStart = int(cols[6])  # 0-based, lowest coordinate
+        self.transcriptStart = int(cols[6])  # 0-based, lowest coordinate if first exon
         self.transcriptEnd = int(cols[7])   # 1-bases upper coordinate
         self.codingStart = int(cols[8])  # in cDNA coordinated (1st base is 1)
         self.codingStartGenomic = int(cols[9])# coding start genomic 1-based
@@ -950,10 +954,14 @@ class Transcript(object):
         # We will assume that UGT translation works from the first base of the CDS>
         # a) Track the location of the original Stop Codon along the position of the mutated protein,
         #    translate the mutated protein with a Selenocysteine genetic code.
+        if protein is None:
+            return mutprotein
         allUindexes = [_x.start() for _x in re.finditer("U",protein)]
         if len(allUindexes) == 0:  # No U in translated protein==>not a selenocysteine gene
             sys.stderr.write(
                 "WARNING: gene " + self.geneSymbol + " configured as selenocysteine gene, but no U found in translation of reference CDS\n")
+            return mutprotein
+        if mutprotein is None:
             return mutprotein
         allmutUindexes = [_x.start() for _x in re.finditer("U",mutprotein)]
         if len(allmutUindexes) == 0:  # No issue with U being possibly a stop codon
@@ -1238,25 +1246,31 @@ class Transcript(object):
 
     # Checking if a given position is upstream the region between the start and stop codon
     # don't take account of insertion .. should be dealth with by calling function
+    # 9/14/2022 Make sure position is not outside the transcript either.
     def isPositionOutsideCDS_5prime(self, pos):
-        return (self.strand == 1 and pos < self.codingStartGenomic) or (
-                self.strand == -1 and pos > self.codingStartGenomic)
+        return (self.strand == 1 and pos < self.codingStartGenomic and pos>self.transcriptStart) or (
+                self.strand == -1 and pos > self.codingStartGenomic and pos<=self.transcriptEnd)
 
     # Checking if a given position is downstream the region between the start and stop codon
     # don't take account of insertion .. should be dealth with by calling function
     def isPositionOutsideCDS_3prime(self, pos):
-        return (self.strand == 1 and pos > self.codingEndGenomic) or (self.strand == -1 and pos < self.codingEndGenomic)
+        return (self.strand == 1 and pos > self.codingEndGenomic and pos<=self.transcriptEnd) or \
+               (self.strand == -1 and pos < self.codingEndGenomic and pos > self.transcriptStart)
 
-    # Checking if the given variant is outside of the translated region of the transcript
-    def isOutsideTranslatedRegion(self, variant):
+    # Checking if the variant is completely (both ends) outside the coding region
+    # if FALSE, then part of this inside coding region.
+    # if variant is outside transcript, should return true
+    def isOutsideTranslatedRegion(self, variant):  # in either UTR's'
         if self.strand == 1:
-            if variant.is_insertion:
+            if variant.is_insertion: # position points to after variant.
+                # reject insertion is it's before start
                 if variant.pos <= self.codingStartGenomic: return True
+                # if insertion is right next to end of transcript .. it will be cleaved off .. so don't include it.
                 if variant.pos - 1 >= self.codingEndGenomic: return True
                 return False
             else:
                 if variant.pos + len(variant.ref) - 1 < self.codingStartGenomic: return True
-                if variant.pos > self.codingEndGenomic: return True
+                if variant.pos > self.codingEndGenomic : return True
                 return False
         else:
             if variant.is_insertion:
@@ -1272,24 +1286,32 @@ class Transcript(object):
     def isOutsideTranslatedRegionPlus3(self, variant):
         if self.strand == 1:
             if variant.is_insertion:
-                if variant.pos <= self.codingStartGenomic + 3: return True
-                if variant.pos - 1 >= self.codingEndGenomic - 3: return True
+                if variant.pos <= self.codingStartGenomic:# + 3:
+                    return True
+                if variant.pos - 1 >= self.codingEndGenomic:# - 3:
+                    return True
                 return False
             else:
-                if variant.pos + len(variant.ref) - 1 < self.codingStartGenomic + 3: return True
-                if variant.pos > self.codingEndGenomic - 3: return True
+                if variant.pos + len(variant.ref) - 1 < self.codingStartGenomic:# + 3:
+                    return True
+                if variant.pos > self.codingEndGenomic:# - 3:
+                    return True
                 return False
         else:
             if variant.is_insertion:
-                if variant.pos <= self.codingEndGenomic + 3: return True
-                if variant.pos - 1 >= self.codingStartGenomic - 3: return True
+                if variant.pos <= self.codingEndGenomic:# + 3:
+                    return True
+                if variant.pos - 1 >= self.codingStartGenomic:# - 3:
+                    return True
                 return False
             else:
-                if variant.pos + len(variant.ref) - 1 < self.codingEndGenomic + 3: return True
-                if variant.pos > self.codingStartGenomic - 3: return True
+                if variant.pos + len(variant.ref) - 1 < self.codingEndGenomic:# + 3:
+                    return True
+                if variant.pos > self.codingStartGenomic:# - 3:
+                    return True
                 return False
 
-    # Checking if the given variant overlaps with splicing region
+    # Checking if the given variant overlaps with splicing region, only matters if it affects protein
     def isInSplicingRegion(self, variant, ssrange):
         if not self.isOutsideTranslatedRegion(variant):
             for exon in self.exons:
@@ -1299,7 +1321,7 @@ class Transcript(object):
         else:
             return False
 
-    # Checking if the given variant affects an essential splice site
+    # Checking if the given variant affects an essential splice site, only matters if it affects protein
     def isInEssentialSpliceSite(self, variant):
         if not self.isOutsideTranslatedRegion(variant):
             for exon in self.exons:
@@ -1309,7 +1331,7 @@ class Transcript(object):
         else:
             return False
 
-    # Checking if the given variant affects a +5 essential splice site
+    # Checking if the given variant affects a +5 essential splice site, only matters if it affects protein
     def isIn_SS5_Site(self, variant):
         if not self.isOutsideTranslatedRegion(variant):
             if self.strand == 1:
@@ -1345,7 +1367,7 @@ class Transcript(object):
 
     # Checking where a given genomic position is located in the transcript
     # already adjusted for introns .. because whereIsThisVariant adjusts position
-    def whereIsThisPosition(self, pos):
+    def whereIsThisPosition(self, pos): # pos is 1-based
         # Iterating through exons and introns and checking if genomic position is located within
 
         for exon in self.exons:
@@ -1355,7 +1377,7 @@ class Transcript(object):
                     return 'In' + str(exon.index - 1) + '/' + str(exon.index)
                 else:
                     return 'fsIn' + str(exon.index - 1) + '/' + str(exon.index)
-            if exon.start < pos <= exon.end:
+            if exon.start < pos <= exon.end:  # exon.start is 0-based , codingStartGenomic is 1-based
                 if (self.strand == 1 and pos < self.codingStartGenomic) or (
                         self.strand == -1 and pos > self.codingStartGenomic):
                     return '5UTR'
@@ -1418,7 +1440,7 @@ class Transcript(object):
 
 # Class representing a single exon
 class Exon(object):
-    # Constructor
+    # Constructor, Start is 0-based, ENd is 1-based -- like a bed
     def __init__(self, index, start, end):
         self.index = index
         self.start = start
@@ -1813,10 +1835,10 @@ def writeHeader(options, header, outfile, stdout, version):
 # Counting number of records in a file
 def countRecords(filename):
     ret = 0
-    if filename.endswith('.gz'):
-        inputf = gzip.open(filename, 'rt')
+    if filename.endswith('.gz') or filename.endswith('.bgz'):
+        inputf = gzip.open(filename, 'rt',encoding='utf-8')
     else:
-        inputf = open(filename)
+        inputf = open(filename,encoding="utf-8")
     for line in inputf:
         line = line.strip()
         if not (line.startswith("#") or line == ''): ret += 1

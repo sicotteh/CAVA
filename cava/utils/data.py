@@ -39,6 +39,7 @@ class Ensembl(object):
         self.proteinSeqs = dict()
         self.exonSeqs = dict()
         self.exoncache_hit = dict()
+        self.cds_ref = dict()
         self.cache_num = 0
         self.genelist = genelist
         self.transcriptlist = transcriptlist
@@ -99,8 +100,8 @@ class Ensembl(object):
             for line in hits:
                 linedat = line.split("\t",8)
                 transcriptid = linedat[0]
-                transcriptStart = int(linedat[6])
-                transcriptEnd = int(linedat[7])
+                transcriptStart = int(linedat[6])  # lowest coordinate - base 0
+                transcriptEnd = int(linedat[7]) # highest coordiate - base 1
                 binstart = int(transcriptStart/self.binsize)
                 binend  = int(transcriptEnd/self.binsize)
                 for ebin in range(binstart,binend+1):
@@ -170,7 +171,7 @@ class Ensembl(object):
         # HS: Tabix uses 0-based indexing for start/pos
         if variant.is_insertion is False:
             start = variant.pos -1
-            end = variant.pos + len(variant.ref)
+            end = variant.pos + len(variant.ref)-1
         else:  # for insertion, position got shifted to be after the insertion point .. shift back
             start = variant.pos - 2
             end = variant.pos -1
@@ -180,7 +181,7 @@ class Ensembl(object):
             end = start + 1
 
 
-        if not variant.is_substitution:
+        if not variant.is_substitution: # Insertion/deletion / MNP
             # HS notes:
             # tabix index is loaded in memory, and the data is buffered in 37K (2^16) blocks (from reading the pysam and htslib)
             #   the 'fetch' take about 0.004 - 0.049 ms .. MUCH faster than a single disk seek & read (10-15ms)
@@ -208,12 +209,13 @@ class Ensembl(object):
             hitdict2 = dict()
             for line in hits1:
                 transcript = self.find_transcript_in_cache_or_in_file(line)
-                if not (transcript.transcriptStart + 1 <= start <= transcript.transcriptEnd): continue
+                # transcriptStart is 0-based, lowest coordinate .. transcriptEnd is 1-bases highest coordinate, start is 0-based
+                if not (transcript.transcriptStart <= start < transcript.transcriptEnd): continue
                 # if not strand == transcript.strand: continue
                 hitdict1[transcript.TRANSCRIPT] = transcript
             for line in hits2:
                 transcript = self.find_transcript_in_cache_or_in_file(line)
-                if not (transcript.transcriptStart + 1 <= end <= transcript.transcriptEnd): continue
+                if not (transcript.transcriptStart < end <= transcript.transcriptEnd): continue
                 #  if not strand == transcript.strand: continue
                 hitdict2[transcript.TRANSCRIPT] = transcript
             #end_time = time.perf_counter_ns()
@@ -223,17 +225,16 @@ class Ensembl(object):
                 if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
                 if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
 
-                if key in list(hitdict2.keys()):
+                if key in list(hitdict2.keys()): # e.g. both ends of the variant are in transcript.
                     ret[key] = transcript
                 else:
-                    if not variant.is_insertion:
+                    if variant.is_insertion: # insertions at the edges are TRULY outside, not even partially overlapping
                         retOUT[key] = transcript  # partial overlap downstream of transcript
 
             if not variant.is_insertion:
                 for key, transcript in hitdict2.items():  # check for partial overlap upstream of transcript
                     if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
                     if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
-
                     if not key in list(hitdict1.keys()):
                         retOUT[key] = transcript
 
@@ -353,11 +354,11 @@ class Ensembl(object):
             transcripts_allminus = set(list(transcripts_minus.keys()) + list(transcriptsOUT_minus.keys()))
             transcripts = set(list(transcripts_plus.keys()) + list(transcripts_minus.keys()) + list(transcriptsOUT_plus.keys()) + list(transcriptsOUT_minus.keys()))
             transcriptsOUT = set()
-        else:
+        else: # This will only lead to an "OUT" for insertions right at the edge.
             transcripts_allplus = set(list(transcripts_plus.keys()))
             transcripts_allminus = set(list(transcripts_minus.keys()))
             transcripts = set(list(transcripts_plus.keys()) + list(transcripts_minus.keys()))
-            transcriptsOUT = set(list(transcriptsOUT_plus.keys()) + list(transcriptsOUT_minus.keys()))
+            transcriptsOUT = set(list(transcriptsOUT_plus.keys()) + list(transcriptsOUT_minus.keys()))  # SNP has no out
 
         transcripts = sorted(list(transcripts))
         transcriptsOUT = sorted(list(transcriptsOUT))
@@ -365,13 +366,8 @@ class Ensembl(object):
         transcripts_allminus = sorted(transcripts_allminus)
 
         # Annotating with transcripts that only partially overlap with the variant
-        for TRANSCRIPT in transcriptsOUT:
-            # if variant can be shifted (insertion or deletion), then it is possible
-            # for a transcript to be both in the transcripts list and the transcriptsOUT lists
-            if TRANSCRIPT in transcripts: continue
-            # Only 1 end mapped in transcript
-            #  either statement is true for both shifted variants pos .. or in transcriptt for one shifted version and not in for the other shifted version
-
+        for TRANSCRIPT in transcriptsOUT: # either plus or minus shifted variant is partially outside
+            if TRANSCRIPT in transcripts: continue # skip, if want the CSN annotated
             if TRANSCRIPT in list(transcriptsOUT_plus.keys()):
                 transcript = transcriptsOUT_plus[TRANSCRIPT]
             else:
@@ -400,15 +396,6 @@ class Ensembl(object):
             GENEIDstring += transcript.geneID
             TRINFOstring += transcript.TRINFO
 
-            # if TRANSCRIPT in list(transcriptsOUT_plus.keys()):
-            #         LOCstring += 'OUT'
-            #     else:
-            #         LOCstring += '.'
-            # else:
-            #     if TRANSCRIPT in list(transcriptsOUT_minus.keys()):
-            #         LOCstring += 'OUT'
-            #     else:
-            #         LOCstring += '.'
             LOCstring += 'OUT'
 
             CSNstring += '.'
@@ -465,16 +452,14 @@ class Ensembl(object):
                 loc_plus = transcript.whereIsThisVariant(variant_plus)
             elif TRANSCRIPT in list(transcriptsOUT_plus.keys()):
                 loc_plus = 'OUT'
-#                loc_plus = transcript.whereIsThisVariant(variant_plus)
             else:
                 loc_plus = '.'
 
-            if difference:
+            if difference is True:
                 if TRANSCRIPT in list(transcripts_minus.keys()):
                     loc_minus = transcript.whereIsThisVariant(variant_minus)
                 elif TRANSCRIPT in list(transcriptsOUT_minus.keys()):
                     loc_minus = 'OUT'
- #                   loc_minus = transcript.whereIsThisVariant(variant_minus)
                 else:
                     loc_minus = '.'
             else:
@@ -482,17 +467,25 @@ class Ensembl(object):
 
             # Creating reference and mutated protein sequence
             #   . means outside transcript .. which can (now) happen for deletion or MNP
+            # Cannot call protein when variant spans intron/exon boundary
+            #
+            # XXX-HS need to add Start Gain in 5'UTR.. from SNP/insertion/deletions
+            #
             notexonic_plus = (
-                    ('5UTR' in loc_plus) or ('3UTR' in loc_plus) or ('-' in loc_plus) or ('In' in loc_plus) or (
+                    ('5UTR' == loc_plus) or ('3UTR' == loc_plus) or ('-' in loc_plus) or ('In' in loc_plus) or (
                     loc_plus == 'OUT') or (loc_plus == '.'))
-            if difference:
+            if loc_plus.startswith("5UTR-Ex") and variant.is_insertion is False: # Variants spanning start site.
+                notexonic_plus = False
+            if difference is True:
                 notexonic_minus = (
-                        ('5UTR' in loc_minus) or ('3UTR' in loc_minus) or ('-' in loc_minus) or (
+                        ('5UTR' == loc_minus) or ('3UTR' == loc_minus) or ('-' in loc_minus) or (
                         'In' in loc_minus) or (loc_minus == 'OUT') or (loc_minus == '.'))  # Variants overlapping the ends of the protein
+                if loc_minus.startswith("5UTR-Ex") and variant.is_insertion is False: # variants Spanning Start site.
+                    notexonic_minus = False
             else:
                 notexonic_minus = notexonic_plus
             exonseqs = None
-            if notexonic_plus and notexonic_minus:
+            if (notexonic_plus is True) and (notexonic_minus is True): # Variant entirely outside coding region OR crossing intron/exon junction
                 protein = ''
             else:
                 self.cache_num += 1
@@ -501,6 +494,7 @@ class Ensembl(object):
                     protein, exonseqs, cds_ref = transcript.getProteinSequence(reference, None, None, self.codon_usage)
                     self.proteinSeqs[transcript.TRANSCRIPT] = protein
                     self.exonSeqs[transcript.TRANSCRIPT] = exonseqs
+                    self.cds_ref[transcript.TRANSCRIPT] = cds_ref
                     transcript.exonseqs = exonseqs
                     if len(self.proteinSeqs) > self.CACHESIZE:  # Cache of proteins and exons data
                             vals = list(self.exoncache_hit.values())
@@ -510,24 +504,26 @@ class Ensembl(object):
                             self.exonSeqs.pop(rm_tr)
                             self.exoncache_hit.pop(rm_tr)
                             self.proteinSeqs.pop(rm_tr)
+                            self.cds_ref.pop(rm_tr)
                 else:
                     protein = self.proteinSeqs[transcript.TRANSCRIPT]
                     exonseqs = self.exonSeqs[transcript.TRANSCRIPT]
+                    cds_ref = self.cds_ref[transcript.TRANSCRIPT]
 
 
-            if notexonic_plus or protein == '':
-                mutprotein_plus = ''
+            if notexonic_plus is True:
+                mutprotein_plus = None
             else:
                 mutprotein_plus, exonseqsalt_plus, cds_mut_plus = transcript.getProteinSequence(reference, variant_plus, exonseqs, self.codon_usage)
-                if mutprotein_plus is not None and transcript.geneSymbol in self.selenogenes:
+                if mutprotein_plus is not None and (transcript.geneSymbol in self.selenogenes) and cds_ref is not None:
                     mutprotein_plus = transcript.trimSelenoCysteine(cds_ref, cds_mut_plus, protein, mutprotein_plus, variant_plus)
 
             if difference:
-                if notexonic_minus or protein == '':
-                    mutprotein_minus = ''
+                if notexonic_minus:
+                    mutprotein_minus = None
                 else:
                     mutprotein_minus, exonseqsalt_minus , cds_mut_minus= transcript.getProteinSequence(reference, variant_minus, exonseqs, self.codon_usage)
-                    if mutprotein_minus is not None and transcript.geneSymbol in self.selenogenes:
+                    if mutprotein_minus is not None and transcript.geneSymbol in self.selenogenes and cds_ref is not None:
                         mutprotein_minus = transcript.trimSelenoCysteine(cds_ref, cds_mut_minus, protein, mutprotein_plus, variant_minus)
             else:
                 mutprotein_minus = mutprotein_plus
@@ -540,7 +536,7 @@ class Ensembl(object):
                 csn_plus_str, protchange_plus = '.', ('.', '.', '.')
 
             if difference:
-                if TRANSCRIPT in transcripts_allminus:
+                if TRANSCRIPT in transcripts_allminus :
                     csn_minus, protchange_minus = csn.getAnnotation(variant_minus, transcript, reference, protein, mutprotein_minus)
                     csn_minus_str = csn_minus.getAsString()
                 else:
@@ -611,7 +607,7 @@ class Ensembl(object):
                     so_minus = so_plus
 
             # Deciding which is the correct CSN and CLASS annotation
-            if transcript.strand == 1:
+            if transcript.strand == 1: #
                 class_plus, class_minus = self.correctClasses(csn_plus_str, class_plus, class_minus)
                 so_plus, so_minus = self.correctSOs(csn_plus_str, so_plus, so_minus)
                 if class_plus == "ESS" or so_plus.startswith("splice"):
@@ -656,7 +652,7 @@ class Ensembl(object):
                 PROTREFstring += protchange_minus[1]
                 PROTALTstring += protchange_minus[2]
 
-            if self.options.args['givealt']:
+            if 'givealt' in self.options.args and self.options.args['givealt']:
                 # Creating the ALTANN annotation
                 if not csn_plus_str == csn_minus_str:
                     ALTANNstring += ALTANN
@@ -675,7 +671,8 @@ class Ensembl(object):
                 else:
                     ALTSOstring += '.'
 
-            if (not self.options.args['givealt']) or self.options.args['givealtflag']:
+            if ('givealt' in self.options.args and self.options.args['givealt'] is True) or \
+                    ('givealtflag' in self.options.args and self.options.args['givealtflag']):
                 # Creating the ALTFLAG annotation
 
                 if self.options.args['ontology'].upper() == 'CLASS':
@@ -727,12 +724,13 @@ class Ensembl(object):
 
         if not impactdir is None: variant.addFlag('IMPACT', IMPACTstring)
 
-        if self.options.args['givealt']:
+        if 'givealt' in self.options.args and self.options.args['givealt'] is True:
             variant.addFlag('ALTANN', ALTANNstring)
             if self.options.args['ontology'].upper() in ['CLASS', 'BOTH']: variant.addFlag('ALTCLASS', ALTCLASSstring)
             if self.options.args['ontology'].upper() in ['SO', 'BOTH']: variant.addFlag('ALTSO', ALTSOstring)
 
-        if (not self.options.args['givealt']) or self.options.args['givealtflag']:
+        if ('givealt' in self.options.args and  self.options.args['givealt'] is False) or \
+                ('givealtflag' in self.options.args and self.options.args['givealtflag']):
             variant.addFlag('ALTFLAG', ALTFLAGstring)
 
         return variant
