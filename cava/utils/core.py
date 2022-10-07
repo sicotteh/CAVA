@@ -783,7 +783,7 @@ class Record(object):
                 # Common to all transcripts for that variant
                 record = self.id + '\t' + self.chrom + '\t' + str(self.pos) + '\t' + self.ref + '\t' + outalts[
                     c] + '\t' + self.qual + '\t' + self.filter
-
+                contig = csn.get_contig_from_build(self.chrom, build)
                 # Number of transcripts overlapping with the variant
                 if 'TRANSCRIPT' in variant.flags:
                     transcripts_list = variant.flagvalues[variant.flags.index('TRANSCRIPT')].split(":")
