@@ -20,5 +20,5 @@ setup(
     zip_safe=False,
     include_package_data=True,
     test_suite='tests',
-    tests_require=['wget'],
+    tests_require=['wget',"pycurl >= 7.45.1"],
 )
