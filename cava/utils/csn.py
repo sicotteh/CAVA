@@ -3,7 +3,7 @@
 
 # CSN annotation
 #######################################################################################################################
-import cava.utils.core as core
+from . import core
 import sys
 
 # Class representing a CSN annotation
@@ -88,7 +88,13 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
 
     # Creating protein level annotation
     where = transcript.whereIsThisVariant(variant)
-    if (not '-' in where and "Ex" in where):  # Purely in the one coding  exons
+    if mutprot is None: # This occurs when Variant crosses the intron-exon boundary or is multi-exon OR variant outside CDS
+        if prot is None or len(prot)==0:
+            protein, protchange = '', ('.', '.', '.')
+        else:
+            protein, protchange = '_p.?', ('.', '.', '.')
+        skip_repeats = False
+    elif (not '-' in where and "Ex" in where):  # Purely in the one coding  exons
         protein, protchange = makeProteinString(variant, prot, mutprot, coord1)
         skip_repeats = False
     elif where.startswith('5UTR-Ex'): # Need an HGVS p.? to indicate there is an effect on protein.
@@ -180,8 +186,9 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                             skip_repeats = True   # Cannot allow not multiple of 3 in CDS
             if skip_repeats is False:
                 dna = core.Sequence(repeat_unit).reverseComplement() + '[' + str(n_repeat_ref) + ']%3B['+ str(n_repeat_alt) + ']'
-                coord1, intr1, nout1 = coord1new, intr1new, nout1new
-                coord2, intr2, nout2 = coord2new, intr2new, nout2new
+                # 1/30/2023 for minus strand need coord1 to be highest genomic (lowest cDNA)
+                coord1, intr1, nout1 = coord2new, intr2new, nout1new
+                coord2, intr2, nout2 = coord1new, intr1new, nout2new
             else: # Repeat is not allowed, try next best thing.
                 try:
                     dna, dna_ins = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,
@@ -1184,9 +1191,9 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
             #         Since len(prot)>0, then the variant is a deletion (could NOT be a frameshift that causes an early Stop .. because len(mutprot)==0
             #         It is possible that the DNA variant is a complex variant and not a del, but that is OK (protein annotations should not consider DNA).
             if len(prot) == 1:  # Unless last AA is not Ter .. then this should have been dealth with by Code above
-                return '_p.', changeTo3lettersTer(prot[0]) + str(leftindex) + "del", (str(leftindex), prot, '-')
+                return '_p.'+ changeTo3lettersTer(prot[0]) + str(leftindex) + "del", (str(leftindex), prot, '-')
             else:
-                return '_p.', changeTo3lettersTer(prot[0]) + str(leftindex) + "_" + changeTo3lettersTer(
+                return '_p.' + changeTo3lettersTer(prot[0]) + str(leftindex) + "_" + changeTo3lettersTer(
                     prot[len(prot) - 1]) + str(rightindex) + "del", (str(leftindex) + '-' + str(rightindex), prot, '-')
         else:
             xindex = mutprot.find("X")
@@ -1584,7 +1591,11 @@ def get_contig_from_build(chrom, build):
             newchrom = newchrom[3:]
         if newchrom == "M":
             newchrom = "MT"
-        contig = chrom_to_NC[newchrom]
+        if newchrom in chrom_to_NC:
+            contig = chrom_to_NC[newchrom]
+        else:
+            contig = chrom
+            sys.stderr.write("WARNING: CAVA: unknown chromosome, cannot map to contig :" + chrom + "\n")
     else:
         contig = chrom
     return contig

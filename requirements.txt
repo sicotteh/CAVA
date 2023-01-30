@@ -4,8 +4,15 @@ pysam
 crossmap == 0.6.1
 wget
 requests
-pycurl
 bx-python
 pyBigWig
-
-
+pybedtools
+numpy
+certifi
+charset-normalizer
+idna
+six
+urllib3
+wget
+wheel
+pip >= 21.3.1

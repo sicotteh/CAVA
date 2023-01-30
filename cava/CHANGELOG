@@ -1,3 +1,16 @@
+7/28/2022
+    There is still a limitation of CAVA when calling deletions overlapping the edges. It doesn't do it. This is only a problem for a protein coding
+    gene without annotated UTR. We have one example in the unit test set for the TAAR2 gene.
+7/14/2022
+    When protein is an Extension, CLASS was called as Stop Gain Automatically
+    Insertions on the edge of the intron/exon junction were either not annotated or causing errors
+    Catch Variants that cross intron/exon junction of span exons .. and call them p.?
+    Recode Selenocysteine genes to be reflect uncertainty in the range of the SECIS element to translate TGA into Ser.
+    NSY only applies to single-base protein change, longer changes are IF
+    mutations of the last Stop codon (not frameshift) is an extension .. which was not a CA CLASS
+    rolled back python version requirements to 3.6
+    fixed bug where some Stop Gain would be classified as FS (should be SG)
+
 2/15/2022
 	added a number of unit tests
 	 

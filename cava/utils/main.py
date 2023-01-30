@@ -8,12 +8,11 @@ import os
 import sys
 import pysam
 
-from cava.utils.data import Ensembl
-from cava.utils.data import Reference
-from cava.utils.data import dbSNP
+from . import data
+#from data import Ensembl
+#from data import Reference
 from . import core
-from .core import Options
-from .core import Record
+#from core import Record
 
 
 # Printing out welcome meassage
@@ -101,10 +100,10 @@ def findFileBreaks(inputf, threads):
     counter = 0
     first =1
 
-    if inputf.endswith('.gz'):
-        infile = gzip.open(inputf, 'rt')
+    if inputf.endswith('.gz') or inputf.endswith('.bgz'):
+        infile = gzip.open(inputf, 'rt', encoding='utf-8')
     else:
-        infile = open(inputf)
+        infile = open(inputf, encoding='utf-8')
 
     for line in infile:
         counter += 1
@@ -127,10 +126,10 @@ def findFileBreaks(inputf, threads):
 def readHeader(inputfn):
     ret = []
 
-    if inputfn.endswith('.gz'):
-        infile = gzip.open(inputfn, 'rt')
+    if inputfn.endswith('.gz')  or inputfn.endswith('.bgz'):
+        infile = gzip.open(inputfn, 'rt', encoding='utf-8')
     else:
-        infile = open(inputfn)
+        infile = open(inputfn, encoding='utf-8')
 
     for line in infile:
         line = line.strip()
@@ -157,11 +156,15 @@ def mergeTmpFiles(output, fileformat, threads):
     else:
         outfn = output + '.txt'
 
-    with open(outfn, 'a') as outfile:
+    with open(outfn, 'a', encoding='utf-8') as outfile:
         for fname in filenames:
-            with open(fname) as infile:
+            with open(fname, encoding='utf-8') as infile:
                 for line in infile:
-                    outfile.write(line)
+                    try:
+                        outfile.write(line)
+                    except:
+                        sys.stderr.write("CAVA: error writing to "+outfn+"\n")
+                        exit(1)
 
     for fn in filenames: os.remove(fn)
 
@@ -198,7 +201,7 @@ class SingleJob(multiprocessing.Process):
         self.numOfRecords = numOfRecords
 
         # Get Allowed chromosomes from config or use default
-        with open(copts.conf) as c:
+        with open(copts.conf, encoding='utf-8') as c:
             for line in c:
                 if line.startswith('@chrom'):
                     chroms = line[line.find('=') + 1:].strip().split(',')
@@ -208,10 +211,10 @@ class SingleJob(multiprocessing.Process):
                            '18', '19', '20', '21', '22', 'X', 'Y', 'MT']
 
         # Input file
-        if copts.input.endswith('.gz'):
-            self.infile = gzip.open(copts.input, 'rt')
+        if copts.input.endswith('.gz')  or copts.input.endswith('.bgz'):
+            self.infile = gzip.open(copts.input, 'rt', encoding='utf-8')
         else:
-            self.infile = open(copts.input)
+            self.infile = open(copts.input, encoding='utf-8')
 
         # Output file
         if copts.threads > 1:
@@ -219,37 +222,37 @@ class SingleJob(multiprocessing.Process):
                 outfn = copts.output + '_tmp_' + str(threadidx) + '.vcf'
             else:
                 outfn = copts.output + '_tmp_' + str(threadidx) + '.txt'
-            self.outfile = open(outfn, 'w')
+            self.outfile = open(outfn, 'w', encoding='utf-8')
         else:
             if options.args['outputformat'] == 'VCF':
                 outfn = copts.output + '.vcf'
             else:
                 outfn = copts.output + '.txt'
-            self.outfile = open(outfn, 'a')
+            self.outfile = open(outfn, 'a', encoding='utf-8')
 
         # Ensembl, dbSNP databases
         # Get Allowed chromosomes from config or use default
         codon_usage = ['1']
-        with open(copts.conf) as c:
+        with open(copts.conf, encoding='utf-8') as c:
             for line in c:
                 if line.startswith('@codon_usage'):
                     codon_usage = line[line.find('=') + 1:].strip().split(',')
                     self.codon_usage = codon_usage
 
         # Reference genome
-        self.reference = Reference(options)
+        self.reference = data.Reference(options)
         if options.args['logfile'] and threadidx == 1: logging.info('Connected to reference genome.')
 
         if (not options.args['ensembl'] == '.') and (not options.args['ensembl'] == ''):
             # Pass reference to ensembl, so it can know the chromosome sizes
-            self.ensembl = Ensembl(options, genelist, transcriptlist, codon_usage[0], self.reference)
+            self.ensembl = data.Ensembl(options, genelist, transcriptlist, codon_usage[0], self.reference)
             if options.args['logfile'] and threadidx == 1:
                 logging.info('Connected to Ensembl database.')
         else:
             self.ensembl = None
 
         if (not options.args['dbsnp'] == '.') and (not options.args['dbsnp'] == ''):
-            self.dbsnp = dbSNP(options)
+            self.dbsnp = data.dbSNP(options)
             if options.args['logfile'] and threadidx == 1: logging.info('Connected to dbSNP database.')
         else:
             self.dbsnp = None
@@ -303,7 +306,7 @@ class SingleJob(multiprocessing.Process):
                     printProgressInfo(counter, int(self.numOfRecords / self.copts.threads))
 
             # Parsing record from input file
-            record = Record(line, self.options, self.targetBED,self.reference)
+            record = core.Record(line, self.options, self.targetBED,self.reference)
 
             # Filtering out REFCALL records .. from original VCF annotation
             if record.filter == 'REFCALL': continue
@@ -358,7 +361,7 @@ def run(copts, version):
         quit()
 
     # Reading options from configuration file
-    options = Options(copts.conf)
+    options = core.Options(copts.conf)
 
     # Initializing log file
     if options.args['logfile']:
@@ -409,11 +412,16 @@ def run(copts, version):
 
     # Writing header to output file
     if options.args['outputformat'] == 'VCF':
-        outfile = open(copts.output + '.vcf', 'w')
+        outfname = copts.output + '.vcf'
     else:
-        outfile = open(copts.output + '.txt', 'w')
+        outfname = copts.output + '.txt'
+    outfile = open(outfname, 'w', encoding='utf-8')
     header = readHeader(copts.input)
-    core.writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
+    try:
+        core.writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
+    except:
+        sys.stderr.write("CAVA: error writing header to "+outfname+"\n")
+        exit(1)
     outfile.close()
 
     # Find break points in the input file
