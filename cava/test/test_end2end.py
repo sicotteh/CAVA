@@ -112,14 +112,14 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         rec.variants[0].getFlag('CSN')
-        self.assertEqual('c.*873A[19]%3B[28]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.*863A[19]%3B[28]', rec.variants[0].getFlag('CSN'))
 
     def test_hg38_negStrand_del3utr(self):
         line = "17\t43044804\t323411\tCTT\tC\t.\t.\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         rec.variants[0].getFlag('CSN')
-        self.assertEqual('c.*873A[19]%3B[17]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.*856A[19]%3B[17]', rec.variants[0].getFlag('CSN'))
 
     def test_hg38_negStrand_delins3utr(self):
         line = "17\t43044804\t323411\tCTT\tCG\t.\t.\t.\tGT\t0/1\n"
@@ -734,7 +734,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('NC_000001.11:g.1103994T[10]%3B[11]',
                          rec.variants[0].getFlag('HGVSg'))  # should only be one value
         # purely intronic variant, no protein and repeat-style annotation.
-        self.assertEqual('c.-135-11891A[10]%3B[11]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.-135-11900A[10]%3B[11]', rec.variants[0].getFlag('CSN'))
 
 
 
@@ -805,7 +805,20 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('IM', rec.variants[0].getFlag('CLASS'))
         self.assertEqual('I',rec.variants[0].getFlag('PROTALT'))
 
+    def test_makeProteinString_AGTrepeat_minus_strand(self):
+        print("Testing mutation- in-frame-repeat")
 
+        line = "chr17\t43092110\t1139Ser[2];[1]\tGACT\tG\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+
+        self.assertEqual('c.3415AGT[2]%3B[1]_p.Ser1139[2]%3B[1]',rec.variants[0].getFlag('CSN'))
+        self.assertEqual('IF', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('inframe_deletion', rec.variants[0].getFlag('SO'))
+
+        self.assertEqual('S', rec.variants[0].getFlag('PROTREF'))
+        self.assertEqual('-', rec.variants[0].getFlag('PROTALT'))
+        self.assertEqual('1140', rec.variants[0].getFlag('PROTPOS'))
 
 
 class Options:

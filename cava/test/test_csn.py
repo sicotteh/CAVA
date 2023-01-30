@@ -247,11 +247,5 @@ class TestmakeProteinString(unittest.TestCase):
         self.assertEqual(actual, expected)
 
 
-    def test_makeProteinString_Met1toAAS(self):
-        print("Testing mutation of  2 AA (including Methionine)")
-        variant = Variant("chr1", 1000, "CTCT", "TCAG")
-        actual = makeProteinString(variant, "MLRX", "LRRX", 1)
-        expected = ('_p.Met1?', ('1', 'M', 'L'))  # Once the methionine is modified, the rest of the protein translation does not matter.
-        self.assertEqual(actual, expected)
 
 

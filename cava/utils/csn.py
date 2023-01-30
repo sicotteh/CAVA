@@ -3,7 +3,7 @@
 
 # CSN annotation
 #######################################################################################################################
-from cava.utils import core
+from . import core
 import sys
 
 # Class representing a CSN annotation
@@ -186,8 +186,9 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                             skip_repeats = True   # Cannot allow not multiple of 3 in CDS
             if skip_repeats is False:
                 dna = core.Sequence(repeat_unit).reverseComplement() + '[' + str(n_repeat_ref) + ']%3B['+ str(n_repeat_alt) + ']'
-                coord1, intr1, nout1 = coord1new, intr1new, nout1new
-                coord2, intr2, nout2 = coord2new, intr2new, nout2new
+                # 1/30/2023 for minus strand need coord1 to be highest genomic (lowest cDNA)
+                coord1, intr1, nout1 = coord2new, intr2new, nout1new
+                coord2, intr2, nout2 = coord1new, intr1new, nout2new
             else: # Repeat is not allowed, try next best thing.
                 try:
                     dna, dna_ins = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,

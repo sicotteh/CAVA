@@ -341,8 +341,11 @@ class Record(object):
                 self.chrom = self.chrom[3:]
             else:
                 self.chrom_chr_prefix = False
-
-            self.pos = int(cols[1])
+            try:
+                self.pos = int(cols[1])
+            except:
+                sys.stderr.write("Init VCF: invalid position to line:"+line+"\n")
+                sys.exit(1)
             self.id = cols[2]
             self.ref = cols[3]
             alts = cols[4].split(",")
