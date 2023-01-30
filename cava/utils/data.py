@@ -743,7 +743,7 @@ class Ensembl(object):
 class dbSNP(object):
     # Constructor
     def __init__(self, options):
-        # Openning tabix file representing the dbSNP database
+        # Openffning tabix file representing the dbSNP database
         self.tabixfile = pysam.Tabixfile(options.args['dbsnp'])
 
     # Annotating a variant based on dbSNP data

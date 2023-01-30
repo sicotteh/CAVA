@@ -307,8 +307,8 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
             try:
                 transcript.PROT = tx_to_prot_dict[enst]
             except KeyError:
-                print(f'enst {enst} not in database ')
-                transcript.PROT = ''
+                sys.stderr.write("Error: Invalid GTF ensembl catalog ("+filename+") without protein id for transcript:"+enst+"\n")
+                transcript.PROT = 'Protein('+enst+')'
 
             transcript.CHROM = cols[0]
             if cols[6] == '+':

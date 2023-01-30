@@ -8,12 +8,11 @@ import os
 import sys
 import pysam
 
-from cava.utils.data import Ensembl
-from cava.utils.data import Reference
-from cava.utils.data import dbSNP
+from . import data
+#from data import Ensembl
+#from data import Reference
 from . import core
-from .core import Options
-from .core import Record
+#from core import Record
 
 
 # Printing out welcome meassage
@@ -161,7 +160,11 @@ def mergeTmpFiles(output, fileformat, threads):
         for fname in filenames:
             with open(fname, encoding='utf-8') as infile:
                 for line in infile:
-                    outfile.write(line)
+                    try:
+                        outfile.write(line)
+                    except:
+                        sys.stderr.write("CAVA: error writing to "+outfn+"\n")
+                        exit(1)
 
     for fn in filenames: os.remove(fn)
 
@@ -237,19 +240,19 @@ class SingleJob(multiprocessing.Process):
                     self.codon_usage = codon_usage
 
         # Reference genome
-        self.reference = Reference(options)
+        self.reference = data.Reference(options)
         if options.args['logfile'] and threadidx == 1: logging.info('Connected to reference genome.')
 
         if (not options.args['ensembl'] == '.') and (not options.args['ensembl'] == ''):
             # Pass reference to ensembl, so it can know the chromosome sizes
-            self.ensembl = Ensembl(options, genelist, transcriptlist, codon_usage[0], self.reference)
+            self.ensembl = data.Ensembl(options, genelist, transcriptlist, codon_usage[0], self.reference)
             if options.args['logfile'] and threadidx == 1:
                 logging.info('Connected to Ensembl database.')
         else:
             self.ensembl = None
 
         if (not options.args['dbsnp'] == '.') and (not options.args['dbsnp'] == ''):
-            self.dbsnp = dbSNP(options)
+            self.dbsnp = data.dbSNP(options)
             if options.args['logfile'] and threadidx == 1: logging.info('Connected to dbSNP database.')
         else:
             self.dbsnp = None
@@ -303,7 +306,7 @@ class SingleJob(multiprocessing.Process):
                     printProgressInfo(counter, int(self.numOfRecords / self.copts.threads))
 
             # Parsing record from input file
-            record = Record(line, self.options, self.targetBED,self.reference)
+            record = core.Record(line, self.options, self.targetBED,self.reference)
 
             # Filtering out REFCALL records .. from original VCF annotation
             if record.filter == 'REFCALL': continue
@@ -358,7 +361,7 @@ def run(copts, version):
         quit()
 
     # Reading options from configuration file
-    options = Options(copts.conf)
+    options = core.Options(copts.conf)
 
     # Initializing log file
     if options.args['logfile']:
@@ -409,11 +412,16 @@ def run(copts, version):
 
     # Writing header to output file
     if options.args['outputformat'] == 'VCF':
-        outfile = open(copts.output + '.vcf', 'w', encoding='utf-8')
+        outfname = copts.output + '.vcf'
     else:
-        outfile = open(copts.output + '.txt', 'w', encoding='utf-8')
+        outfname = copts.output + '.txt'
+    outfile = open(outfname, 'w', encoding='utf-8')
     header = readHeader(copts.input)
-    core.writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
+    try:
+        core.writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
+    except:
+        sys.stderr.write("CAVA: error writing header to "+outfname+"\n")
+        exit(1)
     outfile.close()
 
     # Find break points in the input file
