@@ -98,12 +98,12 @@ wget -O data/RefSeq.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/rel
 zcat data/ENST.gtf.gz |cut -f9|cut -f4 -d' '|grep ENST|sed 's/;//;s/\"//g'|sort -u > data/ENST.txt
 zcat data/RefSeq.gtf.gz |cut -f9|cut -f4 -d' '|grep "NM_"|sed 's/;//;s/\"//g'|sort -u > data/RefSeq.txt
 
-# Look at the options and configure appropriately
+# Look at the options and configure appropriately. In particular, you will need a fasta reference genome file with an index.
 python3 MANE.py -h
 
 ```
 
-CAVA can be run with the following simple command:
+CAVA can be run with the following simple command after the user creates a config.txt file (see example config).
 
 ```bash
 python3 CAVA.py -c config.txt -i input.vcf -o output
@@ -117,4 +117,20 @@ and the prefix of the output file name (-o).
 ---------
 
 CAVA is released under MIT licence (see the LICENCE file).
+
+7 CHANGES HISTORY
+---------
+This version of CAVA includes the following changes (aside from bug fixes, especially for edge cases where multiple interpretations could apply)
+- support refseq transcripts in addition to ensembl
+- include new tags: CAVA_HGVSG, CAVA_HGVSC, CAVA_HGVSP to represent the current full HGVS nomenclature (G=Genomics, C=CDNA,P=Protein) for the HGVSC and HGVSP. We do not support the genomic tandem repeats for HGVSG nor imperfect repeats. These fields must be URL-decode (uudecode) because they include ';' encoded as %3B (';' is not a legal character in the VCF INFO field).
+   -- This requires the addition of a files to support the protein information. Catalogs prior to version 2.03 will not be compatible because of that additional file.
+- Include support for selenocysteine genes and alternate stop codon. Usually this is a conservative interpretation, often resulting in p.? when a novel stop codon might be discovered.
+- Support for MANE transcripts (including transcripts with UTR's of length 0  which are part of MANE 1.0)
+- Includes a lot of unit test for edge cases.
+- Known Limitations: 
+      -- large variants with coordinates outside transcript(we have partial support for those). 
+      -- Novel Start Gain in 5'UTR are not reported (the impact of those putative changes is hard to predict.
+      -- The %3B splitting may be hard when a variant has repeats and multiple transcripts.
+- Optimized for speed via recoding and caching. From 20-500 times faster
+
 
