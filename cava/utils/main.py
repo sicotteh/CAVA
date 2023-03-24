@@ -113,12 +113,13 @@ def findFileBreaks(inputf, threads):
             started = True
             first = counter
 
-    delta = int((counter - first + 1) / threads)
-    for i in range(threads):
-        if i < threads - 1:
-            ret.append((first + i * delta, first + (i + 1) * delta - 1))
-        else:
-            ret.append((first + i * delta, ''))
+    if started is True: # no blocks if file is header only.
+        delta = int((counter - first + 1) / threads)
+        for i in range(threads):
+            if i < threads - 1:
+                ret.append((first + i * delta, first + (i + 1) * delta - 1))
+            else:
+                ret.append((first + i * delta, ''))
     return ret
 
 
