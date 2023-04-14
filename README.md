@@ -80,11 +80,24 @@ pip install --compile --install-option="--with-nss" --no-cache-dir pycurl
 5 RUNNING CAVA
 --------------
 
-Before using CAVA, you will need to create a database of transcripts for which to base your annotations from.
-Details can be found in [this README](cava/ensembldb/README.md). In short, we reccomend using MANE transcripts, 
+Before using CAVA, you will need to create a config file. You have to provide two main components.
+1) A fasta reference file and matching index file .fai
+   If you do not have a file in your space.
+   cd CAVA/cava/data
+   wget http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz 
+   gunzip -c hg38.fa.gz > tmp.GRCh38.fa
+   samtools faidx  tmp.GRCh38.fa
+
+2)Create a database of transcripts for which to base your annotations from.
+Details can be found in [this README](cava/ensembldb/README.md). In short, we recomend using MANE transcripts, 
 so to get started, you would simply:
 ```bash
-# Download GTF files for either RefSeq or ENSEMBLE
+# Download GTF files for either RefSeq or ENSEMB
+# Option 1: Use our script (after you install CAVA)
+python3 MANE.py --no_hg19 -e 1.0 --outdir mane_1.0
+
+
+# Option 2: Download Manually
 wget -O data/ENST.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_0.91/MANE.GRCh38.v0.91.select_ensembl_genomic.gtf.gz and
 wget -O data/RefSeq.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_0.91/MANE.GRCh38.v0.91.select_refseq_genomic.gtf.gz
 
@@ -92,8 +105,7 @@ wget -O data/RefSeq.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/rel
 zcat data/ENST.gtf.gz |cut -f9|cut -f4 -d' '|grep ENST|sed 's/;//;s/\"//g'|sort -u > data/ENST.txt
 zcat data/RefSeq.gtf.gz |cut -f9|cut -f4 -d' '|grep "NM_"|sed 's/;//;s/\"//g'|sort -u > data/RefSeq.txt
 
-# Look at the options and configure appropriately. In particular, you will need a fasta reference genome file with an index.
-python3 MANE.py -h
+3) Edit the provided config_template.txt and provide the location of the fasta reference and the ensembl transcript database.
 
 ```
 
