@@ -88,7 +88,7 @@ Before using CAVA, you will need to create a config file. You have to provide tw
    gunzip -c hg38.fa.gz > tmp.GRCh38.fa
    samtools faidx  tmp.GRCh38.fa
 
-2)Create a database of transcripts for which to base your annotations from.
+2) Create a database of transcripts for which to base your annotations from.
 Details can be found in [this README](cava/ensembldb/README.md). In short, we recomend using MANE transcripts, 
 so to get started, you would simply:
 ```bash
@@ -104,8 +104,8 @@ wget -O data/RefSeq.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/rel
 # Separate into ENST and NM Transcripts
 zcat data/ENST.gtf.gz |cut -f9|cut -f4 -d' '|grep ENST|sed 's/;//;s/\"//g'|sort -u > data/ENST.txt
 zcat data/RefSeq.gtf.gz |cut -f9|cut -f4 -d' '|grep "NM_"|sed 's/;//;s/\"//g'|sort -u > data/RefSeq.txt
-
-3) Edit the provided config_template.txt and provide the location of the fasta reference and the ensembl transcript database.
+```
+Finally, edit the provided config_template.txt and provide the location of the fasta reference and the ensembl transcript database.
 
 ```
 
