@@ -105,11 +105,7 @@ wget -O data/RefSeq.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/rel
 zcat data/ENST.gtf.gz |cut -f9|cut -f4 -d' '|grep ENST|sed 's/;//;s/\"//g'|sort -u > data/ENST.txt
 zcat data/RefSeq.gtf.gz |cut -f9|cut -f4 -d' '|grep "NM_"|sed 's/;//;s/\"//g'|sort -u > data/RefSeq.txt
 ```
-Finally, edit the provided config_template.txt and provide the location of the fasta reference and the ensembl transcript database.
-
-```
-
-CAVA can be run with the following simple command after the user creates a config.txt file (see example config).
+Finally, create a config.txt files using the provided config_template.txt, but provide the location of the fasta reference and the ensembl transcript database you dowloaded. CAVA then can be run with the following simple command.
 
 ```bash
 python3 CAVA.py -c config.txt -i input.vcf -o output
