@@ -117,7 +117,10 @@ class Ensembl(object):
             bin_list = self.transcript_bins[ebin]
             if bin_list is not None:
                 for bin_content in bin_list: # [transcriptid, transcriptStart, transcriptEnd, line])
-                    if (startpos0+1) >= bin_content[1] and endpos1<=bin_content[2]:
+                    if (((startpos0+1) >= bin_content[1] and endpos1<=bin_content[2]) or # variant inside
+                        ((startpos0+1) >= bin_content[1] and startpos0+1<=bin_content[2]) or # partial overlap
+                        (endpos1 >= bin_content[1] and endpos1<=bin_content[2]) or # partial overlap
+                        (startpos0+1 <= bin_content[1] and endpos1 >= bin_content[2] )): # Wholly encompassinbgene
                         transcriptid = bin_content[0]
                         if transcriptid not in got_transcript:
                             got_transcript[transcriptid]=1
@@ -159,6 +162,126 @@ class Ensembl(object):
     # Find transcripts overlapping with a variant
 
     def findTranscripts(self, variant):
+        ret = dict()
+        retOUT = dict()
+
+        # Checking chromosome name
+        goodchrom = core.convert_chrom(variant.chrom,self.tabixfile.contigs)
+        if goodchrom is None:
+            return ret, retOUT
+
+        # Defining variant end points.
+        # HS: Tabix uses 0-based indexing for start/pos
+        if variant.is_insertion is False:
+            start = variant.pos -1
+            end = variant.pos + len(variant.ref)-1
+        else:  # for insertion, position got shifted to be after the insertion point .. shift back
+            start = variant.pos - 2
+            end = variant.pos -1
+        if start<0:
+            start = 0
+        if end <= start:
+            end = start + 1
+
+
+        if not variant.is_substitution: # Insertion/deletion / MNP
+            # HS notes:
+            # tabix index is loaded in memory, and the data is buffered in 37K (2^16) blocks (from reading the pysam and htslib)
+            #   the 'fetch' take about 0.004 - 0.049 ms .. MUCH faster than a single disk seek & read (10-15ms)
+            # the iteration take 0.8 ms for the two .. must be cached .. but slow.
+            # but uses 70% of the time of CAVA.
+            # Loading transcript tables in memory and a pyranges implmementaion would help.
+            #  ... so so it is clearly cached .. and no need for further optimization.
+            #st_time = time.perf_counter_ns()
+            #    .. so basically a sliding windown caching
+            # Using pyranges takes 8 ms per pyrange creation.. and 33 ms for an overlap operation with all transcripts.
+            # ... but if refactored to find the overlap of 1000's of SNPs/intervals at a time
+            #  .. would be faster... since finding overlap with 1000 snps only takes 82ms, so 1.6ms for 2 overlap
+            #
+            # so pyranges would not be faster .. even if batches.
+            #
+            # The only way to get faster is to build an im-,memory genome-binned
+            # Create per chromosomes "bins" (100K bins,so about 30,000 elements dictionary .. poointing to  a list of transcripts.
+            # .. cache last bin request.
+            hits1 = self.fetch_overlapping_transcripts(goodchrom,start,start+1)
+            hits2 = self.fetch_overlapping_transcripts(goodchrom,end-1,end)
+            #end_time0 = time.perf_counter_ns()
+            #sys.stdout.write("Time for two tabix transcripts fetch=" + str(end_time - st_time) + "\n")
+
+            hitdict1 = dict()
+            hitdict2 = dict()
+            for line in hits1:
+                transcript = self.find_transcript_in_cache_or_in_file(line)
+                # transcriptStart is 0-based, lowest coordinate .. transcriptEnd is 1-bases highest coordinate, start is 0-based
+                if not (transcript.transcriptStart <= start < transcript.transcriptEnd): continue
+                # if not strand == transcript.strand: continue
+                hitdict1[transcript.TRANSCRIPT] = transcript
+            for line in hits2:
+                transcript = self.find_transcript_in_cache_or_in_file(line)
+                if not (transcript.transcriptStart < end <= transcript.transcriptEnd): continue
+                #  if not strand == transcript.strand: continue
+                hitdict2[transcript.TRANSCRIPT] = transcript
+            #end_time = time.perf_counter_ns()
+            #sys.stdout.write("Two tabix fetch & iterate=" + str(end_time0 - st_time) + " "+ str(end_time - st_time) + "\n")
+
+            for key, transcript in hitdict1.items():
+                if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
+                if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
+
+                if key in list(hitdict2.keys()): # e.g. both ends of the variant are in transcript.
+                    ret[key] = transcript
+                else:
+                    if variant.is_insertion: # insertions at the edges are TRULY outside, not even partially overlapping
+                        retOUT[key] = transcript  # partial overlap downstream of transcript
+
+            if not variant.is_insertion:
+                for key, transcript in hitdict2.items():  # check for partial overlap upstream of transcript
+                    if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
+                    if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
+                    if not key in list(hitdict1.keys()):
+                        retOUT[key] = transcript
+
+        else:  # Variant is Substitution
+            hits1 = self.fetch_overlapping_transcripts(goodchrom,start,end)  #self.tabixfile.fetch(region=reg2)
+            for line in hits1:
+                transcript = self.find_transcript_in_cache_or_in_file(line)
+
+                if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
+                if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
+
+                if not (transcript.transcriptStart + 1 <= end <= transcript.transcriptEnd): continue
+                ret[transcript.TRANSCRIPT] = transcript
+
+        return ret, retOUT  # retOUT not populated for substitution
+
+
+    def find_transcript_in_cache_or_in_file(self,line):
+        transcriptid = line.split("\t")[0]
+        self.nvar +=1
+        self.transcript_nvar[transcriptid] = self.nvar
+        if transcriptid in self.transcript_cache:
+            transcript = self.transcript_cache[transcriptid]
+        else:
+            # with the reference sequence being cached, fetching a whole transcripts and exons takes 0.03-0.09 ms
+            #        ... rather than 150-200 ms if the sequence was not cached.
+            transcript = core.Transcript(line)
+            if transcript.geneSymbol in self.selenogenes:
+                transcript.is_selenocysteine = True
+            self.transcript_cache[transcriptid] = transcript
+            if len(self.transcript_cache)>self.CACHESIZE:
+                vals = list(self.transcript_nvar.values())
+                minval = min(vals)
+                which_minval = vals.index(minval)
+                rm_tr = ''+list(self.transcript_nvar.keys())[which_minval]
+                self.transcript_cache.pop(rm_tr)
+                self.transcript_nvar.pop(rm_tr)
+
+        return transcript
+
+
+    # Find transcripts overlapping with a variant. This new version will also find variants not fully inside
+
+    def findTranscriptsWide(self, variant):
         ret = dict()
         retOUT = dict()
 
@@ -466,22 +589,23 @@ class Ensembl(object):
                 loc_minus = loc_plus
 
             # Creating reference and mutated protein sequence
-            #   . means outside transcript .. which can (now) happen for deletion or MNP
+            #  not_exonic_plus= means outside transcript .. which can (now) happen for deletion or MNP
             # Cannot call protein when variant spans intron/exon boundary
             #
             # XXX-HS need to add Start Gain in 5'UTR.. from SNP/insertion/deletions
             #
-            notexonic_plus = (
-                    ('5UTR' == loc_plus) or ('3UTR' == loc_plus) or ('-' in loc_plus) or ('In' in loc_plus) or (
-                    loc_plus == 'OUT') or (loc_plus == '.'))
-            if loc_plus.startswith("5UTR-Ex") and variant.is_insertion is False: # Variants spanning start site.
-                notexonic_plus = False
+            #notexonic_plus = (
+            #         ( loc_plus in ['5UTR','3UTR, '<-5UTR','3UTR->','-','OUT','.']) or ('In' in loc_plus) )
+            #if loc_plus.startswith("5UTR-) and variant.is_insertion is False: # Variants spanning start site.
+            #    notexonic_plus = False
+            notexonic_plus = transcript.isOutsideTranslatedRegion(variant_plus)
             if difference is True:
-                notexonic_minus = (
-                        ('5UTR' == loc_minus) or ('3UTR' == loc_minus) or ('-' in loc_minus) or (
-                        'In' in loc_minus) or (loc_minus == 'OUT') or (loc_minus == '.'))  # Variants overlapping the ends of the protein
-                if loc_minus.startswith("5UTR-Ex") and variant.is_insertion is False: # variants Spanning Start site.
-                    notexonic_minus = False
+                #notexonic_minus = (
+                #        ('5UTR' == loc_minus) or ('3UTR' == loc_minus) or ('-' in loc_minus) or (
+                #        'In' in loc_minus) or (loc_minus == 'OUT') or (loc_minus == '.'))  # Variants overlapping the ends of the protein
+                #if loc_minus.startswith("5UTR-Ex") and variant.is_insertion is False: # variants Spanning Start site.
+                #    notexonic_minus = False
+                notexonic_minus = transcript.isOutsideTranslatedRegion(variant_minus)
             else:
                 notexonic_minus = notexonic_plus
             exonseqs = None

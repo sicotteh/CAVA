@@ -6,33 +6,35 @@
 
 # Getting CLASS annotation of a given variant
 import sys
-def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
-    # Variants in UTR, if "Ex" present, variant overlaps CDS
-    chkutr = checkUTR(transcript, variant)
-    if chkutr == 'UTR5': # Even if a variant covers more than UTR5, UTR5 has priority. .. also includes UTR5-Ex* .. or Ex*-UTR3
-        if 'Ex' in loc and (variant.is_deletion or variant.is_complex): # "Ex" actually means coding region
-            return 'IM'
-        return '5PU'
-    elif chkutr == 'UTR3':
-        if 'Ex' in loc and (variant.is_deletion or variant.is_complex):
-            return 'SL'
-        return '3PU'
+def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange, reference, exonseqs,utr5,utr5mut):
+    # Pioritize SG over FS and even EE
+    if mutprotein is not None and  len(mutprotein) > 0 and mutprotein[0] == 'X' and \
+            protein is not None and len(protein) > 0 and \
+            mutprotein[0] != protein[0]:  # as Per HGVS SG , since shortest FS is Ter2 (7-26-2022)
+        return 'SG'
 
-    # Variants crossing exon-intron boundaries
-    if '-' in loc:
-        return 'ESS'
+
 
     # Intronic, splice site and essential splice site variants
-    if 'In' in loc:
-        if transcript.isInEssentialSpliceSite(variant): return 'ESS'
-        if transcript.intronLength(int(loc[loc.find('/') + 1:])) >= 9:
-            if transcript.isIn_SS5_Site(variant): return 'SS5'
-        if transcript.isInSplicingRegion(variant, ssrange): return 'SS'
-        return 'INT'
 
-    # Checking if variant affect the first or last three bases of an exon
+    if transcript.isInEssentialSpliceSite(variant):
+        return 'ESS'
+    # Past this point, you cannot have a variant that crosses intron/exon boundary .. otherwise, it would have hit the ess
+    if '-' not in loc:
+        exon2_index = loc.find('/')
+        if exon2_index>=0:
+            exid = int(loc[exon2_index+1:])
+            if transcript.intronLength(exid) >= 9:
+                if transcript.isIn_SS5_Site(variant):
+                    return 'SS5'
+    else:
+        raise Exception("CAVA: algorithmic error, still have variants crossing intron/exon after ESS determination")
+
+    if transcript.isInSplicingRegion(variant, ssrange): return 'SS'
+
     potSS = transcript.isInFirstOrLast3BaseOfExon(variant)
-
+    if potSS:
+        return 'EE'
     if mutprotein is None:
         return 'INT'
     protL = len(protein)
@@ -40,9 +42,13 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
 
     # Synonymous coding variants
     if protein == mutprotein:
-        if potSS:
+        if potSS: # Not needed
             return 'EE'
         return 'SY'
+
+        # Frame-shift coding variants
+    if variant.is_in_frame is False:
+        return 'FS'
 
     # Variants affecting the initiation amino acid
     if (mutprotL>0 and protL>0 and protein[0] != mutprotein[0]):
@@ -63,23 +69,8 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
         protein = protein[isame+1:]
         mutprotein = mutprotein[isame+1:]
 
-    # By this point, variant is guaranteed to be inside CDS
-    if protein == '':  #mutprotein cannot be len(0) .. would have returnes SY/potSS.. so this must be an extension
-        # Can only get here if CDS has no stop codon on reference (annotation issue)
-        sys.stderr.write("ERROR:Inconsistent CAVA, looks like CDS annotation does not end in a Stop codon for "+variant.id+"\n")
-        return 'SL'
 
-    if protein[0] == 'X' and len(mutprotein) == 0: return 'SL'
-    if protein[0] == 'X' and mutprotein[0] != 'X': return 'SL'
 
-    if len(mutprotein) > 0 and  mutprotein[0] == 'X' and \
-            len(protein) > 0 and \
-            mutprotein[0] != protein[0] : # as Per HGVS SG , since shortest FS is Ter2 (7-26-2022)
-        return 'SG'
-
-    # Frame-shift coding variants
-    if variant.is_in_frame is False:
-        return 'FS'
 
     # XXX-HS rewrote this section because it was 3rd slowest
     # Trim the end of the protein and mutprotein that are identical
@@ -98,18 +89,54 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange):
     # According to HGVS, this is described as an IF (deletion/insertion)
     #    return 'SG'
 
-    # Non-synonymous coding variants
-    if protL == mutprotL and len(protein)==1:
-        if potSS:
+
+
+    # IF variants from here on.
+    # By this point, variant is guaranteed to be inside CDS
+    if protein == '':  #mutprotein cannot be len(0) .. would have returnes SY/potSS.. so this must be an extension
+        # Can only get here if CDS has no stop codon on reference (annotation issue)
+        sys.stderr.write("ERROR:Inconsistent CAVA, looks like CDS annotation does not end in a Stop codon for "+variant.id+"\n")
+        return 'SL'
+
+    if protein[0] == 'X' and len(mutprotein) == 0:
+            return 'SL'
+    if protein[0] == 'X' and mutprotein[0] != 'X':
+            return 'SL'
+
+    if protL == mutprotL and len(protein) == 1:
+        if potSS: # not necessary check anymore.
             return 'EE'
         return 'NSY'
-    # IF variants from here on.
-    if potSS:
-        return 'EE'
-    # In-frame variants
-    if potSS:
-        return 'EE'
-    return 'IF'
+
+    # Variants in UTR, if "Ex" present, variant overlaps CDS
+    chkutr = checkUTR(transcript, variant)
+    if chkutr == 'UTR5':  # Even if a variant covers more than UTR5, UTR5 has priority. .. also includes UTR5-Ex* .. or Ex*-UTR3
+        if 'Ex' in loc and (variant.is_deletion or variant.is_complex):  # "Ex" actually means coding region Exon
+            return 'IM'
+        l5=len(utr5)
+        l5m=len(utr5mut)
+        while(l5-3>=0 and l5m-3 >=0):
+            c1 = utr5[l5-3:l5]
+            cm = utr5mut[l5m-3:l5m]
+            if c1.upper() != 'ATG' and cm.upper()=='ATG':
+                return 'IG'  # Start Codon Gain in )(Initiator codon)
+            l5-=3
+            l5m-=3
+        return '5PU'
+    elif chkutr == 'UTR3':
+        if 'Ex' in loc and (variant.is_deletion or variant.is_complex):
+            return 'SL'
+        return '3PU'
+
+    if 'In' in loc:
+        return 'INT'
+    if variant.is_in_frame:
+        return 'IF'
+    if '<' in loc:
+        return '5FLANK'
+    if '>' in loc:
+        return '3FLANK'
+    return ''
 
 
 #######################################################################################################################
@@ -205,19 +232,22 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
 
 # XXX rewrote because it was among top slowest parts of CAVA
 #
+    if len(mutprotein)==1 and mutprotein[0]=='X' and len(protein)>0 and protein[0]!='X':
+        # Pure Stop Gain mutation.
+        out.append('stop_gained')
+    else: #Trim identical ends .. which can happen if we rely on annotation to encode mutprotein
+        # depends on wether other parts of code use annotation to create mut-protein or first Stop codon.
+        ilast  = 0
+        while ilast<len(protein) and ilast<len(mutprotein) :
+            if protein[-(ilast+1)] == mutprotein[-(ilast+1)]:
+                ilast = ilast +1
+            else:
+                break
+        if ilast >0:
+            protein = protein[:-ilast]
+            mutprotein = mutprotein[:-ilast]
 
-
-    ilast  = 0
-    while ilast<len(protein) and ilast<len(mutprotein) :
-        if protein[-(ilast+1)] == mutprotein[-(ilast+1)]:
-            ilast = ilast +1
-        else:
-            break
-    if ilast >0:
-        protein = protein[:-ilast]
-        mutprotein = mutprotein[:-ilast]
-
-    if 'X' in mutprotein: out.append('stop_gained')
+        if len(mutprotein)==1 and mutprotein[0]=='X' and len(protein)==0 and protein[0]!='X': out.append('stop_gained')
 
     if ('stop_gained' in out) or ('stop_lost' in out):
         if 'missense_variant' in out: out.remove('missense_variant')

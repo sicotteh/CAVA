@@ -5,7 +5,7 @@ from cava.utils.csn import find_repeat_unit
 from cava.utils.csn import scan_for_repeat
 import os
 import pycurl
-
+import sys
 
 def check_materials():
     base_dir = os.path.dirname(os.path.dirname(__file__)) # This file in cava/test .. this points to base_dir=cava
@@ -196,7 +196,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_hg38_snp_in_Met2(self):
         line = "13\t32316462\tsnp_in_met2\tT\tC\t.\t.\t.\tGT\t0/1\n"
-        # NC_000013.11:g.32316462T>C	NM_000059.4(BRCA2):c.2T>C NP_000050.3:p.(?) p/M>T IM
+        # NC_000013.11:g.32316462T>C NM_000059.4(BRCA2):c.2T>C NP_000050.3:p.(?) p/M>T IM
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         rec.variants[0].getFlag('CSN')
@@ -820,6 +820,47 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('-', rec.variants[0].getFlag('PROTALT'))
         self.assertEqual('1140', rec.variants[0].getFlag('PROTPOS'))
 
+    def test_edgecases1(self):
+        ecases = [
+        "chr2\t162074215\t\tTG\tT\t30\tPASS\t.\tGT\t0/1\n", # before DPPP4
+        "chr7\t6009049\t\tTGGGAAAG\tT\t30\tPASS\t.\tGT\t0/1\n", # Spawn TSS
+        "chr19\t55157620\t\tCAGGGCGAGGACAGGGGCGTTTGGAGGGTCAGTGAGGGGGCCGCCCGGGTGACCTTCAGGGTCCCAGGGACCGTCAGTCTCCTCCGGGCTGCTTGAGACTCCCCGAGGACACTGAGATAA\tC\t30\tPASS\t.\tGT\t0/1\n",
+        "chr19\t55157722\t\tCCGAGGACACTGAGATAAAGGG\tC\t30\tPASS\t.\tGT\t0/1\n",
+        "chr3\t52453954\t\tGCCTGCCCACCCCAGCCCTACCCAGCCCTGTCCCTCACCGCAGCCTTGTAGATGTCATCCATGCTGGCGGCTCACAGGACAGCTTGCTGGGGTTGCCAGCCGGCCCTTGACTTAAATAGC\tG\t30\tPASS\t.\tGT\t0/1\n",
+        "chrX\t101407925\t\tTA\tT\t30\tPASS\t.\tGT\t0/1\n" # the "A" is outside the transcript.
+        ]
+
+        for i in range(0,len(ecases)):
+            line = ecases[i]
+            rec = core.Record(line, self.options, None, self.reference)
+            rec.annotate(self.ensembl, None, self.reference, None)
+            sys.stderr.write('value='+rec.variants[0].getFlag('CSN') + "\n")
+            #self.assertEqual(ecsc[i], rec.variants[0].getFlag('CSN'))
+
+    def test_stopgain2(self):
+        line = "chr11\t78106851\t\tC\tT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))
+        line = "chr11\t78109516\t\tG\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        pass
+        self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))
+
+
+    def test_missingSO_for_SG(self):
+        line = "chr2\t178575970\t\tG\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('stop_gain', rec.variants[0].getFlag('SO'))
+
+
+    def test_INTclass_instead_of_EE(self):
+        line = "chr7\t5992049\t\tTCTGCAGAC\tT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('EE', rec.variants[0].getFlag('CLASS'))
 
 class Options:
 

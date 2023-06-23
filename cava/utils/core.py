@@ -100,16 +100,15 @@ class Variant(object):
         return (len(self.alt) - len(self.ref)) % 3 == 0
 
     # Checking if the variant overlaps with a genomic region
+    # Any opverlap, not just iscontained_with
     def overlap(self, start, end):
         if self.is_insertion:
             return (self.pos - 1 >= start) and (self.pos <= end)
-        if self.pos > start:
-            return end >= self.pos
-        if self.pos == start:
+        if self.pos >= start and self.pos<=end: # wholly inside or right overlap
+                return True
+        if self.pos + len(self.ref) - 1 >= start and self.pos + len(self.ref) - 1 <=end: #left overlap
             return True
-        if self.pos + len(self.ref) - 1 >= start:
-            return self.pos + len(self.ref) - 1 <=end
-        if self.pos<start and self.pos+len(self.ref)-1>end:
+        if self.pos<=start and self.pos+len(self.ref)-1>=end: # Wholly covers
             return True
         return False
 
@@ -151,6 +150,7 @@ class Variant(object):
         return [self.pos + left, newref, newalt]
 
     # Aligning variant on the GENOMIC plus strand, shifting 3' (right) on DNA (NOT cDNA)
+    # appropriate for transcripts on + strand
     def alignOnPlusStrand(self, reference):  # right shift, so appropriate for transcripts on plus strand.
         if self.alignonplus is not None:
             return self.alignonplus
@@ -204,7 +204,7 @@ class Variant(object):
         self.alignonplus = ret
         return ret
 
-    # Aligning variant on the minus strand (left shift), so appropriate for variants on mimis strand.
+    # Aligning variant on the minus strand (left shift), so appropriate for variants on mimus strand. (shift later in translation)
     def alignOnMinusStrand(self, reference):
         if self.alignonminus is not None:
             return self.alignonminus
@@ -907,6 +907,7 @@ class Transcript(object):
         self.exonseqs = None  # list of the exons for the reference sequence
         self.cds_len = 0
         foundStart = False
+        self.intron_length = []
         for ex in self.exons:
             if self.strand == 1:
                 if self.codingStartGenomic > ex.start and self.codingStartGenomic<=ex.end: # CDS starts within exon
@@ -1086,9 +1087,9 @@ class Transcript(object):
                             if trans_pos<coding_start_alt:
                                 coding_start_alt += (len(variant.alt) - len(variant.ref))
                             continue
-                        elif exon.start < variant.pos+ len(variant.ref)<= exon.end:  # variant starts before exon and ends in exon
+                        elif variant.pos< exon.start+1   and  variant.pos+ len(variant.ref)-1 > exon.start and variant.pos+ len(variant.ref)-1 <= exon.end:  # variant starts before exon and ends in exon
                             raise Exception("Variant crossing intron/exon boundary.. Catch this exception and set mutprot=None")
-                        elif variant.pos <exon.start and variant.pos+len(variant.ref)> exon.end: # variant encompasses whole exon
+                        elif variant.pos <exon.start+1 and variant.pos+len(variant.ref)-1> exon.end: # variant encompasses whole exon
                             raise Exception("Variant changing whole exon .. Catch this exception and set mutprot=None")
                         else: #
                             pass  # Variant not affecting this exon
@@ -1117,7 +1118,7 @@ class Transcript(object):
                 else:  # Minus strand (exons are listed in coding order (reverse of genomic order)
                     if variant.is_insertion is False: # MNP, SNP, DEL .. "normal" ccoordinate meaning
                         if exon.start < variant.pos <= exon.end:  #  same as exon.start+1 <= variant.pos <= exon.end
-                            if variant.pos + len(variant.ref) > exon.end:  # variant starts in exon, but ends past exon
+                            if variant.pos + len(variant.ref)-1 > exon.end:  # variant starts in exon, but ends past exon
                                 if i!=0:
                                     raise Exception(
                                     "Variant crossing intron/exon boundary (not edge ones).. Catch this exception and set mutprot=None")
@@ -1145,11 +1146,11 @@ class Transcript(object):
                             if trans_pos<coding_start_alt: #Fully "past" variant
                                 coding_start_alt += (len(variant.alt) - len(variant.ref))
                             continue
-                        elif exon.start < variant.pos + len(variant.ref) <= exon.end:  # variant starts before exon and ends in exon
+                        elif variant.pos < exon.start+1 and  variant.pos+len(variant.ref)-1> exon.start and variant.pos + len(variant.ref)-1 <= exon.end:  # variant starts before exon and ends in exon
                             raise Exception(
                                 "Variant crossing intron/exon boundary.. Catch this exception and set mutprot=None")
-                        elif variant.pos < exon.start and variant.pos + len(
-                                variant.ref) > exon.end:  # variant encompasses whole exon
+                        elif variant.pos < exon.start+1 and variant.pos + len(
+                                variant.ref) -1 > exon.end:  # variant encompasses whole exon
                             raise Exception("Variant changing whole exon .. Catch this exception and set mutprot=None")
                         else:  #
                             pass  # Variant not affecting this exon
@@ -1216,10 +1217,11 @@ class Transcript(object):
         # returns exonsseq of the alternate allele unless variant is None
         try:
             codingsequencealt, exonseqalt, transcript_alt_seq, transcript_seq = self.getCodingSequence(reference, variant, exonseqs)
+            utr5seq = transcript_alt_seq[0:transcript_alt_seq.find(codingsequencealt)]
         except:
             if variant is None:
-                sys.stderr.write("ERROR: exception in getting reference sequence from getCodingSequence")
-            return None, None, None # Mutated protein is None when variant crosses intron/exon boundary. 2nd term not used by calling function for variant
+                sys.stderr.write("ERROR: Variant crosses intron/exon boundary, cannot predict protein\n")
+            return None, None, None,None # Mutated protein is None when variant crosses intron/exon boundary. 2nd term not used by calling function for variant
 
         if self.is_selenocysteine: # some plants have selenocysteine genes on their mitochondrion, so selenocysteine genes have to ve first.
             # the 'CDS' annotation of that transcript was trusted.. any TAG remaining will be recoded
@@ -1237,7 +1239,7 @@ class Transcript(object):
             ret = Sequence(codingsequencealt).translate(codon_usage)
         ret = trim_prot_after_stop(ret)  # trim end, keeping from start to and including the first X (if any)
 
-        return ret, exonseqalt, codingsequencealt[0:3*len(ret)]
+        return ret, exonseqalt, codingsequencealt[0:3*len(ret)], utr5seq
 
     # Checking if a given position is outside the region between the start and stop codon
     # don't take account of insertion .. should be dealth with by calling function
@@ -1335,25 +1337,24 @@ class Transcript(object):
             return False
 
     # Checking if the given variant affects a +5 essential splice site, only matters if it affects protein
+    # Must check for essential splice site before calling this.
     def isIn_SS5_Site(self, variant):
         if not self.isOutsideTranslatedRegion(variant):
             if self.strand == 1:
                 for exon in self.exons:
-                    if variant.overlap(exon.end + 1, exon.end + 5):
-                        if not variant.is_substitution:
-                            if not (variant.pos == exon.end + 3 and len(variant.ref) == 2 and len(
-                                    variant.alt) == 2): return True
-                        else:
-                            if variant.pos == exon.end + 5: return True
+                    if variant.is_insertion:
+                        if variant.pos == exon.end+5 or variant.pos == exon.end+6:
+                            return True
+                    elif variant.overlap(exon.end + 6, exon.end + 5):
+                        return True
                 return False
             else:
                 for exon in self.exons:
-                    if variant.overlap(exon.start - 4, exon.start):
-                        if not variant.is_substitution:
-                            if not (variant.pos == exon.start - 3 and len(variant.ref) == 2 and len(
-                                    variant.alt) == 2): return True
-                        else:
-                            if variant.pos == exon.start - 4: return True
+                    if variant.is_insertion:
+                        if variant.pos == exon.start -4 or variant.pos == exon.start -5:
+                            return True
+                    elif variant.overlap(exon.start - 4, exon.start-4):
+                        return True
                 return False
         else:
             return False
@@ -1370,9 +1371,12 @@ class Transcript(object):
 
     # Checking where a given genomic position is located in the transcript
     # already adjusted for introns .. because whereIsThisVariant adjusts position
+    # "<" means 5' of transcript
+    # ">" means 3' of transcript
     def whereIsThisPosition(self, pos): # pos is 1-based
         # Iterating through exons and introns and checking if genomic position is located within
-
+        minpos = 30000000000
+        maxpos = 0
         for exon in self.exons:
             if exon.index > 1 and ((self.strand == 1 and prevexonend < pos <= exon.start) or (
                     self.strand == -1 and exon.end < pos <= prevexonend)):
@@ -1388,7 +1392,28 @@ class Transcript(object):
                         self.strand == -1 and pos < self.codingEndGenomic):
                     return '3UTR'
                 return 'Ex' + str(exon.index)
+            if exon.start<minpos:
+                minpos = exon.start
+            if exon.end < minpos:
+                minpos = exon.end
+            if exon.start > maxpos:
+                maxpos = exon.start
+            if exon.end > maxpos:
+                maxpos = exon.end
+
             prevexonend = exon.end if self.strand == 1 else exon.start
+
+        if self.strand == 1:
+            if pos < minpos:
+                return "<"
+            elif pos> maxpos:
+                return ">"
+        else:
+            if pos < minpos:
+                return ">"
+            elif pos> maxpos:
+                return "<"
+
 
         return '.'
 
@@ -1402,41 +1427,60 @@ class Transcript(object):
             first = self.whereIsThisPosition(variant.pos)
             second = self.whereIsThisPosition(variant.pos + len(variant.ref) - 1)
         if first == second:
-            return first
-        if self.strand == 1:
-            if (len(first) == 0 or first == '.') and (len(second) == 0 or second == '.'):
+            if first == '<' or first == '>':
                 return '.'
-            elif first == '.' or len(first) == 0:
+            return first
+        elif ((first == '<' and second == '>' and self.strand == 1)
+              or (self.strand == -1 and first == '>' and second == '<')):
+            return '<->'
+        if first == '.' and (second == '>' or second == '<'):
+            return '.'
+        if second == '.' and (first == '<' or second == '>'):
+            return '.'
+        if self.strand == 1:
+            if first == "<" and second != '.':
+                if variant.is_insertion is True:
+                    return '<'
+            elif first == '.':
                 return second
-            elif second == '.' or len(second) == 0:
+            elif second == '.':
                 return first
             else:
                 return first + '-' + second
         else:
-            if (len(first) == 0 or first == '.') and (len(second) == 0 or second == '.'):
+            if first == '.' and second == '.':
                 return '.'
-            elif first == '.' or len(first) ==0:
+            elif first == '.':
                 return second
-            elif second == '.' or len(second)==0:
+            elif second == '.':
                 return first
             else:
                 return second + '-' + first
 
     # Getting the length of an intron, where idx is the index of the succeeding exon
-    def intronLength(self, idx):
-        if idx <= 0:
+    def intronLength(self, next_exon_id):
+        if next_exon_id <= 1 or next_exon_id>len(self.exons): # No intron before first exon.
             return 0
-        for exon in self.exons:
-            if exon.index == idx:
-                if self.strand == 1:
-                    return exon.start - prev
-                else:
-                    return prev - exon.end
+# Optimize for multiple variants per transcript.
+        prev = 0 # intron_length[0] will br erong/meaningless.
+        if len(self.intron_length)==0:
             if self.strand == 1:
-                prev = exon.end
+                for exon in self.exons:
+                    self.intron_length.append(exon.start - prev)
+                    prev = exon.end
             else:
-                prev = exon.start
+                for exon in self.exons:
+                    self.intron_length.append(prev - exon.end)
+                    prev = exon.start
+
+        return self.intron_length[next_exon_id-1]
         return 0
+
+
+
+
+
+
 
 
 #######################################################################################################################

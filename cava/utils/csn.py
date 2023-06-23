@@ -728,7 +728,11 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
         if skip_repeats is True:
             return 'del',''
         else:
-            in_coding_region = variant.pos >= transcript.codingStartGenomic and variant.pos<=transcript.codingEndGenomic
+            if transcript.strand == 1:
+                in_coding_region = variant.pos >= transcript.codingStartGenomic and variant.pos<=transcript.codingEndGenomic
+            else:
+                in_coding_region = variant.pos <= transcript.codingStartGenomic and variant.pos >= transcript.codingEndGenomic
+
             fully_inside_exon = (coord1 is not None and (intr1 is None or intr1 == 0)) and (
                         coord2 is None or (intr2 is None or intr2 == 0))
             at_least_partly_inside_exon = (coord1 is not None and (intr1 is None or intr1 == 0)) or (

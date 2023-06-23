@@ -66,6 +66,7 @@ pip install cava
 git clone git@github.com:Steven-N-Hart/CAVA.git
 # optional to checkout release
 # e.g. git checkout v.1.2.4
+cd CAVA
 python setup.py install
 ```
 
@@ -94,12 +95,12 @@ so to get started, you would simply:
 ```bash
 # Download GTF files for either RefSeq or ENSEMB
 # Option 1: Use our script (after you install CAVA)
-python3 MANE.py --no_hg19 -e 1.0 --outdir mane_1.0
+python3 MANE.py --no_hg19 -e 1.1 --outdir data
 
 
-# Option 2: Download Manually
-wget -O data/ENST.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_0.91/MANE.GRCh38.v0.91.select_ensembl_genomic.gtf.gz and
-wget -O data/RefSeq.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_0.91/MANE.GRCh38.v0.91.select_refseq_genomic.gtf.gz
+# Option 2: Download Manually (adjust version numbers to latest)
+wget -O data/ENST.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.1/MANE.GRCh38.v1.1.ensembl_genomic.gtf.gz and
+wget -O data/RefSeq.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.1/MANE.GRCh38.v1.1.refseq_genomic.gtf.gz
 
 # Separate into ENST and NM Transcripts
 zcat data/ENST.gtf.gz |cut -f9|cut -f4 -d' '|grep ENST|sed 's/;//;s/\"//g'|sort -u > data/ENST.txt
