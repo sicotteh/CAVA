@@ -1220,7 +1220,7 @@ class Transcript(object):
             utr5seq = transcript_alt_seq[0:transcript_alt_seq.find(codingsequencealt)]
         except:
             if variant is None:
-                sys.stderr.write("ERROR: Variant crosses intron/exon boundary, cannot predict protein\n")
+                sys.stderr.write("ERROR: Variant crosses intron/exon boundary, cannot predict protein or utr5\n")
             return None, None, None,None # Mutated protein is None when variant crosses intron/exon boundary. 2nd term not used by calling function for variant
 
         if self.is_selenocysteine: # some plants have selenocysteine genes on their mitochondrion, so selenocysteine genes have to ve first.

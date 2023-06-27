@@ -1,13 +1,13 @@
 Cython
 pybedtools
 pysam
-crossmap == 0.6.1
+crossmap
 wget
 requests
 bx-python
 pyBigWig
 pybedtools
-numpy
+numpy== 1.17.4
 certifi
 charset-normalizer
 idna
@@ -15,4 +15,4 @@ six
 urllib3
 wget
 wheel
-pip >= 21.3.1
+pip

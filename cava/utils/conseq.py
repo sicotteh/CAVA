@@ -6,7 +6,7 @@
 
 # Getting CLASS annotation of a given variant
 import sys
-def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange, reference, exonseqs,utr5,utr5mut):
+def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange, reference, exonseqs, utr5, utr5mut):
     # Pioritize SG over FS and even EE
     if mutprotein is not None and  len(mutprotein) > 0 and mutprotein[0] == 'X' and \
             protein is not None and len(protein) > 0 and \

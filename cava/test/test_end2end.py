@@ -862,6 +862,39 @@ class MyTestCase(unittest.TestCase):
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('EE', rec.variants[0].getFlag('CLASS'))
 
+    def test_misingSOshouldbeEE1(self):
+        line = "chr1\t89056228\t\tC\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('EE', rec.variants[0].getFlag('SO'))
+
+    def test_misingSOshouldbeEE2(self):
+        line = "chr1\t89056228\t\tC\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('EE', rec.variants[0].getFlag('SO'))
+    def test_misingSOshouldbeEE3(self):
+        line = "chr1\t62513898\t\tT\tC\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('EE', rec.variants[0].getFlag('SO'))
+
+    def test_for_ODP1(self): # RIght outside gene, npthinh
+        line = "chr2\t162074215\t\tTG\tT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('', rec.variants[0].getFlag('CLASS'))
+    def test_for_ODP2(self):# Delettion 1 bpp before 5'UTR .. should get nothing.
+        line = "chr7\t6009049\t\tTGGGAAAG\tT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('', rec.variants[0].getFlag('CLASS'))
+    def test_for_ODP3(self): # Delettion 1 bpp before 5'UTR .. should get nothing.
+        line = "chrX\t101407925\t\tTA\tT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('', rec.variants[0].getFlag('CLASS'))
+
 class Options:
 
 
@@ -870,7 +903,7 @@ class Options:
     def __init__(self):
         base_dir = os.path.dirname(os.path.dirname(__file__))
         self.args = {#'ensembl': os.path.join(base_dir, 'data', 'RefSeq_small.gz'),
-                     'ensembl': os.path.join(base_dir, 'data', 'MANE.GRCh38.v1.0.refseq_genomic.db.gz'),
+                     'ensembl': os.path.join(base_dir, 'data', 'MANE.GRCh38.v1.1.refseq_genomic.db.gz'),
                      'logfile': None,
                      'reference': os.path.join(base_dir, 'data', 'tmp.GRCh38.fa'),
                      'inputformat': 'VCF',

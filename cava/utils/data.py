@@ -40,6 +40,7 @@ class Ensembl(object):
         self.exonSeqs = dict()
         self.exoncache_hit = dict()
         self.cds_ref = dict()
+        self.utr5_ref = dict()
         self.cache_num = 0
         self.genelist = genelist
         self.transcriptlist = transcriptlist
@@ -599,6 +600,16 @@ class Ensembl(object):
             #if loc_plus.startswith("5UTR-) and variant.is_insertion is False: # Variants spanning start site.
             #    notexonic_plus = False
             notexonic_plus = transcript.isOutsideTranslatedRegion(variant_plus)
+            in_utr5_plus = False
+            in_utr5_minus = False
+            if variant.is_insertion:
+                if transcript.isPositionOutsideCDS_5prime(variant_plus.pos) or \
+                        (variant_plus.strand == 1 and variant_plus.pos==transcript.transcriptStart+1) or \
+                        (variant_plus.strand == -1 and variant_plus.pos == transcript.transcriptEnd+1):
+                    in_utr5_plus = True
+            elif transcript.isPositionOutsideCDS_5prime(variant_plus.pos) and transcript.isPositionOutsideCDS_5prime(variant_plus.pos +len(variant_plus.alt)-1):
+                in_utr5_plus = True
+
             if difference is True:
                 #notexonic_minus = (
                 #        ('5UTR' == loc_minus) or ('3UTR' == loc_minus) or ('-' in loc_minus) or (
@@ -606,20 +617,32 @@ class Ensembl(object):
                 #if loc_minus.startswith("5UTR-Ex") and variant.is_insertion is False: # variants Spanning Start site.
                 #    notexonic_minus = False
                 notexonic_minus = transcript.isOutsideTranslatedRegion(variant_minus)
+                if variant.is_insertion:
+                    if transcript.isPositionOutsideCDS_5prime(variant_plus.pos) or \
+                            (variant_plus.strand == 1 and variant_plus.pos == transcript.transcriptStart + 1) or \
+                            (variant_plus.strand == -1 and variant_plus.pos == transcript.transcriptEnd + 1):
+                        in_utr5_plus = True
+                elif transcript.isPositionOutsideCDS_5prime(
+                        variant_plus.pos) and transcript.isPositionOutsideCDS_5prime(
+                        variant_plus.pos + len(variant_plus.alt) - 1):
+                    in_utr5_plus = True
             else:
                 notexonic_minus = notexonic_plus
+                in_utr5_minus = in_utr5_plus
             exonseqs = None
-            if (notexonic_plus is True) and (notexonic_minus is True): # Variant entirely outside coding region OR crossing intron/exon junction
-                protein = ''
-            else:
+            utr5_ref = ''
+            utr5_mut = ''
+
+            if in_utr5_plus  is True or in_utr5_minus is True or notexonic_plus is False or notexonic_minus is False:
                 self.cache_num += 1
                 self.exoncache_hit[transcript.TRANSCRIPT] = self.cache_num
                 if not transcript.TRANSCRIPT in list(self.proteinSeqs.keys()):
-                    protein, exonseqs, cds_ref = transcript.getProteinSequence(reference, None, None, self.codon_usage)
+                    protein, exonseqs, cds_ref, utr5_ref = transcript.getProteinSequence(reference, None, None, self.codon_usage)
                     self.proteinSeqs[transcript.TRANSCRIPT] = protein
                     self.exonSeqs[transcript.TRANSCRIPT] = exonseqs
                     self.cds_ref[transcript.TRANSCRIPT] = cds_ref
                     transcript.exonseqs = exonseqs
+                    self.utr5_ref[transcript.TRANSCRIPT] = utr5_ref
                     if len(self.proteinSeqs) > self.CACHESIZE:  # Cache of proteins and exons data
                             vals = list(self.exoncache_hit.values())
                             minval = min(vals)
@@ -629,16 +652,21 @@ class Ensembl(object):
                             self.exoncache_hit.pop(rm_tr)
                             self.proteinSeqs.pop(rm_tr)
                             self.cds_ref.pop(rm_tr)
+                            self.utr5_ref.pop(rm_tr)
                 else:
                     protein = self.proteinSeqs[transcript.TRANSCRIPT]
                     exonseqs = self.exonSeqs[transcript.TRANSCRIPT]
                     cds_ref = self.cds_ref[transcript.TRANSCRIPT]
-
+                    utr5_ref = self.utr5_ref[transcript.TRANSCRIPT]
+            else:
+                protein = ''
+                cds_ref = ''
+                utr5_ref = ''
 
             if notexonic_plus is True:
                 mutprotein_plus = None
             else:
-                mutprotein_plus, exonseqsalt_plus, cds_mut_plus = transcript.getProteinSequence(reference, variant_plus, exonseqs, self.codon_usage)
+                mutprotein_plus, exonseqsalt_plus, cds_mut_plus, utr5_plus= transcript.getProteinSequence(reference, variant_plus, exonseqs, self.codon_usage)
                 if mutprotein_plus is not None and (transcript.geneSymbol in self.selenogenes) and cds_ref is not None:
                     mutprotein_plus = transcript.trimSelenoCysteine(cds_ref, cds_mut_plus, protein, mutprotein_plus, variant_plus)
 
@@ -646,11 +674,12 @@ class Ensembl(object):
                 if notexonic_minus:
                     mutprotein_minus = None
                 else:
-                    mutprotein_minus, exonseqsalt_minus , cds_mut_minus= transcript.getProteinSequence(reference, variant_minus, exonseqs, self.codon_usage)
+                    mutprotein_minus, exonseqsalt_minus , cds_mut_minus, utr5_minus = transcript.getProteinSequence(reference, variant_minus, exonseqs, self.codon_usage)
                     if mutprotein_minus is not None and transcript.geneSymbol in self.selenogenes and cds_ref is not None:
                         mutprotein_minus = transcript.trimSelenoCysteine(cds_ref, cds_mut_minus, protein, mutprotein_plus, variant_minus)
             else:
                 mutprotein_minus = mutprotein_plus
+                utr5_minus = utr5_plus
 
             # Creating the CSN annotations both for left and right aligned variant
             if TRANSCRIPT in transcripts_allplus:
@@ -681,14 +710,16 @@ class Ensembl(object):
                 # Creating the CLASS annotations both for left and right aligned variant
                 if TRANSCRIPT in transcripts_allplus:
                     class_plus = conseq.getClassAnnotation(variant_plus, transcript, protein, mutprotein_plus, loc_plus,
-                                                           int(self.options.args['ssrange']))
+                                                           int(self.options.args['ssrange']),
+                                                           reference, exonseqs, utr5_ref,utr5_plus)
                 else:
                     class_plus = '.'
 
                 if difference:
                     if TRANSCRIPT in transcripts_allminus:
                         class_minus = conseq.getClassAnnotation(variant_minus, transcript, protein, mutprotein_minus,
-                                                                loc_minus, int(self.options.args['ssrange']))
+                                                                loc_minus, int(self.options.args['ssrange']),
+                                                                reference, exonseqs, utr5_ref,utr5_minus)
                     else:
                         class_minus = '.'
                 else:
