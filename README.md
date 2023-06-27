@@ -135,5 +135,11 @@ This version of CAVA includes the following changes (aside from bug fixes, espec
       -- Novel Start Gain in 5'UTR are not reported (the impact of those putative changes is hard to predict.
       -- The %3B splitting may be hard when a variant has repeats and multiple transcripts.
 - Optimized for speed via recoding and caching. From 20-500 times faster
+- Support Selenocysteine genes in a conservative fashion. Even though we could get annotation for the location of the SECIS element from NCBI, we don't know the range of the effectiveness of the SECIS element. We know that the SECIS element no longer works at or past the original UAG Stop Codon.. so any new stop codon will be recoded as a U (selenocysteine) unless the protein becomes longer than the original one, so frameshifts or mutation/deletion of the original Stop codon will eventually find another stop codon that will not be recoded as U.
+2.0.12 Changes
+-Bug fixes for insertions/deletions that can be normalized right at the intron/exon junction edge. Were missing SO values and were sometimes called INT.
+Introduced Initiator Gain (IG) (aka Start-Gain) features in 5'UTR for novel Start codons created upstream and in phase of the cannonical AUG. Annotated with CLASS=IG. Must update the impactdef tag in the config file to include an IMPACT for IG (currently IMPACT=3). Note that there is no SO equivalent for the IG tag.
+- Better support for large deletions spanning intron/exon junction.
+
 
 
