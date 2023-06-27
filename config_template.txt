@@ -64,7 +64,8 @@
 # Different impact levels are separated by | and a comma-separated list of CLASS terms must be given for each level
 # Possible values: string | Optional: yes
 # Default value: SG,ESS,FS | SS5,IM,SL,EE,IF,NSY | SY,SS,INT,5PU,3PU
-@impactdef = SG,ESS,FS | SS5,IM,SL,EE,IF,NSY | SY,SS,INT,5PU,3PU
+# new IF is initiatior gain (Start gain .. if in phase and in 5'UTR)
+@impactdef = SG,ESS,FS | SS5,IM,SL,EE,IF,NSY,IG | SY,SS,INT,5PU,3PU
 
 # Are alternative annotations outputted?
 # If TRUE, the ALTANN and ALTCLASS/ALTSO annotation flags are reported instead of the ALTFLAG flag
