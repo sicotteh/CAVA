@@ -1320,8 +1320,12 @@ class Transcript(object):
     def isInSplicingRegion(self, variant, ssrange):
         if not self.isOutsideTranslatedRegion(variant):
             for exon in self.exons:
-                if variant.overlap(exon.end + 1, exon.end + ssrange): return True
-                if variant.overlap(exon.start - (ssrange - 1), exon.start): return True
+                if self.strand == 1:
+                    if variant.overlap(exon.end + 1, exon.end + ssrange): return True
+                    if exon.index>1 and variant.overlap(exon.start - (ssrange - 1), exon.start): return True
+                else:
+                    if exon.index>1 and variant.overlap(exon.end + 1, exon.end + ssrange): return True
+                    if variant.overlap(exon.start - (ssrange - 1), exon.start): return True
             return False
         else:
             return False
@@ -1330,8 +1334,12 @@ class Transcript(object):
     def isInEssentialSpliceSite(self, variant):
         if not self.isOutsideTranslatedRegion(variant):
             for exon in self.exons:
-                if variant.overlap(exon.end + 1, exon.end + 2): return True
-                if variant.overlap(exon.start - 1, exon.start): return True
+                if self.strand == 1:
+                    if variant.overlap(exon.end + 1, exon.end + 2): return True
+                    if exon.index>1 and variant.overlap(exon.start - 1, exon.start): return True
+                else:
+                    if exon.index >1 and variant.overlap(exon.end + 1, exon.end + 2): return True
+                    if variant.overlap(exon.start - 1, exon.start): return True
             return False
         else:
             return False
@@ -1359,12 +1367,16 @@ class Transcript(object):
         else:
             return False
 
-    # Checking if the given variant affects the first or last 3 bases of an exon
+    # Checking if the given variant affects the first or last 3 bases of an exon (wxcept for 1st and last exon)
     def isInFirstOrLast3BaseOfExon(self, variant):
         if not self.isOutsideTranslatedRegionPlus3(variant):
             for exon in self.exons:
-                if variant.overlap(exon.start + 1, exon.start + 3): return True
-                if variant.overlap(exon.end - 2, exon.end): return True
+                if self.strand ==1:
+                    if exon.index>1 and variant.overlap(exon.start + 1, exon.start + 3): return True
+                    if variant.overlap(exon.end - 2, exon.end): return True
+                else:
+                    if variant.overlap(exon.start + 1, exon.start + 3): return True
+                    if exon.index>1 and variant.overlap(exon.end - 2, exon.end): return True
             return False
         else:
             return False
@@ -1406,19 +1418,19 @@ class Transcript(object):
         if self.strand == 1:
             if pos < minpos:
                 return "<"
-            elif pos> maxpos:
+            elif pos > maxpos:
                 return ">"
         else:
             if pos < minpos:
                 return ">"
-            elif pos> maxpos:
+            elif pos > maxpos:
                 return "<"
 
 
         return '.'
 
     # Checking where a given variant is located in the transcript
-    def whereIsThisVariant(self, variant):
+    def whereIsThisVariant(self, variant)->str:
         # Getting the locations of both end points of the variant
         if variant.is_insertion:
             first = self.whereIsThisPosition(variant.pos - 1)
@@ -1441,6 +1453,7 @@ class Transcript(object):
             if first == "<" and second != '.':
                 if variant.is_insertion is True:
                     return '<'
+                return '<-'+second
             elif first == '.':
                 return second
             elif second == '.':

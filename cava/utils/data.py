@@ -228,7 +228,6 @@ class Ensembl(object):
             for key, transcript in hitdict1.items():
                 if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
                 if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
-
                 if key in list(hitdict2.keys()): # e.g. both ends of the variant are in transcript.
                     ret[key] = transcript
                 else:
@@ -575,7 +574,8 @@ class Ensembl(object):
             if TRANSCRIPT in list(transcripts_plus.keys()):
                 loc_plus = transcript.whereIsThisVariant(variant_plus)
             elif TRANSCRIPT in list(transcriptsOUT_plus.keys()):
-                loc_plus = 'OUT'
+                #loc_plus = 'OUT'
+                loc_plus = transcript.whereIsThisVariant(variant_plus)
             else:
                 loc_plus = '.'
 
@@ -584,6 +584,7 @@ class Ensembl(object):
                     loc_minus = transcript.whereIsThisVariant(variant_minus)
                 elif TRANSCRIPT in list(transcriptsOUT_minus.keys()):
                     loc_minus = 'OUT'
+                    loc_minus = transcript.whereIsThisVariant(variant_minus)
                 else:
                     loc_minus = '.'
             else:
@@ -604,8 +605,8 @@ class Ensembl(object):
             in_utr5_minus = False
             if variant.is_insertion:
                 if transcript.isPositionOutsideCDS_5prime(variant_plus.pos) or \
-                        (variant_plus.strand == 1 and variant_plus.pos==transcript.transcriptStart+1) or \
-                        (variant_plus.strand == -1 and variant_plus.pos == transcript.transcriptEnd+1):
+                        (transcript.strand == 1 and variant_plus.pos==transcript.transcriptStart+1) or \
+                        (transcript.strand == -1 and variant_plus.pos == transcript.transcriptEnd+1):
                     in_utr5_plus = True
             elif transcript.isPositionOutsideCDS_5prime(variant_plus.pos) and transcript.isPositionOutsideCDS_5prime(variant_plus.pos +len(variant_plus.alt)-1):
                 in_utr5_plus = True
@@ -619,8 +620,8 @@ class Ensembl(object):
                 notexonic_minus = transcript.isOutsideTranslatedRegion(variant_minus)
                 if variant.is_insertion:
                     if transcript.isPositionOutsideCDS_5prime(variant_plus.pos) or \
-                            (variant_plus.strand == 1 and variant_plus.pos == transcript.transcriptStart + 1) or \
-                            (variant_plus.strand == -1 and variant_plus.pos == transcript.transcriptEnd + 1):
+                            (transcript.strand == 1 and variant_plus.pos == transcript.transcriptStart + 1) or \
+                            (transcript.strand == -1 and variant_plus.pos == transcript.transcriptEnd + 1):
                         in_utr5_plus = True
                 elif transcript.isPositionOutsideCDS_5prime(
                         variant_plus.pos) and transcript.isPositionOutsideCDS_5prime(
@@ -663,16 +664,18 @@ class Ensembl(object):
                 cds_ref = ''
                 utr5_ref = ''
 
-            if notexonic_plus is True:
+            if notexonic_plus is True and in_utr5_plus  is False:
                 mutprotein_plus = None
+                utr5_plus = None
             else:
                 mutprotein_plus, exonseqsalt_plus, cds_mut_plus, utr5_plus= transcript.getProteinSequence(reference, variant_plus, exonseqs, self.codon_usage)
                 if mutprotein_plus is not None and (transcript.geneSymbol in self.selenogenes) and cds_ref is not None:
                     mutprotein_plus = transcript.trimSelenoCysteine(cds_ref, cds_mut_plus, protein, mutprotein_plus, variant_plus)
 
             if difference:
-                if notexonic_minus:
+                if notexonic_minus and in_utr5_minus is False:
                     mutprotein_minus = None
+                    utr5_minus = None
                 else:
                     mutprotein_minus, exonseqsalt_minus , cds_mut_minus, utr5_minus = transcript.getProteinSequence(reference, variant_minus, exonseqs, self.codon_usage)
                     if mutprotein_minus is not None and transcript.geneSymbol in self.selenogenes and cds_ref is not None:
@@ -765,11 +768,11 @@ class Ensembl(object):
             if transcript.strand == 1: #
                 class_plus, class_minus = self.correctClasses(csn_plus_str, class_plus, class_minus)
                 so_plus, so_minus = self.correctSOs(csn_plus_str, so_plus, so_minus)
-                if class_plus == "ESS" or so_plus.startswith("splice"):
+                if class_plus in ["ESS",'SS5','SS'] or so_plus.startswith("splice"):
                     csn_plus_arr = csn_plus_str.split("_p.")
                     if len(csn_plus_arr)==1 or csn_plus_arr[1] in ["=","(=)","="]:
                         csn_plus_str = csn_plus_arr[0]  + "_p.?"
-                if class_minus == "ESS" or so_minus.startswith("splice"):
+                if class_minus in ["ESS",'SS5','SS'] or so_minus.startswith("splice"):
                     csn_minus_arr = csn_minus_str.split("_p.")
                     if len(csn_minus_arr) == 1 or csn_minus_arr[1] in ["=", "(=)","="]:
                         csn_minus_str = csn_minus_arr[0] + "_p.?"
@@ -787,11 +790,11 @@ class Ensembl(object):
             else:
                 class_plus, class_minus = self.correctClasses(csn_minus_str, class_plus, class_minus)
                 so_plus, so_minus = self.correctSOs(csn_minus_str, so_plus, so_minus)
-                if class_plus == "ESS" or so_plus.startswith("splice"):
+                if class_plus in ["ESS",'SS5','SS'] or so_plus.startswith("splice"):
                     csn_plus_arr = csn_plus_str.split("_p.")
                     if len(csn_plus_arr)==1 or csn_plus_arr[1] in ["=","(=)"]:
                         csn_plus_str = csn_plus_arr[0]  + "_p.?"
-                if class_minus == "ESS" or so_minus.startswith("splice"):
+                if class_minus in ["ESS",'SS5','SS']  or so_minus.startswith("splice"):
                     csn_minus_arr = csn_minus_str.split("_p.")
                     if len(csn_minus_arr) == 1 or csn_minus_arr[1] in ["=", "(=)"]:
                         csn_minus_str = csn_minus_arr[0] + "_p.?"

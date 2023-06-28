@@ -190,7 +190,7 @@ class MyTestCase(unittest.TestCase):
         line = "2\t47369285\toverlap_ends\tGGTGTGCGCTCCGCCCCGCCGCGCGCACAGAGCGCTAGTCCTTC\tGA\t.\t.\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        csn=rec.variants[0].getFlag('CSN')
+        csn = rec.variants[0].getFlag('CSN')
         self.assertEqual('5PU', rec.variants[0].getFlag('CLASS'))
         self.assertEqual(csn,"c.-221_-178delinsA","-221  is past the beginning of the transcript (-197) .. but that's OK")
 
@@ -492,7 +492,7 @@ class MyTestCase(unittest.TestCase):
         line = "2\t47805601\tdupT_intronic\tA\tAT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('c.3557-16T[13]%3B[14]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.3557-16T[13]%3B[14]_p.?', rec.variants[0].getFlag('CSN'))
 
 
 # chr2-47805710-A-ATA
@@ -551,7 +551,7 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('c.68-7T>A', rec.variants[0].getFlag('CSN'))
-        self.assertEqual('c.68-6A[3]%3B[4]', rec.variants[1].getFlag('CSN')) # not in ESS or donor/acceptor, so no predicted impact on protein .. and variant not in protein.
+        self.assertEqual('c.68-6A[3]%3B[4]_p.?', rec.variants[1].getFlag('CSN')) # not in ESS or donor/acceptor, so no predicted impact on protein .. and variant not in protein.
 
 # ID=chr13-32363178-G-GG
 # NM_000059.4(BRCA2):c.7977-1dupG
@@ -734,7 +734,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('NC_000001.11:g.1103994T[10]%3B[11]',
                          rec.variants[0].getFlag('HGVSg'))  # should only be one value
         # purely intronic variant, no protein and repeat-style annotation.
-        self.assertEqual('c.-135-11900A[10]%3B[11]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.-135-11900A[10]%3B[11]_p.?', rec.variants[0].getFlag('CSN'))
 
 
 
@@ -853,31 +853,35 @@ class MyTestCase(unittest.TestCase):
         line = "chr2\t178575970\t\tG\tA\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('stop_gain', rec.variants[0].getFlag('SO'))
+        self.assertEqual('stop_gained', rec.variants[0].getFlag('SO'))
 
 
-    def test_INTclass_instead_of_EE(self):
+    def test_INTclass_instead_of_FS(self):
         line = "chr7\t5992049\t\tTCTGCAGAC\tT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('EE', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('FS', rec.variants[0].getFlag('CLASS'))
 
     def test_misingSOshouldbeEE1(self):
         line = "chr1\t89056228\t\tC\tA\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('EE', rec.variants[0].getFlag('SO'))
+        self.assertEqual('EE', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('splice_region_variant|missense_variant', rec.variants[0].getFlag('SO'))
 
     def test_misingSOshouldbeEE2(self):
         line = "chr1\t89056228\t\tC\tA\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('EE', rec.variants[0].getFlag('SO'))
+        self.assertEqual('EE', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('splice_region_variant|missense_variant', rec.variants[0].getFlag('SO'))
+
     def test_misingSOshouldbeEE3(self):
         line = "chr1\t62513898\t\tT\tC\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('EE', rec.variants[0].getFlag('SO'))
+        self.assertEqual('EE', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('splice_region_variant|missense_variant', rec.variants[0].getFlag('SO'))
 
     def test_for_ODP1(self): # RIght outside gene, npthinh
         line = "chr2\t162074215\t\tTG\tT\t30\tPASS\t.\tGT\t0/1\n"
@@ -894,6 +898,24 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('', rec.variants[0].getFlag('CLASS'))
+
+
+    def test_for_variantOverlappingEnds(self): # Deletion on the first past of a trsnscript including start codon)
+        line = "chr1\t25800182\t\tCCCGCTCTTTCGCTTCCCGGGCCGCCGGCAGCCGCCGCCAGCCGCAGCCATGGGCCGGGCCCGGCCGGGCCAACGCGGGCCGCCCAGCCCCGGCCCCGCC\tC\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('IM', rec.variants[0].getFlag('CLASS'))
+
+
+# ERROR:Inconsistent CAVA, looks like CDS annotation does not end in a Stop codon for  1:11790682:A/G
+    def test_for_StopLoss(self):
+        line = "chr1\t11790682\t\tA\tG\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('SL', rec.variants[0].getFlag('CLASS'))
+
+
+
 
 class Options:
 
