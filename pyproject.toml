@@ -1,18 +1,20 @@
 [project]
-name = 'CAVA_sicotte'
-version = '2.0.12'
+name = "CAVA_sicotte"
+version = "2.0.12"
 authors = [
-    {author='Steven-N-Hart',email='hart.steven@mayo.edu'},
-    {author='Hugues-Sicotte', email='hugues.sicotte@gmail.com'}
+    {author="Steven-N-Hart",email="hart.steven@mayo.edu"},
+    {author="Hugues-Sicotte", email="hugues.sicotte@gmail.com"}
 ] 
-description = 'CAVA: Clininical Annotation of VAriants'
+description = "CAVA: Clininical Annotation of VAriants"
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.7"
 classifiers = [
-"Programming Language :: Python 3".
+"Programming Language :: Python 3",
 "License :: OSI Approved :: MIT",
 "Operating System :: OS Independent"]
-]
+
 [project.urls]
 "Homepage" = "https://github.com/sicotteh/CAVA"
-"Previous" = 'https://github.com/Steven-N-Hart/CAVA'
+"Previous" = "https://github.com/Steven-N-Hart/CAVA"
+[build-system]
+requires = ["setuptools>=42", "wheel"]   # PEP 508 specifications.
