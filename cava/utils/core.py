@@ -1353,7 +1353,7 @@ class Transcript(object):
                     if variant.is_insertion:
                         if variant.pos == exon.end+5 or variant.pos == exon.end+6:
                             return True
-                    elif variant.overlap(exon.end + 6, exon.end + 5):
+                    elif variant.overlap(exon.end + 5, exon.end + 5):
                         return True
                 return False
             else:

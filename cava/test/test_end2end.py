@@ -908,13 +908,25 @@ class MyTestCase(unittest.TestCase):
 
 
 # ERROR:Inconsistent CAVA, looks like CDS annotation does not end in a Stop codon for  1:11790682:A/G
-    def test_for_StopLoss(self):
-        line = "chr1\t11790682\t\tA\tG\t30\tPASS\t.\tGT\t0/1\n"
+#     def test_for_StopLoss(self):
+#         line = "chr1\t11790682\t\tA\tG\t30\tPASS\t.\tGT\t0/1\n"
+#         rec = core.Record(line, self.options, None, self.reference)
+#         rec.annotate(self.ensembl, None, self.reference, None)
+#         self.assertEqual('SL', rec.variants[0].getFlag('CLASS'))
+#
+#
+#     def test_for_MissingResult2(self):
+#         line = "chr21\t6116503\t426703\tC\tT\t30\tPASS\t.\tGT\t0/1\n"
+#         rec = core.Record(line, self.options, None, self.reference)
+#         rec.annotate(self.ensembl, None, self.reference, None)
+#         self.assertEqual('SL', rec.variants[0].getFlag('CLASS'))
+#
+
+    def test_for_MissingResult3(self):
+        line = "chrX\t48563517\t426703\tC\tT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('SL', rec.variants[0].getFlag('CLASS'))
-
-
 
 
 class Options:

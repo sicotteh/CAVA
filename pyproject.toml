@@ -2,8 +2,8 @@
 name = "CAVA_sicotte"
 version = "2.0.12"
 authors = [
-    {author="Steven-N-Hart",email="hart.steven@mayo.edu"},
-    {author="Hugues-Sicotte", email="hugues.sicotte@gmail.com"}
+    {name="Steven-N-Hart",email="hart.steven@mayo.edu"},
+    {name="Hugues-Sicotte", email="hugues.sicotte@gmail.com"}
 ] 
 description = "CAVA: Clininical Annotation of VAriants"
 readme = "README.md"
@@ -18,3 +18,5 @@ classifiers = [
 "Previous" = "https://github.com/Steven-N-Hart/CAVA"
 [build-system]
 requires = ["setuptools>=42", "wheel"]   # PEP 508 specifications.
+[tool.setuptools]
+packages = ["cava"]
