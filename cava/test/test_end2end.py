@@ -922,11 +922,40 @@ class MyTestCase(unittest.TestCase):
 #         self.assertEqual('SL', rec.variants[0].getFlag('CLASS'))
 #
 
-    def test_for_MissingResult3(self):
+    def test_for_MissingResult3(self):  # No transcript overlap this location for MANE 1.0
         line = "chrX\t48563517\t426703\tC\tT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('SL', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('', rec.variants[0].getFlag('CLASS'))
+
+    def testmissingSOforSG(self):
+        line = "chr19\t11100286\t\tG\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('stop_gained', rec.variants[0].getFlag('SO'))
+
+
+    def testmissingSOforSG2(self):
+        line = "chr17\t7674957\t\tG\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('stop_gained', rec.variants[0].getFlag('SO'))
+
+    def testmissingSOforSG3(self):
+        line = "chr11\t64805745\t\tC\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('stop_gained', rec.variants[0].getFlag('SO'))
+
+    def testmissingSOforSG4(self):
+        line = "chr9\t132897224\t\tC\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('stop_gained', rec.variants[0].getFlag('SO'))
 
 
 class Options:
