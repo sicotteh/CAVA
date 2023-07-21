@@ -958,6 +958,21 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('stop_gained', rec.variants[0].getFlag('SO'))
 
 
+    def testmissingSOforSG5(self):
+        line = "chr2\t21038086\t\tC\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('stop_gained', rec.variants[0].getFlag('SO'))
+
+   def testmissingSOforSGandsplice(self):
+        line = "chr10\t21038086\t\tC\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('stop_gained', rec.variants[0].getFlag('SO'))
+
+
 class Options:
 
 
