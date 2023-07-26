@@ -237,7 +237,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('c.1del_p.Met1?', rec.variants[0].getFlag('CSN'))
         self.assertEqual('IM', rec.variants[0].getFlag('CLASS'))
         self.assertEqual('1', rec.variants[0].getFlag('PROTPOS'))
-        self.assertEqual('frameshift_variant', rec.variants[0].getFlag('SO'))
+        self.assertEqual('frameshift_variant|initiator_codon_variant', rec.variants[0].getFlag('SO'))
 
     def test_hg38_ins_in_Met12(self):
         line = "13\t32316461\tins_in_met12\tA\tAC\t.\t.\t.\tGT\t0/1\n"
@@ -429,7 +429,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('NM_015627.3', rec.variants[0].getFlag('TRANSCRIPT'))
         self.assertEqual('c.506_507del_p.Phe169Ter', rec.variants[0].getFlag('CSN'))
         self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))
-        self.assertEqual('frameshift_variant', rec.variants[0].getFlag('SO'))
+        self.assertEqual('frameshift_variant|stop_gained', rec.variants[0].getFlag('SO'))
         rec.output('VCF', None, self.options, self.genelist, self.transcriptlist, snplist=list(), stdout=True)
 
         # Add Test case for variant without a padded base (as occurs when splitting a multi-allele VCF
@@ -965,13 +965,33 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))
         self.assertEqual('stop_gained', rec.variants[0].getFlag('SO'))
 
-   def testmissingSOforSGandsplice(self):
-        line = "chr10\t21038086\t\tC\tA\t30\tPASS\t.\tGT\t0/1\n"
+    def testmissingSOforSGandsplice(self):
+        line = "chr19\t11129669\t\tC\tA\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('SG', rec.variants[0].getFlag('CLASS'))
-        self.assertEqual('stop_gained', rec.variants[0].getFlag('SO'))
+        self.assertEqual('splice_region_variant|stop_gained', rec.variants[0].getFlag('SO'))
 
+    def testmissingSOforIM(self):
+        line = "chr17\t43124097\t\tTT\tT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('IM', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('c, rec.variants[0].getFlag('SO'))
+
+    def testmissingSOforIM2(self):
+        line = "chr13\t32398769\t\tA\tAT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('SL', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('frameshift_variant|stop_lost', rec.variants[0].getFlag('SO'))
+
+    def testmissingSOforIM3(self):
+        line = "chr19\t11131314\t\tTGA\tT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('SL', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('frameshift_variant|stop_lost', rec.variants[0].getFlag('SO'))
 
 class Options:
 

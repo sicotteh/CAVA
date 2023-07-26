@@ -222,14 +222,14 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
             out.append('inframe_indel')
     else:
         out.append('frameshift_variant')
-        return '|'.join(out)
 
-    if mutprotein is None:
+    if mutprotein is None: # None vs empty string.. means variant outside transcript.
         return '.'
-    if len(protein) ==0: # both ends of the variant completely outside transcript.
+    if len(protein) == 0: # both ends of the variant completely outside transcript.
         return '.'
     if len(protein)>0 and len(mutprotein)==0: # This can only happen when beginning of protein is deleted
-        return 'initiator_codon_variant'
+        out.append('initiator_codon_variant')
+
 
     if protein == mutprotein:
         out.append('synonymous_variant')
@@ -253,31 +253,35 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
         protein = protein[isame+1:]
         mutprotein = mutprotein[isame+1:]
 
-    if protein == '': return '3_prime_UTR_variant'
-
-    if protein[0] == 'X' and len(mutprotein) == 0:
-        out.append('stop_lost')
+    if len(protein) == 0:
+        out.append('3_prime_UTR_variant')
     else:
-        if protein[0] == 'X' and mutprotein[0] != 'X': out.append('stop_lost')
+        if protein[0] == 'X' and len(mutprotein) == 0:
+            out.append('stop_lost')
+        else:
+            if protein[0] == 'X' and mutprotein[0] != 'X':
+                out.append('stop_lost')
 
 # XXX rewrote because it was among top slowest parts of CAVA
 #
-    if len(mutprotein)==1 and mutprotein[0]=='X' and len(protein)>0 and protein[0]!='X':
-        # Pure Stop Gain mutation.
-        out.append('stop_gained')
-    else: #Trim identical ends .. which can happen if we rely on annotation to encode mutprotein
-        # depends on wether other parts of code use annotation to create mut-protein or first Stop codon.
-        ilast  = 0
-        while ilast<len(protein) and ilast<len(mutprotein) :
-            if protein[-(ilast+1)] == mutprotein[-(ilast+1)]:
-                ilast = ilast +1
-            else:
-                break
-        if ilast >0:
-            protein = protein[:-ilast]
-            mutprotein = mutprotein[:-ilast]
+    if 'stop_lost' not in out:
+        if len(mutprotein)==1 and mutprotein[0]=='X' and len(protein)>0 and protein[0]!='X':
+            # Pure Stop Gain mutation.
+            out.append('stop_gained')
+        else: #Trim identical ends .. which can happen if we rely on annotation to encode mutprotein
+            # depends on wether other parts of code use annotation to create mut-protein or first Stop codon.
+            ilast  = 0
+            while ilast<len(protein) and ilast<len(mutprotein) :
+                if protein[-(ilast+1)] == mutprotein[-(ilast+1)]:
+                    ilast = ilast +1
+                else:
+                    break
+            if ilast >0:
+                protein = protein[:-ilast]
+                mutprotein = mutprotein[:-ilast]
 
-        if len(mutprotein)==1 and mutprotein[0]=='X' and len(protein)==0 and protein[0]!='X': out.append('stop_gained')
+            if len(mutprotein)==1 and mutprotein[0]=='X' and len(protein)==0 and protein[0]!='X':
+                out.append('stop_gained')
 
     if ('stop_gained' in out) or ('stop_lost' in out):
         if 'missense_variant' in out: out.remove('missense_variant')
