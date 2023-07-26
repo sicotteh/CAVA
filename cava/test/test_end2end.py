@@ -977,7 +977,7 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('IM', rec.variants[0].getFlag('CLASS'))
-        self.assertEqual('c, rec.variants[0].getFlag('SO'))
+        self.assertEqual('frameshift_variant|initiator_codon_variant', rec.variants[0].getFlag('SO'))
 
     def testmissingSOforIM2(self):
         line = "chr13\t32398769\t\tA\tAT\t30\tPASS\t.\tGT\t0/1\n"
