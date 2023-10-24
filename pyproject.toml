@@ -1,6 +1,6 @@
 [project]
 name = "CAVA_sicotte"
-version = "2.0.12"
+version = "2.0.13"
 authors = [
     {name="Steven-N-Hart",email="hart.steven@mayo.edu"},
     {name="Hugues-Sicotte", email="hugues.sicotte@gmail.com"}
