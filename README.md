@@ -74,7 +74,9 @@ If you get an error with pycurl, run the following command before running the se
 ```bash
 pip uninstall pycurl
 export PYCURL_SSL_LIBRARY=nss
-pip install --compile --install-option="--with-nss" --no-cache-dir pycurl  
+pip install --compile --install-option="--with-nss" --no-cache-dir pycurl
+#OR (depending on the python version)
+pip install --compile --global-option="--with-nss" --no-cache-dir pycurl  
 ```
 
 
