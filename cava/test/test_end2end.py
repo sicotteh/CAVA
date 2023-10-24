@@ -267,7 +267,7 @@ class MyTestCase(unittest.TestCase):
 
 
 
-    def test_hg38_splice_indel_donor(self): # 3' shifting at DNA level should work for exon/intron 3' shifting spf deletion at splice donor (BRCA2)
+    def test_hg38_splice_indel_donor(self): # 3' shifting at DNA level should work for exon/intron 3' shifting spf deletion at splice donor (BRCA2 +strand gene)
         line = "13\t32316527\tdonor_deletion\tGG\tG\t.\t.\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
@@ -986,12 +986,42 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('SL', rec.variants[0].getFlag('CLASS'))
         self.assertEqual('frameshift_variant|stop_lost', rec.variants[0].getFlag('SO'))
 
-    def testmissingSOforIM3(self):
+    def testmissingSOforIM3(self): #c.-32-13T>G
         line = "chr19\t11131314\t\tTGA\tT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('SL', rec.variants[0].getFlag('CLASS'))
         self.assertEqual('frameshift_variant|stop_lost', rec.variants[0].getFlag('SO'))
+
+    def testESSinUTR(self): # BTD(NM_001370658.1):c.-17+2T>C
+        line = "chr3\t15601896\t\tT\tC\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('ESS', rec.variants[0].getFlag('CLASS'))
+
+
+    def testExonDeletion(self):  # Deletion from inside an exon to overlapping the ESS.
+        line = "chr12\t32896726\t\tTGCCATGGGGCCGGTGGGGGCGACCGAGCTGCTCGCCTGCCTCTGGACTCGCGGGCGAAGCC\tT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('ESS', rec.variants[0].getFlag('CLASS'))
+
+    def testExonDelIntron2Intron(self): # chr12:32878910-32879040
+        line = "chr12\t32878910\t\tGATATCCTACCTTTAGCATGTCATAGGTTTTAGGAACAGGGGAACGGCCTCCAACAAAATCATTTTCAACCAAGTGTAGGTTGTAGACATACTCAGGAACACTGCTGGTTCGGTGAAGATTTCCTGCAATC\tG\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('ESS', rec.variants[0].getFlag('CLASS'))
+    def testESSinUTR2(self): # BTD(NM_001370658.1):c.-32-13T>G
+        line = "chr3\t15601892\t\tCAGGT\tC\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('ESS', rec.variants[0].getFlag('CLASS'))
+
+    def testESSinUTR3(self): # BTD(NM_001370658.1):c.-32-13T>G
+        line = "chr17\t80104552\t.\tT\tTTC\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('ESS', rec.variants[0].getFlag('CLASS'))
 
 class Options:
 

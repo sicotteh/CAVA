@@ -9,10 +9,12 @@ import sys
 import pysam
 
 from . import data
-#from data import Ensembl
-#from data import Reference
+# from data import Ensembl
+# from data import Reference
 from . import core
-#from core import Record
+
+
+# from core import Record
 
 
 # Printing out welcome meassage
@@ -98,7 +100,7 @@ def findFileBreaks(inputf, threads):
     ret = []
     started = False
     counter = 0
-    first =1
+    first = 1
 
     if inputf.endswith('.gz') or inputf.endswith('.bgz'):
         infile = gzip.open(inputf, 'rt', encoding='utf-8')
@@ -113,7 +115,7 @@ def findFileBreaks(inputf, threads):
             started = True
             first = counter
 
-    if started is True: # no blocks if file is header only.
+    if started is True:  # no blocks if file is header only.
         delta = int((counter - first + 1) / threads)
         for i in range(threads):
             if i < threads - 1:
@@ -127,7 +129,7 @@ def findFileBreaks(inputf, threads):
 def readHeader(inputfn):
     ret = []
 
-    if inputfn.endswith('.gz')  or inputfn.endswith('.bgz'):
+    if inputfn.endswith('.gz') or inputfn.endswith('.bgz'):
         infile = gzip.open(inputfn, 'rt', encoding='utf-8')
     else:
         infile = open(inputfn, encoding='utf-8')
@@ -164,7 +166,7 @@ def mergeTmpFiles(output, fileformat, threads):
                     try:
                         outfile.write(line)
                     except:
-                        sys.stderr.write("CAVA: error writing to "+outfn+"\n")
+                        sys.stderr.write("CAVA: error writing to " + outfn + "\n")
                         exit(1)
 
     for fn in filenames: os.remove(fn)
@@ -212,7 +214,7 @@ class SingleJob(multiprocessing.Process):
                            '18', '19', '20', '21', '22', 'X', 'Y', 'MT']
 
         # Input file
-        if copts.input.endswith('.gz')  or copts.input.endswith('.bgz'):
+        if copts.input.endswith('.gz') or copts.input.endswith('.bgz'):
             self.infile = gzip.open(copts.input, 'rt', encoding='utf-8')
         else:
             self.infile = open(copts.input, encoding='utf-8')
@@ -258,13 +260,11 @@ class SingleJob(multiprocessing.Process):
         else:
             self.dbsnp = None
 
-
         # Target BED file
         if (not options.args['target'] == '.') and (not options.args['target'] == ''):
             self.targetBED = pysam.Tabixfile(options.args['target'], parser=pysam.asBed())
         else:
             self.targetBED = None
-
 
         # Reading (new) transcript2protein map for HGVSP annotation
         if options.args['logfile'] and threadidx == 1:
@@ -300,14 +300,14 @@ class SingleJob(multiprocessing.Process):
 
             line = line.strip()
             if line == '': continue
-#            sys.stderr.write("line="+line+"\n")
+            #            sys.stderr.write("line="+line+"\n")
             # Printing out progress information
             if not self.copts.stdout and self.threadidx == 1:
                 if counter % 1000 == 0:
                     printProgressInfo(counter, int(self.numOfRecords / self.copts.threads))
 
             # Parsing record from input file
-            record = core.Record(line, self.options, self.targetBED,self.reference)
+            record = core.Record(line, self.options, self.targetBED, self.reference)
 
             # Filtering out REFCALL records .. from original VCF annotation
             if record.filter == 'REFCALL': continue
@@ -318,7 +318,7 @@ class SingleJob(multiprocessing.Process):
             # Only annotate records of allowed chromosome names
             if record.chrom not in self.chroms:
                 logging.warning(
-                    "\t!!!!!!Chromosome " + record.chrom + " not found, skipping annotation, "+
+                    "\t!!!!!!Chromosome " + record.chrom + " not found, skipping annotation, " +
                     "but still outputting in VCF as long as within target region (if specified)!!!!!!\n")
             else:
                 # Annotating the record based on the Ensembl, dbSNP and reference data
@@ -421,13 +421,12 @@ def run(copts, version):
     try:
         core.writeHeader(options, '\n'.join(header), outfile, copts.stdout, version)
     except:
-        sys.stderr.write("CAVA: error writing header to "+outfname+"\n")
+        sys.stderr.write("CAVA: error writing header to " + outfname + "\n")
         exit(1)
     outfile.close()
 
     # Find break points in the input file
     breaks = findFileBreaks(copts.input, copts.threads)
-
 
     # Initializing annotation processes
     threadidx = 0
@@ -447,7 +446,6 @@ def run(copts, version):
     # Merging tmp files
     if copts.threads > 1:
         mergeTmpFiles(copts.output, options.args['outputformat'], copts.threads)
-
 
     # Printing out summary information and end time
     if not copts.stdout:

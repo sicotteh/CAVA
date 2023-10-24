@@ -11,7 +11,7 @@ from . import conseq
 from . import core
 from . import csn
 
-#import time
+# import time
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + '/pysamdir')
 import pysam
@@ -32,7 +32,7 @@ class Ensembl(object):
             try:
                 self.tabixfile = pysam.TabixFile(options.args['ensembl'])
             except:
-                sys.stderr.write("CAVA: ERROR: error trying to open Tabix file for "+options.args['ensembl']+"\n")
+                sys.stderr.write("CAVA: ERROR: error trying to open Tabix file for " + options.args['ensembl'] + "\n")
         for chrom in self.tabixfile.contigs:
             if chrom in reference.reflens:
                 self.contigs[chrom] = reference.reflens[chrom]
@@ -61,7 +61,6 @@ class Ensembl(object):
         self.transcript_bins = None
         self.chrom = None
 
-
         self.nbins = 0
         self.binsize = 50000
         self.chrom = None
@@ -71,19 +70,19 @@ class Ensembl(object):
             self.loadalltranscripts = False
 
         self.selenogenes = ['DIO1', 'DIO2', 'DIO3', 'GPX1', 'GPX2', 'GPX3', 'GPX4', 'GPX6',
-                                   'SELENOF',
-                                   'SELENOH', 'SELENOI', 'SELENOK', 'SELENOM', 'SELENON', 'SELENOO',
-                                   'SELENOP',
-                                   'SELENOS', 'SELENOT', 'SELENOU', 'SELENOV', 'SELENOW', 'MSRB1', 'SEPHS2',
-                                   'TXNRD1', 'TXNRD2', 'TXNRD3']
+                            'SELENOF',
+                            'SELENOH', 'SELENOI', 'SELENOK', 'SELENOM', 'SELENON', 'SELENOO',
+                            'SELENOP',
+                            'SELENOS', 'SELENOT', 'SELENOU', 'SELENOV', 'SELENOW', 'MSRB1', 'SEPHS2',
+                            'TXNRD1', 'TXNRD2', 'TXNRD3']
         if 'selenogenes' in options.args:
-            if len(str(options.args['selenogenes'])) >1:
+            if len(str(options.args['selenogenes'])) > 1:
                 self.selenogenes = str(options.args['selenogenes']).split(",")
 
-
-# Get the list of transcript lines overlapping
-# returns either an iterator over a tabix file .. or a list (that can be iterated over)
-    def fetch_overlapping_transcripts(self,chrom,startpos0,endpos1): # Give 0-base coordinate for start and 1-base for stop
+    # Get the list of transcript lines overlapping
+    # returns either an iterator over a tabix file .. or a list (that can be iterated over)
+    def fetch_overlapping_transcripts(self, chrom, startpos0,
+                                      endpos1):  # Give 0-base coordinate for start and 1-base for stop
         # If current chromosome is not loaded, then
         #      get tabix iterator figure out length, figu.. and load all chromosomes lines
         # Check self.tabixfile.l
@@ -92,53 +91,49 @@ class Ensembl(object):
         if self.loadalltranscripts is False:
             # This fetch consumes most of the runtime for CAVA (78%) as long
             # caching should be faster.
-            return self.tabixfile.fetch(reference=chrom, start = startpos0, end = endpos1)
+            return self.tabixfile.fetch(reference=chrom, start=startpos0, end=endpos1)
         if self.chrom is None or chrom != self.chrom:
             # Flush cache and load all transcripts.
             self.chrom = chrom
-            self.transcript_bins = [None]*(1+int((1+self.contigs[chrom])/self.binsize))
-            hits = self.tabixfile.fetch(reference = chrom)
+            self.transcript_bins = [None] * (1 + int((1 + self.contigs[chrom]) / self.binsize))
+            hits = self.tabixfile.fetch(reference=chrom)
             for line in hits:
-                linedat = line.split("\t",8)
+                linedat = line.split("\t", 8)
                 transcriptid = linedat[0]
                 transcriptStart = int(linedat[6])  # lowest coordinate - base 0
-                transcriptEnd = int(linedat[7]) # highest coordiate - base 1
-                binstart = int(transcriptStart/self.binsize)
-                binend  = int(transcriptEnd/self.binsize)
-                for ebin in range(binstart,binend+1):
+                transcriptEnd = int(linedat[7])  # highest coordiate - base 1
+                binstart = int(transcriptStart / self.binsize)
+                binend = int(transcriptEnd / self.binsize)
+                for ebin in range(binstart, binend + 1):
                     if self.transcript_bins[ebin] is None:
-                        self.transcript_bins[ebin] = [[transcriptid,transcriptStart,transcriptEnd,line]]
+                        self.transcript_bins[ebin] = list([[transcriptid, transcriptStart, transcriptEnd, line]])
                     else:
-                        (self.transcript_bins[ebin]).append([transcriptid,transcriptStart,transcriptEnd,line])
+                        (self.transcript_bins[ebin]).append([transcriptid, transcriptStart, transcriptEnd, line])
         lines = list()
         got_transcript = dict()
-        binstart = int((startpos0+1)/ self.binsize)
-        binend = int(endpos1/ self.binsize)
+        binstart = int(startpos0 / self.binsize)
+        binend = int(endpos1 / self.binsize)
         for ebin in range(binstart, binend + 1):
             bin_list = self.transcript_bins[ebin]
             if bin_list is not None:
-                for bin_content in bin_list: # [transcriptid, transcriptStart, transcriptEnd, line])
-                    if (((startpos0+1) >= bin_content[1] and endpos1<=bin_content[2]) or # variant inside
-                        ((startpos0+1) >= bin_content[1] and startpos0+1<=bin_content[2]) or # partial overlap
-                        (endpos1 >= bin_content[1] and endpos1<=bin_content[2]) or # partial overlap
-                        (startpos0+1 <= bin_content[1] and endpos1 >= bin_content[2] )): # Wholly encompassinbgene
+                for bin_content in bin_list:  # [transcriptid, transcriptStart, transcriptEnd, line])
+                    if ((startpos0 >= bin_content[1] and endpos1 <= bin_content[2]) or  # variant completely inside
+                            (startpos0 >= bin_content[1] and startpos0 + 1 <= bin_content[2]) or  # partial overlap
+                            (endpos1 - 1 >= bin_content[1] and endpos1 <= bin_content[2]) or  # partial overlap
+                            (startpos0 < bin_content[1] and endpos1 > bin_content[2])):  # Wholly encompassing gene
                         transcriptid = bin_content[0]
                         if transcriptid not in got_transcript:
-                            got_transcript[transcriptid]=1
+                            got_transcript[transcriptid] = 1
                             lines.append(bin_content[3])
         return lines
 
+    #
+    # Loading transcripts and the exons is very costly (need to read all exons), so caching them save a lot of disk access
+    #
 
-
-
-
-#
-# Loading transcripts and the exons is very costly (need to read all exons), so caching them save a lot of disk access
-#
-
-    def find_transcript_in_cache_or_in_file(self,line):
+    def find_transcript_in_cache_or_in_file(self, line):
         transcriptid = line.split("\t")[0]
-        self.nvar +=1
+        self.nvar += 1
         self.transcript_nvar[transcriptid] = self.nvar
         if transcriptid in self.transcript_cache:
             transcript = self.transcript_cache[transcriptid]
@@ -149,16 +144,15 @@ class Ensembl(object):
             if transcript.geneSymbol in self.selenogenes:
                 transcript.is_selenocysteine = True
             self.transcript_cache[transcriptid] = transcript
-            if len(self.transcript_cache)>self.CACHESIZE:
+            if len(self.transcript_cache) > self.CACHESIZE:
                 vals = list(self.transcript_nvar.values())
                 minval = min(vals)
                 which_minval = vals.index(minval)
-                rm_tr = ''+list(self.transcript_nvar.keys())[which_minval]
+                rm_tr = '' + list(self.transcript_nvar.keys())[which_minval]
                 self.transcript_cache.pop(rm_tr)
                 self.transcript_nvar.pop(rm_tr)
 
         return transcript
-
 
     # Find transcripts overlapping with a variant
 
@@ -167,25 +161,24 @@ class Ensembl(object):
         retOUT = dict()
 
         # Checking chromosome name
-        goodchrom = core.convert_chrom(variant.chrom,self.tabixfile.contigs)
+        goodchrom = core.convert_chrom(variant.chrom, self.tabixfile.contigs)
         if goodchrom is None:
             return ret, retOUT
 
         # Defining variant end points.
         # HS: Tabix uses 0-based indexing for start/pos
         if variant.is_insertion is False:
-            start = variant.pos -1
-            end = variant.pos + len(variant.ref)-1
+            start = variant.pos - 1
+            end = variant.pos + len(variant.ref) - 1
         else:  # for insertion, position got shifted to be after the insertion point .. shift back
             start = variant.pos - 2
-            end = variant.pos -1
-        if start<0:
+            end = variant.pos - 1
+        if start < 0:
             start = 0
         if end <= start:
             end = start + 1
 
-
-        if not variant.is_substitution: # Insertion/deletion / MNP
+        if not variant.is_substitution:  # Insertion/deletion / MNP
             # HS notes:
             # tabix index is loaded in memory, and the data is buffered in 37K (2^16) blocks (from reading the pysam and htslib)
             #   the 'fetch' take about 0.004 - 0.049 ms .. MUCH faster than a single disk seek & read (10-15ms)
@@ -193,7 +186,7 @@ class Ensembl(object):
             # but uses 70% of the time of CAVA.
             # Loading transcript tables in memory and a pyranges implmementaion would help.
             #  ... so so it is clearly cached .. and no need for further optimization.
-            #st_time = time.perf_counter_ns()
+            # st_time = time.perf_counter_ns()
             #    .. so basically a sliding windown caching
             # Using pyranges takes 8 ms per pyrange creation.. and 33 ms for an overlap operation with all transcripts.
             # ... but if refactored to find the overlap of 1000's of SNPs/intervals at a time
@@ -204,10 +197,10 @@ class Ensembl(object):
             # The only way to get faster is to build an im-,memory genome-binned
             # Create per chromosomes "bins" (100K bins,so about 30,000 elements dictionary .. poointing to  a list of transcripts.
             # .. cache last bin request.
-            hits1 = self.fetch_overlapping_transcripts(goodchrom,start,start+1)
-            hits2 = self.fetch_overlapping_transcripts(goodchrom,end-1,end)
-            #end_time0 = time.perf_counter_ns()
-            #sys.stdout.write("Time for two tabix transcripts fetch=" + str(end_time - st_time) + "\n")
+            hits1 = self.fetch_overlapping_transcripts(goodchrom, start, start + 1)
+            hits2 = self.fetch_overlapping_transcripts(goodchrom, end - 1, end)
+            # end_time0 = time.perf_counter_ns()
+            # sys.stdout.write("Time for two tabix transcripts fetch=" + str(end_time - st_time) + "\n")
 
             hitdict1 = dict()
             hitdict2 = dict()
@@ -222,27 +215,27 @@ class Ensembl(object):
                 if not (transcript.transcriptStart < end <= transcript.transcriptEnd): continue
                 #  if not strand == transcript.strand: continue
                 hitdict2[transcript.TRANSCRIPT] = transcript
-            #end_time = time.perf_counter_ns()
-            #sys.stdout.write("Two tabix fetch & iterate=" + str(end_time0 - st_time) + " "+ str(end_time - st_time) + "\n")
+            # end_time = time.perf_counter_ns()
+            # sys.stdout.write("Two tabix fetch & iterate=" + str(end_time0 - st_time) + " "+ str(end_time - st_time) + "\n")
 
             for key, transcript in hitdict1.items():
                 if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
                 if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
-                if key in list(hitdict2.keys()): # e.g. both ends of the variant are in transcript.
+                if key in list(hitdict2.keys()):  # e.g. both ends of the variant are in transcript.
                     ret[key] = transcript
-                else:
-                    if variant.is_insertion: # insertions at the edges are TRULY outside, not even partially overlapping
-                        retOUT[key] = transcript  # partial overlap downstream of transcript
+                else:  # either paartial overlap or insertion flush with transcript (right end)
+                    #                    if variant.is_insertion: # insertions at the edges are TRULY outside, not even partially overlapping
+                    retOUT[key] = transcript  # partial overlap downstream of transcript
 
-            if not variant.is_insertion:
-                for key, transcript in hitdict2.items():  # check for partial overlap upstream of transcript
-                    if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
-                    if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
-                    if not key in list(hitdict1.keys()):
-                        retOUT[key] = transcript
+            #            if not variant.is_insertion:
+            for key, transcript in hitdict2.items():  # check for partial overlap upstream of transcript
+                if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
+                if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
+                if not key in list(hitdict1.keys()):
+                    retOUT[key] = transcript
 
-        else:  # Variant is Substitution
-            hits1 = self.fetch_overlapping_transcripts(goodchrom,start,end)  #self.tabixfile.fetch(region=reg2)
+        else:  # Variant is single base Substitution
+            hits1 = self.fetch_overlapping_transcripts(goodchrom, start, end)  # self.tabixfile.fetch(region=reg2)
             for line in hits1:
                 transcript = self.find_transcript_in_cache_or_in_file(line)
 
@@ -254,31 +247,6 @@ class Ensembl(object):
 
         return ret, retOUT  # retOUT not populated for substitution
 
-
-    def find_transcript_in_cache_or_in_file(self,line):
-        transcriptid = line.split("\t")[0]
-        self.nvar +=1
-        self.transcript_nvar[transcriptid] = self.nvar
-        if transcriptid in self.transcript_cache:
-            transcript = self.transcript_cache[transcriptid]
-        else:
-            # with the reference sequence being cached, fetching a whole transcripts and exons takes 0.03-0.09 ms
-            #        ... rather than 150-200 ms if the sequence was not cached.
-            transcript = core.Transcript(line)
-            if transcript.geneSymbol in self.selenogenes:
-                transcript.is_selenocysteine = True
-            self.transcript_cache[transcriptid] = transcript
-            if len(self.transcript_cache)>self.CACHESIZE:
-                vals = list(self.transcript_nvar.values())
-                minval = min(vals)
-                which_minval = vals.index(minval)
-                rm_tr = ''+list(self.transcript_nvar.keys())[which_minval]
-                self.transcript_cache.pop(rm_tr)
-                self.transcript_nvar.pop(rm_tr)
-
-        return transcript
-
-
     # Find transcripts overlapping with a variant. This new version will also find variants not fully inside
 
     def findTranscriptsWide(self, variant):
@@ -286,25 +254,24 @@ class Ensembl(object):
         retOUT = dict()
 
         # Checking chromosome name
-        goodchrom = core.convert_chrom(variant.chrom,self.tabixfile.contigs)
+        goodchrom = core.convert_chrom(variant.chrom, self.tabixfile.contigs)
         if goodchrom is None:
             return ret, retOUT
 
         # Defining variant end points.
         # HS: Tabix uses 0-based indexing for start/pos
         if variant.is_insertion is False:
-            start = variant.pos -1
-            end = variant.pos + len(variant.ref)-1
+            start = variant.pos - 1
+            end = variant.pos + len(variant.ref) - 1
         else:  # for insertion, position got shifted to be after the insertion point .. shift back
             start = variant.pos - 2
-            end = variant.pos -1
-        if start<0:
+            end = variant.pos - 1
+        if start < 0:
             start = 0
         if end <= start:
             end = start + 1
 
-
-        if not variant.is_substitution: # Insertion/deletion / MNP
+        if not variant.is_substitution:  # Insertion/deletion / MNP
             # HS notes:
             # tabix index is loaded in memory, and the data is buffered in 37K (2^16) blocks (from reading the pysam and htslib)
             #   the 'fetch' take about 0.004 - 0.049 ms .. MUCH faster than a single disk seek & read (10-15ms)
@@ -312,7 +279,7 @@ class Ensembl(object):
             # but uses 70% of the time of CAVA.
             # Loading transcript tables in memory and a pyranges implmementaion would help.
             #  ... so so it is clearly cached .. and no need for further optimization.
-            #st_time = time.perf_counter_ns()
+            # st_time = time.perf_counter_ns()
             #    .. so basically a sliding windown caching
             # Using pyranges takes 8 ms per pyrange creation.. and 33 ms for an overlap operation with all transcripts.
             # ... but if refactored to find the overlap of 1000's of SNPs/intervals at a time
@@ -323,10 +290,10 @@ class Ensembl(object):
             # The only way to get faster is to build an im-,memory genome-binned
             # Create per chromosomes "bins" (100K bins,so about 30,000 elements dictionary .. poointing to  a list of transcripts.
             # .. cache last bin request.
-            hits1 = self.fetch_overlapping_transcripts(goodchrom,start,start+1)
-            hits2 = self.fetch_overlapping_transcripts(goodchrom,end-1,end)
-            #end_time0 = time.perf_counter_ns()
-            #sys.stdout.write("Time for two tabix transcripts fetch=" + str(end_time - st_time) + "\n")
+            hits1 = self.fetch_overlapping_transcripts(goodchrom, start, start + 1)
+            hits2 = self.fetch_overlapping_transcripts(goodchrom, end - 1, end)
+            # end_time0 = time.perf_counter_ns()
+            # sys.stdout.write("Time for two tabix transcripts fetch=" + str(end_time - st_time) + "\n")
 
             hitdict1 = dict()
             hitdict2 = dict()
@@ -341,17 +308,17 @@ class Ensembl(object):
                 if not (transcript.transcriptStart < end <= transcript.transcriptEnd): continue
                 #  if not strand == transcript.strand: continue
                 hitdict2[transcript.TRANSCRIPT] = transcript
-            #end_time = time.perf_counter_ns()
-            #sys.stdout.write("Two tabix fetch & iterate=" + str(end_time0 - st_time) + " "+ str(end_time - st_time) + "\n")
+            # end_time = time.perf_counter_ns()
+            # sys.stdout.write("Two tabix fetch & iterate=" + str(end_time0 - st_time) + " "+ str(end_time - st_time) + "\n")
 
             for key, transcript in hitdict1.items():
                 if len(self.genelist) > 0 and transcript.geneSymbol not in self.genelist: continue
                 if len(self.transcriptlist) > 0 and transcript.TRANSCRIPT not in self.transcriptlist: continue
 
-                if key in list(hitdict2.keys()): # e.g. both ends of the variant are in transcript.
+                if key in list(hitdict2.keys()):  # e.g. both ends of the variant are in transcript.
                     ret[key] = transcript
                 else:
-                    if variant.is_insertion: # insertions at the edges are TRULY outside, not even partially overlapping
+                    if variant.is_insertion:  # insertions at the edges are TRULY outside, not even partially overlapping
                         retOUT[key] = transcript  # partial overlap downstream of transcript
 
             if not variant.is_insertion:
@@ -362,7 +329,7 @@ class Ensembl(object):
                         retOUT[key] = transcript
 
         else:  # Variant is Substitution
-            hits1 = self.fetch_overlapping_transcripts(goodchrom,start,end)  #self.tabixfile.fetch(region=reg2)
+            hits1 = self.fetch_overlapping_transcripts(goodchrom, start, end)  # self.tabixfile.fetch(region=reg2)
             for line in hits1:
                 transcript = self.find_transcript_in_cache_or_in_file(line)
 
@@ -427,9 +394,7 @@ class Ensembl(object):
             if so_plus == 'intron_variant' and so_minus == 'intron_variant|splice_region_variant': return 'intron_variant', 'intron_variant'
         return so_plus, so_minus
 
-
         # Annotating a variant based on Ensembl data
-
 
     def annotate(self, variant, reference, impactdir):
         # Create left-aligned and right-aligned versions of the variant
@@ -475,9 +440,10 @@ class Ensembl(object):
             #         we want the CSN produced
             transcripts_allplus = set(list(transcripts_plus.keys()) + list(transcriptsOUT_plus.keys()))
             transcripts_allminus = set(list(transcripts_minus.keys()) + list(transcriptsOUT_minus.keys()))
-            transcripts = set(list(transcripts_plus.keys()) + list(transcripts_minus.keys()) + list(transcriptsOUT_plus.keys()) + list(transcriptsOUT_minus.keys()))
+            transcripts = set(list(transcripts_plus.keys()) + list(transcripts_minus.keys()) + list(
+                transcriptsOUT_plus.keys()) + list(transcriptsOUT_minus.keys()))
             transcriptsOUT = set()
-        else: # This will only lead to an "OUT" for insertions right at the edge.
+        else:  # This will only lead to an "OUT" for insertions right at the edge.
             transcripts_allplus = set(list(transcripts_plus.keys()))
             transcripts_allminus = set(list(transcripts_minus.keys()))
             transcripts = set(list(transcripts_plus.keys()) + list(transcripts_minus.keys()))
@@ -489,8 +455,8 @@ class Ensembl(object):
         transcripts_allminus = sorted(transcripts_allminus)
 
         # Annotating with transcripts that only partially overlap with the variant
-        for TRANSCRIPT in transcriptsOUT: # either plus or minus shifted variant is partially outside
-            if TRANSCRIPT in transcripts: continue # skip, if want the CSN annotated
+        for TRANSCRIPT in transcriptsOUT:  # either plus or minus shifted variant is partially outside
+            if TRANSCRIPT in transcripts: continue  # skip, if want the CSN annotated
             if TRANSCRIPT in list(transcriptsOUT_plus.keys()):
                 transcript = transcriptsOUT_plus[TRANSCRIPT]
             else:
@@ -574,7 +540,7 @@ class Ensembl(object):
             if TRANSCRIPT in list(transcripts_plus.keys()):
                 loc_plus = transcript.whereIsThisVariant(variant_plus)
             elif TRANSCRIPT in list(transcriptsOUT_plus.keys()):
-                #loc_plus = 'OUT'
+                # loc_plus = 'OUT'
                 loc_plus = transcript.whereIsThisVariant(variant_plus)
             else:
                 loc_plus = '.'
@@ -596,26 +562,27 @@ class Ensembl(object):
             #
             # XXX-HS need to add Start Gain in 5'UTR.. from SNP/insertion/deletions
             #
-            #notexonic_plus = (
+            # notexonic_plus = (
             #         ( loc_plus in ['5UTR','3UTR, '<-5UTR','3UTR->','-','OUT','.']) or ('In' in loc_plus) )
-            #if loc_plus.startswith("5UTR-) and variant.is_insertion is False: # Variants spanning start site.
+            # if loc_plus.startswith("5UTR-) and variant.is_insertion is False: # Variants spanning start site.
             #    notexonic_plus = False
             notexonic_plus = transcript.isOutsideTranslatedRegion(variant_plus)
             in_utr5_plus = False
             in_utr5_minus = False
             if variant.is_insertion:
                 if transcript.isPositionOutsideCDS_5prime(variant_plus.pos) or \
-                        (transcript.strand == 1 and variant_plus.pos==transcript.transcriptStart+1) or \
-                        (transcript.strand == -1 and variant_plus.pos == transcript.transcriptEnd+1):
+                        (transcript.strand == 1 and variant_plus.pos == transcript.transcriptStart + 1) or \
+                        (transcript.strand == -1 and variant_plus.pos == transcript.transcriptEnd + 1):
                     in_utr5_plus = True
-            elif transcript.isPositionOutsideCDS_5prime(variant_plus.pos) and transcript.isPositionOutsideCDS_5prime(variant_plus.pos +len(variant_plus.alt)-1):
+            elif transcript.isPositionOutsideCDS_5prime(variant_plus.pos) and transcript.isPositionOutsideCDS_5prime(
+                    variant_plus.pos + len(variant_plus.alt) - 1):
                 in_utr5_plus = True
 
             if difference is True:
-                #notexonic_minus = (
+                # notexonic_minus = (
                 #        ('5UTR' == loc_minus) or ('3UTR' == loc_minus) or ('-' in loc_minus) or (
                 #        'In' in loc_minus) or (loc_minus == 'OUT') or (loc_minus == '.'))  # Variants overlapping the ends of the protein
-                #if loc_minus.startswith("5UTR-Ex") and variant.is_insertion is False: # variants Spanning Start site.
+                # if loc_minus.startswith("5UTR-Ex") and variant.is_insertion is False: # variants Spanning Start site.
                 #    notexonic_minus = False
                 notexonic_minus = transcript.isOutsideTranslatedRegion(variant_minus)
                 if variant.is_insertion:
@@ -625,7 +592,7 @@ class Ensembl(object):
                         in_utr5_plus = True
                 elif transcript.isPositionOutsideCDS_5prime(
                         variant_plus.pos) and transcript.isPositionOutsideCDS_5prime(
-                        variant_plus.pos + len(variant_plus.alt) - 1):
+                    variant_plus.pos + len(variant_plus.alt) - 1):
                     in_utr5_plus = True
             else:
                 notexonic_minus = notexonic_plus
@@ -634,26 +601,27 @@ class Ensembl(object):
             utr5_ref = ''
             utr5_mut = ''
 
-            if in_utr5_plus  is True or in_utr5_minus is True or notexonic_plus is False or notexonic_minus is False:
+            if in_utr5_plus is True or in_utr5_minus is True or notexonic_plus is False or notexonic_minus is False:
                 self.cache_num += 1
                 self.exoncache_hit[transcript.TRANSCRIPT] = self.cache_num
                 if not transcript.TRANSCRIPT in list(self.proteinSeqs.keys()):
-                    protein, exonseqs, cds_ref, utr5_ref = transcript.getProteinSequence(reference, None, None, self.codon_usage)
+                    protein, exonseqs, cds_ref, utr5_ref = transcript.getProteinSequence(reference, None, None,
+                                                                                         self.codon_usage)
                     self.proteinSeqs[transcript.TRANSCRIPT] = protein
                     self.exonSeqs[transcript.TRANSCRIPT] = exonseqs
                     self.cds_ref[transcript.TRANSCRIPT] = cds_ref
                     transcript.exonseqs = exonseqs
                     self.utr5_ref[transcript.TRANSCRIPT] = utr5_ref
                     if len(self.proteinSeqs) > self.CACHESIZE:  # Cache of proteins and exons data
-                            vals = list(self.exoncache_hit.values())
-                            minval = min(vals)
-                            which_minval = vals.index(minval)
-                            rm_tr = '' + list(self.exoncache_hit.keys())[which_minval]
-                            self.exonSeqs.pop(rm_tr)
-                            self.exoncache_hit.pop(rm_tr)
-                            self.proteinSeqs.pop(rm_tr)
-                            self.cds_ref.pop(rm_tr)
-                            self.utr5_ref.pop(rm_tr)
+                        vals = list(self.exoncache_hit.values())
+                        minval = min(vals)
+                        which_minval = vals.index(minval)
+                        rm_tr = '' + list(self.exoncache_hit.keys())[which_minval]
+                        self.exonSeqs.pop(rm_tr)
+                        self.exoncache_hit.pop(rm_tr)
+                        self.proteinSeqs.pop(rm_tr)
+                        self.cds_ref.pop(rm_tr)
+                        self.utr5_ref.pop(rm_tr)
                 else:
                     protein = self.proteinSeqs[transcript.TRANSCRIPT]
                     exonseqs = self.exonSeqs[transcript.TRANSCRIPT]
@@ -664,36 +632,44 @@ class Ensembl(object):
                 cds_ref = ''
                 utr5_ref = ''
 
-            if notexonic_plus is True and in_utr5_plus  is False:
+            if notexonic_plus is True and in_utr5_plus is False:
                 mutprotein_plus = None
                 utr5_plus = None
             else:
-                mutprotein_plus, exonseqsalt_plus, cds_mut_plus, utr5_plus= transcript.getProteinSequence(reference, variant_plus, exonseqs, self.codon_usage)
+                mutprotein_plus, exonseqsalt_plus, cds_mut_plus, utr5_plus = transcript.getProteinSequence(reference,
+                                                                                                           variant_plus,
+                                                                                                           exonseqs,
+                                                                                                           self.codon_usage)
                 if mutprotein_plus is not None and (transcript.geneSymbol in self.selenogenes) and cds_ref is not None:
-                    mutprotein_plus = transcript.trimSelenoCysteine(cds_ref, cds_mut_plus, protein, mutprotein_plus, variant_plus)
+                    mutprotein_plus = transcript.trimSelenoCysteine(cds_ref, cds_mut_plus, protein, mutprotein_plus,
+                                                                    variant_plus)
 
             if difference:
                 if notexonic_minus and in_utr5_minus is False:
                     mutprotein_minus = None
                     utr5_minus = None
                 else:
-                    mutprotein_minus, exonseqsalt_minus , cds_mut_minus, utr5_minus = transcript.getProteinSequence(reference, variant_minus, exonseqs, self.codon_usage)
+                    mutprotein_minus, exonseqsalt_minus, cds_mut_minus, utr5_minus = transcript.getProteinSequence(
+                        reference, variant_minus, exonseqs, self.codon_usage)
                     if mutprotein_minus is not None and transcript.geneSymbol in self.selenogenes and cds_ref is not None:
-                        mutprotein_minus = transcript.trimSelenoCysteine(cds_ref, cds_mut_minus, protein, mutprotein_plus, variant_minus)
+                        mutprotein_minus = transcript.trimSelenoCysteine(cds_ref, cds_mut_minus, protein,
+                                                                         mutprotein_plus, variant_minus)
             else:
                 mutprotein_minus = mutprotein_plus
                 utr5_minus = utr5_plus
 
             # Creating the CSN annotations both for left and right aligned variant
             if TRANSCRIPT in transcripts_allplus:
-                csn_plus, protchange_plus = csn.getAnnotation(variant_plus, transcript, reference, protein, mutprotein_plus)
+                csn_plus, protchange_plus = csn.getAnnotation(variant_plus, transcript, reference, protein,
+                                                              mutprotein_plus)
                 csn_plus_str = csn_plus.getAsString()
             else:
                 csn_plus_str, protchange_plus = '.', ('.', '.', '.')
 
             if difference:
-                if TRANSCRIPT in transcripts_allminus :
-                    csn_minus, protchange_minus = csn.getAnnotation(variant_minus, transcript, reference, protein, mutprotein_minus)
+                if TRANSCRIPT in transcripts_allminus:
+                    csn_minus, protchange_minus = csn.getAnnotation(variant_minus, transcript, reference, protein,
+                                                                    mutprotein_minus)
                     csn_minus_str = csn_minus.getAsString()
                 else:
                     csn_minus_str, protchange_minus = '.', ('.', '.', '.')
@@ -714,7 +690,7 @@ class Ensembl(object):
                 if TRANSCRIPT in transcripts_allplus:
                     class_plus = conseq.getClassAnnotation(variant_plus, transcript, protein, mutprotein_plus, loc_plus,
                                                            int(self.options.args['ssrange']),
-                                                           reference, exonseqs, utr5_ref,utr5_plus)
+                                                           reference, exonseqs, utr5_ref, utr5_plus)
                 else:
                     class_plus = '.'
 
@@ -722,7 +698,7 @@ class Ensembl(object):
                     if TRANSCRIPT in transcripts_allminus:
                         class_minus = conseq.getClassAnnotation(variant_minus, transcript, protein, mutprotein_minus,
                                                                 loc_minus, int(self.options.args['ssrange']),
-                                                                reference, exonseqs, utr5_ref,utr5_minus)
+                                                                reference, exonseqs, utr5_ref, utr5_minus)
                     else:
                         class_minus = '.'
                 else:
@@ -765,16 +741,16 @@ class Ensembl(object):
                     so_minus = so_plus
 
             # Deciding which is the correct CSN and CLASS annotation
-            if transcript.strand == 1: #
+            if transcript.strand == 1:
                 class_plus, class_minus = self.correctClasses(csn_plus_str, class_plus, class_minus)
                 so_plus, so_minus = self.correctSOs(csn_plus_str, so_plus, so_minus)
-                if class_plus in ["ESS",'SS5','SS'] or so_plus.startswith("splice"):
+                if class_plus in ["ESS", 'SS5', 'SS'] or so_plus.startswith("splice"):
                     csn_plus_arr = csn_plus_str.split("_p.")
-                    if len(csn_plus_arr)==1 or csn_plus_arr[1] in ["=","(=)","="]:
-                        csn_plus_str = csn_plus_arr[0]  + "_p.?"
-                if class_minus in ["ESS",'SS5','SS'] or so_minus.startswith("splice"):
+                    if len(csn_plus_arr) == 1 or csn_plus_arr[1] in ["=", "(=)", "="]:
+                        csn_plus_str = csn_plus_arr[0] + "_p.?"
+                if class_minus in ["ESS", 'SS5', 'SS'] or so_minus.startswith("splice"):
                     csn_minus_arr = csn_minus_str.split("_p.")
-                    if len(csn_minus_arr) == 1 or csn_minus_arr[1] in ["=", "(=)","="]:
+                    if len(csn_minus_arr) == 1 or csn_minus_arr[1] in ["=", "(=)", "="]:
                         csn_minus_str = csn_minus_arr[0] + "_p.?"
                 CSNstring += csn_plus_str
                 CLASSstring += class_plus
@@ -790,11 +766,11 @@ class Ensembl(object):
             else:
                 class_plus, class_minus = self.correctClasses(csn_minus_str, class_plus, class_minus)
                 so_plus, so_minus = self.correctSOs(csn_minus_str, so_plus, so_minus)
-                if class_plus in ["ESS",'SS5','SS'] or so_plus.startswith("splice"):
+                if class_plus in ["ESS", 'SS5', 'SS'] or so_plus.startswith("splice"):
                     csn_plus_arr = csn_plus_str.split("_p.")
-                    if len(csn_plus_arr)==1 or csn_plus_arr[1] in ["=","(=)"]:
-                        csn_plus_str = csn_plus_arr[0]  + "_p.?"
-                if class_minus in ["ESS",'SS5','SS']  or so_minus.startswith("splice"):
+                    if len(csn_plus_arr) == 1 or csn_plus_arr[1] in ["=", "(=)"]:
+                        csn_plus_str = csn_plus_arr[0] + "_p.?"
+                if class_minus in ["ESS", 'SS5', 'SS'] or so_minus.startswith("splice"):
                     csn_minus_arr = csn_minus_str.split("_p.")
                     if len(csn_minus_arr) == 1 or csn_minus_arr[1] in ["=", "(=)"]:
                         csn_minus_str = csn_minus_arr[0] + "_p.?"
@@ -887,7 +863,7 @@ class Ensembl(object):
             if self.options.args['ontology'].upper() in ['CLASS', 'BOTH']: variant.addFlag('ALTCLASS', ALTCLASSstring)
             if self.options.args['ontology'].upper() in ['SO', 'BOTH']: variant.addFlag('ALTSO', ALTSOstring)
 
-        if ('givealt' in self.options.args and  self.options.args['givealt'] is False) or \
+        if ('givealt' in self.options.args and self.options.args['givealt'] is False) or \
                 ('givealtflag' in self.options.args and self.options.args['givealtflag']):
             variant.addFlag('ALTFLAG', ALTFLAGstring)
 
@@ -909,7 +885,7 @@ class dbSNP(object):
         # Checking if variant is a SNP at all
         if variant.is_substitution:
             # Fetching data from dbSNP database
-            goodchrom = core.convert_chrom(variant.chrom,self.tabixfile.contigs)
+            goodchrom = core.convert_chrom(variant.chrom, self.tabixfile.contigs)
             if goodchrom is None:
                 variant.addFlag('DBSNP', '')
                 return variant
@@ -945,7 +921,7 @@ class Reference(object):
         lengths = self.fastafile.lengths
         references = self.fastafile.references
         self.reflens = dict()
-        for i in range(0,len(lengths)):
+        for i in range(0, len(lengths)):
             chrom = str(references[i])
             self.reflens[chrom] = lengths[i]
             self.reflens[chrom.upper()] = lengths[i]
@@ -955,12 +931,12 @@ class Reference(object):
                 self.reflens[chrom[3:].upper()] = lengths[i]
                 self.reflens[chrom[3:].lower()] = lengths[i]
             else:
-                self.reflens["chr"+chrom] = lengths[i]
-                self.reflens["CHR"+chrom.upper()] = lengths[i]
+                self.reflens["chr" + chrom] = lengths[i]
+                self.reflens["CHR" + chrom.upper()] = lengths[i]
                 self.reflens["chr" + chrom.upper()] = lengths[i]
-                self.reflens["chr"+chrom.lower()] = lengths[i]
+                self.reflens["chr" + chrom.lower()] = lengths[i]
 
-            if chrom in ["chrM","chrMT","M","MT","chrM"]:
+            if chrom in ["chrM", "chrMT", "M", "MT", "chrM"]:
                 self.reflens["chrM"] = lengths[i]
                 self.reflens["chrMT"] = lengths[i]
                 self.reflens["CHRM"] = lengths[i]
@@ -991,46 +967,44 @@ class Reference(object):
         #    so reading 10-20MB takes the same amount of time as a single disk seek.
         # For exome, there is one indel/gene and each gene is 1MB (average), so a 5MB cache insures 5X cache reuse(hits)
         # if dealing with SNPs or whole genome data, other elements, a smaller cache will reap benefits too .. up to about 5MB.
-        if chrom != self.chrom or start < self.start0+1 or endpos > self.endpos:
+        if chrom != self.chrom or start < self.start0 + 1 or endpos > self.endpos:
             fetch_start = start - self.PAD
-            if fetch_start<1:
-                fetch_start =1
+            if fetch_start < 1:
+                fetch_start = 1
             fetch_end = start + self.CACHESIZE
             if fetch_end < endpos:
                 fetch_end = endpos + self.PAD
             if fetch_end > self.reflens[chrom]:
                 fetch_end = self.reflens[chrom]
-            self.start0 = fetch_start-1
+            self.start0 = fetch_start - 1
             self.endpos = fetch_end
             self.chrom = chrom
- #           st_time = time.perf_counter_ns()
- #           self.cache = self.fastafile.fetch(self.chrom, self.start0-110000, self.start0-109997)
- #           end_time = time.perf_counter_ns()
- #           sys.stdout.write("Time for small retrieval=" + str(end_time - st_time) + "\n")  # 15 ms
- #           st_time = time.perf_counter_ns()
+            #           st_time = time.perf_counter_ns()
+            #           self.cache = self.fastafile.fetch(self.chrom, self.start0-110000, self.start0-109997)
+            #           end_time = time.perf_counter_ns()
+            #           sys.stdout.write("Time for small retrieval=" + str(end_time - st_time) + "\n")  # 15 ms
+            #           st_time = time.perf_counter_ns()
             self.cache = self.fastafile.fetch(chrom, self.start0, self.endpos)
- #           end_time = time.perf_counter_ns()
- #           sys.stdout.write("Time for 6MB retrieval="+str(end_time-st_time)+"\n") # 73 milliseconds on mforge for 6MB
+        #           end_time = time.perf_counter_ns()
+        #           sys.stdout.write("Time for 6MB retrieval="+str(end_time-st_time)+"\n") # 73 milliseconds on mforge for 6MB
 
-        return self.cache[(start-1-self.start0):(endpos-self.start0)]
-
-
-
+        return self.cache[(start - 1 - self.start0):(endpos - self.start0)]
 
         # Retrieving the sequence of a genomic region
+
     def getReference(self, chrom, start, end):
         # Checking if chromosome name exists
         # XXX-HS To make faster, could retrieve large blocks of sequence (2K)
         # .. and cache them .. then next retrieval would be against the cache.
         #
-        goodchrom = core.convert_chrom(chrom,self.fastafile.references)
+        goodchrom = core.convert_chrom(chrom, self.fastafile.references)
         if goodchrom is None:
             return None
             # Fetching data from reference genome
         if end < start:
             return core.Sequence('')
         if start < 1:
-            #start = 1
+            # start = 1
             # Changed this code .. because calling function needs to be aware of the coordinate violations
             raise Exception("CAVA: getReference: Position requested before first base\n")
         try:
@@ -1040,18 +1014,17 @@ class Reference(object):
                 last = self.fastafile.getReferenceLength(goodchrom)
             except:
                 ichrom = self.fastafile.references.index(goodchrom)
-                if ichrom>=0:
-                    last = self.fastafile.lengths()[ichrom]
+                if ichrom >= 0:
+                    last = self.fastafile.lengths[ichrom]
                 else:
-                    sys.stderr.write("CAVA:ERROR: Invalid chromosome "+goodchrom)  # should not happen
+                    sys.stderr.write("CAVA:ERROR: Invalid chromosome " + goodchrom)  # should not happen
                     return None
 
-
         if end > last:
-            #end = last
+            # end = last
             # Changed this code .. because calling function needs to be aware of the coordinate violations
             raise Exception("CAVA: getReference: Position requested after last base\n")
-#        seq = self.fastafile.fetch(goodchrom, start - 1, end)  # 0-based position
+        #        seq = self.fastafile.fetch(goodchrom, start - 1, end)  # 0-based position
 
         seq = self.__getseq_from_cache_or_file(goodchrom, start, end)
         return core.Sequence(seq.upper())
