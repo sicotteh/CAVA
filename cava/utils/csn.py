@@ -35,7 +35,8 @@ class CSNAnnot:
             else:
                 ret += str(self.intr1)
         # XXX the current recommendation for repeat is  single point .. not a range
-        if (self.coord2 is not None) and (not '[' in self.dna) and (
+        # ... unless it's an insertion of a repeat with 0 copies on ref.
+        if (self.coord2 is not None) and ('ins' in self.dna or ( '[' not in self.dna)) and (
                 self.coord1 != self.coord2 or (self.coord1 == self.coord2 and self.intr1 != self.intr2)):
             ret += '_' + str(self.coord2)
             if self.intr2 != 0:
@@ -90,6 +91,8 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
         return csn, protchange
 
     # Creating protein level annotation
+    skip_repeats = False
+
     where = transcript.whereIsThisVariant(variant)
     if mutprot is None:  # This occurs when Variant crosses the intron-exon boundary or is multi-exon OR variant outside CDS
         if prot is None or len(prot) == 0:
@@ -97,7 +100,7 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
         else:
             protein, protchange = '_p.?', ('.', '.', '.')
         skip_repeats = False
-    elif (not '-' in where and "Ex" in where):  # Purely in the one coding  exons
+    elif not '-' in where and "Ex" in where:  # Purely in the one coding  exons
         protein, protchange = makeProteinString(variant, prot, mutprot, coord1)
         skip_repeats = False
     elif where.startswith('5UTR-Ex'):  # Need an HGVS p.? to indicate there is an effect on protein.
@@ -132,23 +135,28 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
     # Transforming coordinates if the variant is a an insertion
     # of a multi-base repeat so that the range points to the repeat unit..
     # .. as opposed to the insertion site.
-    if (variant.is_insertion is True or variant.is_deletion is True) and len(dna_ins) > 0 and dna_ins.find(
-            '[') >= 0:  # repeated sequence,repeat_unit[repeat_len]
-
+    if (variant.is_insertion is True or variant.is_deletion is True) and (len(dna_ins) == 0 or dna_ins.find(
+            '[') >= 0):  # empty or repeated sequence,repeat_unit[repeat_len] (skip if dup)
         [left_result, right_result, full_result] = scan_for_repeat(variant, reference)
         if transcript.strand == 1:
-            if left_result is None or left_result[2] == 0:  # no repeats on ref
+            if left_result is None:
                 skip_repeats = True
-            elif left_result[2] == 1 and left_result[3] == 0:  # no repeats on ref
+            elif (left_result[2] == 0 and left_result[3]<=1):  # Simple insertion
                 skip_repeats = True
-            elif left_result[2] == 1 and left_result[3] == 2:  # Duplication
+            elif left_result[2] == 1 and left_result[3] == 0:  #Simple deletion
                 skip_repeats = True
+            elif left_result[3] - left_result[2] == 1:  # Duplication
+                skip_repeats = True
+                dna, dna_ins = 'dup', 'dup'
             else:
                 range_start = left_result[1]
                 repeat_unit = left_result[4]
                 n_repeat_ref = left_result[2]
                 n_repeat_alt = left_result[3]
-                range_end = range_start + len(repeat_unit) * n_repeat_ref - 1
+                if variant.is_insertion:
+                    range_end = range_start+1
+                else:
+                    range_end = range_start + len(repeat_unit) * n_repeat_ref - 1
                 # Check again to make sure that shifted range did not end up in coding region and repeat length is not multiple of 3.
                 coord1new, intr1new, nout1new = transformToCSNCoordinate(range_start, transcript)
                 coord2new, intr2new, nout2new = transformToCSNCoordinate(range_end, transcript)
@@ -159,20 +167,25 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                                 intr2new is None or intr2new == 0)):  # if not at least one end in CDS
                             skip_repeats = True
 
-            if skip_repeats is False:
-                coord1, intr1, nout1 = coord1new, intr1new, nout1new
-                coord2, intr2, nout2 = coord2new, intr2new, nout2new
-                dna = repeat_unit + '[' + str(n_repeat_ref) + ']%3B[' + str(n_repeat_alt) + ']'
-            else:  # Repeat is not allowed, try next best thing.
-                try:
-                    dna, dna_ins = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,
-                                                     nout1, nout2, True)
-                except TypeError:
-                    dna, dna_ins = 'X', 'X'
+                if skip_repeats is False:
+                    coord1, intr1, nout1 = coord1new, intr1new, nout1new
+                    coord2, intr2, nout2 = coord2new, intr2new, nout2new
+                    if n_repeat_ref == 0:
+                        dna = 'ins' + repeat_unit + '[' + str(n_repeat_alt) + ']'
+                    else:
+                        dna = repeat_unit + '[' + str(n_repeat_ref) + ']%3B[' + str(n_repeat_alt) + ']'
+                else:  # Repeat is not allowed, try next best thing.
+                    try:
+                        dna, dna_ins = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,
+                                                         nout1, nout2, True)
+                    except TypeError:
+                        dna, dna_ins = 'X', 'X'
         else:  # strand == -1
-            if right_result is None or right_result[2] == 0:  # ref is not repeat
+            if right_result is None:
                 skip_repeats = True
-            elif right_result[2] == 1 and right_result[3] == 2:  # Duplication
+            elif right_result[2] == 0 and right_result[3] == 1:  # ref is not repeat and only one copy inserted..
+                skip_repeats = True
+            elif right_result[3] - right_result[2] == 1:  # Duplication
                 skip_repeats = True
                 dna, dna_ins = 'dup', 'dup'
             elif right_result[2] == 1 and right_result[3] == 0:  # Simple deletion
@@ -191,18 +204,22 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                         if ((intr1new is None or intr1new == 0) or (
                                 intr2new is None or intr2new == 0)):  # if not at least one end in CDS
                             skip_repeats = True  # Cannot allow not multiple of 3 in CDS
-            if skip_repeats is False:
-                dna = core.Sequence(repeat_unit).reverseComplement() + '[' + str(n_repeat_ref) + ']%3B[' + str(
-                    n_repeat_alt) + ']'
-                # 1/30/2023 for minus strand need coord1 to be highest genomic (lowest cDNA)
-                coord1, intr1, nout1 = coord2new, intr2new, nout1new
-                coord2, intr2, nout2 = coord1new, intr1new, nout2new
-            else:  # Repeat is not allowed, try next best thing.
-                try:
-                    dna, dna_ins = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,
-                                                     nout1, nout2, True)
-                except TypeError:
-                    dna, dna_ins = 'X', 'X'
+                if skip_repeats is False:
+                    if n_repeat_ref == 0: # insertion of a repeat.
+                        dna = 'ins' + core.Sequence(repeat_unit).reverseComplement() + \
+                              '[' + str(n_repeat_alt) + ']'
+                    else:
+                        dna = core.Sequence(repeat_unit).reverseComplement() + '[' + str(n_repeat_ref) + ']%3B[' + str(
+                            n_repeat_alt) + ']'
+                    # 1/30/2023 for minus strand need coord1 to be highest genomic (lowest cDNA)
+                    coord1, intr1, nout1 = coord2new, intr2new, nout1new
+                    coord2, intr2, nout2 = coord1new, intr1new, nout2new
+                else:  # Repeat is not allowed (because it is a del or dup or violates CDS rules), try next best thing.
+                    try:
+                        dna, dna_ins = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,
+                                                         nout1, nout2, True)
+                    except TypeError:
+                        dna, dna_ins = 'X', 'X'
     # shift coordinates if have to point to previous bases for dup or inv.
     if dna_ins == 'dup':
         # Shift position for insertions longer than 1 bp that are "dup"
@@ -653,7 +670,7 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
         if transcript.strand == 1:
             return variant.ref + '>' + variant.alt, ''
         else:
-            return variant.ref.reverseComplement() + '>' + variant.alt.reverseComplement(), ''
+            return core.Sequence(variant.ref).reverseComplement() + '>' + core.Sequence(variant.alt).reverseComplement(), ''
 
     # Returning genomic DNA level annotation if variant is an insertion
     rep_unit = variant.alt
@@ -665,7 +682,7 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
     replen = len(rep_unit)
 
     if variant.is_insertion:
-        if repn > 1 and skip_repeats is False:  # Should try to represent as repeat if allowable
+        if repn > 1 and skip_repeats is False:  # if repn>1 .. then it's not a dup
             # because repn>1, it is not a dup.. otherwise assume repeats take precedence over inversions
             in_coding_region = variant.pos - 1 >= transcript.codingStartGenomic and variant.pos <= transcript.codingEndGenomic
             fully_inside_exon = (coord1 is not None and (intr1 is None or intr1 == 0)) and (
@@ -676,12 +693,13 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
             # outside transcript or in intron can have any repeat_unit len
             if in_coding_region is False or \
                     ((replen % 3 == 0 and fully_inside_exon is True) or at_least_partly_inside_exon is False):
+                # If get here, repeats allowed.. so shouldn't not be called on a second pass.
                 if transcript.strand == 1:
-                    rep_str = rep_unit + '[' + str(repn) + ']'
-                    return rep_str, rep_str
+                    rep_str = rep_unit + '[' + str(repn) + ']'  # Not final repeat annotation .. this will just trigger repeat annotation
+                    return 'ins'+rep_str, 'ins'+rep_str
                 else:
-                    rep_str = core.Sequence(rep_unit).reverseComplement() + '[' + str(repn) + ']'
-                    return rep_str, rep_str
+                    rep_str = core.Sequence(rep_unit).reverseComplement() + '[' + str(repn) + ']'  # Not final repeat annotation .. this will just trigger repeat annotation
+                    return 'ins'+rep_str, 'ins'+rep_str
             else:  # Not a repeat multiple of 3 and at least partially in coding region.
                 skip_repeats = True
 
@@ -691,7 +709,6 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
             # so We only have to check for repeats before insertion point.
             # coord1 points to the repeated base i 1-base coordinates (does not point after insertion site like variant.pos)
             # if variant.pos - len(insert) >= transcript.transcriptStart and variant.pos - 1 <= transcript.transcriptEnd:
-
             goodchrom = core.convert_chrom(variant.chrom, reference.fastafile.references)
             if goodchrom is None:
                 # Probably should have an error message
@@ -709,15 +726,15 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
                 if skip_repeats is True:
                     return 'dup', 'dup'  # Dups, but coordinate of insertion will be adjusted to point to a range
                 else:
-                    return '[2]', '[2]'
+                    return 'ins'+variant.alt+'[1]', 'ins'+variant.alt+'[1]'  # Not final repeat annotation .. this will just trigger repeat annotation
             if len(variant.alt) == 1:
                 return 'ins' + variant.alt, ''  # cannot be an inversion of length 1
-            rev = variant.alt.reverseComplement()
+            rev = core.Sequence(variant.alt).reverseComplement()
             if rev == before:  # Insertion of an inverted copy of the sequence just 5' of insertion site
                 return 'insinv', 'insinv'
             return 'ins' + variant.alt, ''
         else:  # transcript.strand == -1
-            rev = variant.alt.reverseComplement()
+            rev = core.Sequence(variant.alt).reverseComplement()
             # If get here, We are guaranteed that the variants is left shifted if the transcript strand is -1
             # if (variant.pos + (len(insert)-1) <= transcript.transcriptEnd): #' 5' shift (right)
             try:
@@ -729,12 +746,12 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
                 if skip_repeats is True:
                     return 'dup', 'dup'
                 else:
-                    return '[2]', '[2]'
+                    return 'ins'+core.Sequence(variant.alt).reverseComplement()+'[1]', 'ins'+variant.alt+'[1]'
             if len(rev) == 1:  # Cannot be inversion of length 1
                 return 'ins' + rev, ''
             if rev == after:
                 return 'insinv', 'insinv'
-            return 'ins' + variant.alt.reverseComplement(), ''
+            return 'ins' + core.Sequence(variant.alt).reverseComplement(), ''
 
     # Returning DNA level annotation if variant is a deletion
     if variant.is_deletion:
@@ -755,10 +772,10 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
                     ((replen % 3 == 0 and fully_inside_exon is True) or at_least_partly_inside_exon is False):
                 if repn > 1:  # enough evidence that it could be a repeat to warrant scanning ref for repeats
                     if transcript.strand == 1:
-                        rep_str = rep_unit + '[' + str(repn) + ']'
+                        rep_str = rep_unit + '[' + str(repn) + ']'  # Not final repeat annotation .. this will just trigger repeat annotation
                         return rep_str, rep_str
                     else:
-                        rep_str = core.Sequence(rep_unit).reverseComplement() + '[' + str(repn) + ']'
+                        rep_str = core.Sequence(rep_unit).reverseComplement() + '[' + str(repn) + ']'  # Not final repeat annotation .. this will just trigger repeat annotation
                         return rep_str, rep_str
             #               else if only one copy of repeat unit, check the sequence 5' of variant
             else:  # Cannot annotate as repeat
@@ -791,18 +808,18 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
                 return 'del', ''
             # Checking if variant is a duplication
             if after == variant.ref:
-                return 'del', 'del[' + str(repn) + ']'
+                return 'del', 'del[' + str(repn) + ']' # Not final repeat annotation .. this will just trigger repeat annotation
             return 'del', 'del'
 
     # Returning DNA level annotation if variant is a complex indel
     if variant.is_complex:  # delins or inv
         if len(variant.ref) == len(variant.alt):
-            if variant.ref == variant.alt.reverseComplement():  # has to be longer than 1 bp (otherwise would be substitution)
+            if variant.ref == core.Sequence(variant.alt).reverseComplement():  # has to be longer than 1 bp (otherwise would be substitution)
                 return 'inv', ''
         if transcript.strand == 1:
             return 'delins' + variant.alt, ''
         else:
-            return 'delins' + variant.alt.reverseComplement(), ''
+            return 'delins' + core.Sequence(variant.alt).reverseComplement(), ''
 
 
 # Calculating protein level annotation of the variant
@@ -1560,7 +1577,7 @@ def make_genomic_DNA_annotation(variant, reference):
             return '[2]', '[2]'  # Dups, but coordinate of insertion will be adjusted to point to a range
         if len(insert) == 1:
             return 'ins' + variant.alt, ''  # cannot be an inversion (no len=1 inversions)
-        rev = insert.reverseComplement()
+        rev = core.Sequence(insert).reverseComplement()
         if rev == before:  # Insertion of an inverted copy of the sequence just 5' of insertion site
             return 'ins' + str(variant.pos - len(variant.alt)) + '_' + str(variant.pos - 1) + 'inv', ''
         return 'ins', ''
@@ -1633,7 +1650,7 @@ def get_genomic_Annotation(variant, build, reference):
 
     if variant.is_complex:  # delins or inv
         if len(variant.ref) == len(variant.alt):
-            if variant.ref == variant.alt.reverseComplement():  # has to be longer than 1 bp (otherwise would be substitution)
+            if variant.ref == core.Sequence(variant.alt).reverseComplement():  # has to be longer than 1 bp (otherwise would be substitution)
                 return contig + ":g." + str(variant.pos) + '_' + str(variant.pos + (len(variant.ref) - 1)) + 'inv'
         return contig + ":g." + str(variant.pos) + '_' + str(
             variant.pos + (len(variant.ref) - 1)) + "delins" + variant.alt

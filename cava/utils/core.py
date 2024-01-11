@@ -154,7 +154,7 @@ class Variant(object):
         if self.alignonplus is not None:
             return self.alignonplus
         if self.chrom not in reference.reflens or not (self.is_insertion or self.is_deletion):
-            [self.pos, self.ref, self.alt] = self.remove_same_bases_ref_alt()  # Trime redundant bases from SNP/MNP
+            [self.pos, self.ref, self.alt] = self.remove_same_bases_ref_alt()  # Trime redufndant bases from SNP/MNP
             self.alignononplus = self
             return self
         reflen = reference.reflens[self.chrom]
@@ -509,10 +509,10 @@ class Record(object):
         for variant in self.variants:
             if variant is not None:
                 variant.annotate(ensembl, dbsnp, reference, impactdir)
-                if variant.alignonplus is not None:
-                    variant.addFlag('HGVSg', csn.get_genomic_Annotation(variant.alignonplus, self.build, reference))
-                else:
-                    variant.addFlag('HGVSg', csn.get_genomic_Annotation(variant, self.build, reference))
+                variant_right_shifted = variant.alignOnPlusStrand(reference)
+                variant.addFlag('HGVSg', csn.get_genomic_Annotation(variant_right_shifted, self.build, reference))
+                #else:
+                    #variant.addFlag('HGVSg', csn.get_genomic_Annotation(variant, self.build, reference))
 
     # Writing record (a ref, multiple alts) to output file
     def output(self, outformat, outfile, options, genelist, transcriptlist, snplist, stdout):
@@ -1357,11 +1357,15 @@ class Transcript(object):
         # if not self.isOutsideTranslatedRegion(variant):
         for exon in self.exons:
             if self.strand == 1:
-                if variant.overlap(exon.end + 1, exon.end + 2): return True
-                if exon.index > 1 and variant.overlap(exon.start - 1, exon.start): return True
+                if variant.overlap(exon.end + 1, exon.end + 2):
+                    return True
+                if exon.index > 1 and variant.overlap(exon.start - 1, exon.start):
+                    return True
             else:
-                if exon.index > 1 and variant.overlap(exon.end + 1, exon.end + 2): return True
-                if variant.overlap(exon.start - 1, exon.start): return True
+                if exon.index > 1 and variant.overlap(exon.end + 1, exon.end + 2):
+                    return True
+                if variant.overlap(exon.start - 1, exon.start):
+                    return True
         return False
         # else:
         # return False

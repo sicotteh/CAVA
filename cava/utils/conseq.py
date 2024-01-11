@@ -186,11 +186,13 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
     if where.find('-fsIn') > 0: return 'splice_acceptor_variant'
 
     if where.find('In') >= 0:
-
         if isInSpliceDonor(transcript, variant): return 'splice_donor_variant'
         if isInSpliceAcceptor(transcript, variant): return 'splice_acceptor_variant'
-
-        if transcript.intronLength(int(where[where.find('/') + 1:])) >= 9:
+        intstr = where[where.find('/') + 1:]
+        dashpos = intstr.find('-')
+        if dashpos >= 0:
+            intstr = intstr[0:dashpos]
+        if transcript.intronLength(int(intstr)) >= 9:
             if transcript.isIn_SS5_Site(variant): return 'splice_donor_5th_base_variant'
 
     out = []

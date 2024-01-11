@@ -8,7 +8,7 @@ with open(os.path.join(os.path.dirname(__file__), 'VERSION')) as version_file:
 
 # Command line argument parsing
 descr = 'CAVA refseq v' + version
-epilog = '\nExample usage: RefSeqDB.py  -e GCF_000001405.39_GRCh38.p13 -o refseq_db_75 -D refseq_75\n' \
+epilog = '\nExample usage: RefSeqDB.py  -r GCF_000001405.39_GRCh38.p13 -o refseq_db_75 -D refseq_75\n' \
         'Note: by default, hg19 will be created using crossmap\n' \
         'Version: {}\n' \
          '\n'.format(version)

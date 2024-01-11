@@ -571,8 +571,7 @@ class Ensembl(object):
             in_utr5_minus = False
             if variant.is_insertion:
                 if transcript.isPositionOutsideCDS_5prime(variant_plus.pos) or \
-                        (transcript.strand == 1 and variant_plus.pos == transcript.transcriptStart + 1) or \
-                        (transcript.strand == -1 and variant_plus.pos == transcript.transcriptEnd + 1):
+                        (transcript.strand == 1 and variant_plus.pos == transcript.transcriptStart + 1):
                     in_utr5_plus = True
             elif transcript.isPositionOutsideCDS_5prime(variant_plus.pos) and transcript.isPositionOutsideCDS_5prime(
                     variant_plus.pos + len(variant_plus.alt) - 1):
@@ -586,14 +585,13 @@ class Ensembl(object):
                 #    notexonic_minus = False
                 notexonic_minus = transcript.isOutsideTranslatedRegion(variant_minus)
                 if variant.is_insertion:
-                    if transcript.isPositionOutsideCDS_5prime(variant_plus.pos) or \
-                            (transcript.strand == 1 and variant_plus.pos == transcript.transcriptStart + 1) or \
-                            (transcript.strand == -1 and variant_plus.pos == transcript.transcriptEnd + 1):
-                        in_utr5_plus = True
+                    if transcript.isPositionOutsideCDS_5prime(variant_minus.pos) or \
+                            (transcript.strand == -1 and variant_minus.pos == transcript.transcriptEnd + 1):
+                        in_utr5_minus = True
                 elif transcript.isPositionOutsideCDS_5prime(
-                        variant_plus.pos) and transcript.isPositionOutsideCDS_5prime(
-                    variant_plus.pos + len(variant_plus.alt) - 1):
-                    in_utr5_plus = True
+                        variant_minus.pos) and transcript.isPositionOutsideCDS_5prime(
+                    variant_minus.pos + len(variant_plus.alt) - 1):
+                    in_utr5_minus = True
             else:
                 notexonic_minus = notexonic_plus
                 in_utr5_minus = in_utr5_plus

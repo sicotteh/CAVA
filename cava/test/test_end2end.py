@@ -255,7 +255,7 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         rec.variants[0].getFlag('CSN')
-        self.assertEqual('c.-1_1insC', rec.variants[0].getFlag('CSN'))  # Limitation:  Start-gain variants in UTR5 are not annotated.
+        self.assertEqual('c.-1_1insC_p.?', rec.variants[0].getFlag('CSN'))  # Limitation:  Start-gain variants in UTR5 are not annotated.
         self.assertEqual('5PU', rec.variants[0].getFlag('CLASS'))
 
     def test_hg38_ins_in_Ter(self): # Cannot be a Frameshift, needs to be a Stop Loss.
@@ -492,7 +492,7 @@ class MyTestCase(unittest.TestCase):
         line = "2\t47805601\tdupT_intronic\tA\tAT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('c.3557-16T[13]%3B[14]_p.?', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.3557-4dup', rec.variants[0].getFlag('CSN'))
 
 
 # chr2-47805710-A-ATA
@@ -551,7 +551,7 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('c.68-7T>A', rec.variants[0].getFlag('CSN'))
-        self.assertEqual('c.68-6A[3]%3B[4]_p.?', rec.variants[1].getFlag('CSN')) # not in ESS or donor/acceptor, so no predicted impact on protein .. and variant not in protein.
+        self.assertEqual('c.68-4dup', rec.variants[1].getFlag('CSN')) # not in ESS or donor/acceptor, so no predicted impact on protein .. and variant not in protein.
 
 # ID=chr13-32363178-G-GG
 # NM_000059.4(BRCA2):c.7977-1dupG
@@ -641,7 +641,8 @@ class MyTestCase(unittest.TestCase):
         line = "chr3\t37050680\tnotarepeat\tG\tGGAGAGA\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('c.*27_*28insGAGAGA', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.*28_*29insGA[3]', rec.variants[0].getFlag('CSN'))
+        a=1
 
 
  # This deletion should be both repeat in
@@ -700,7 +701,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('NC_000001.11:g.933742G[8]%3B[9]',
                          rec.variants[0].getFlag('HGVSg'))  # should only be one value
         # purely intronic variant, no protein and repeat-style annotation.
-        self.assertEqual('c.843-2030G[8]%3B[9]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.843-2023dup', rec.variants[0].getFlag('CSN'))
 
 #chr1	933548	.	A	AG	.	IMP	CAVA_TYPE=Insertion;CAVA_TRANSCRIPT=NM_001385641.1;CAVA_GENE=SAMD11;
 # CAVA_GENEID=SAMD11;CAVA_TRINFO=+/20653bp/14/3465bp/844;CAVA_LOC=In4/5;
@@ -717,7 +718,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('NC_000001.11:g.933549G[6]%3B[7]',
                          rec.variants[0].getFlag('HGVSg'))  # should only be one value
         # purely intronic variant, no protein and repeat-style annotation.
-        self.assertEqual('c.843-2223G[6]%3B[7]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.843-2218dup', rec.variants[0].getFlag('CSN'))
 
 
 #chr1	1103993	.	C	CT	.	IMP	CAVA_TYPE=Insertion;CAVA_TRANSCRIPT=NM_017891.5;CAVA_GENE=C1orf159;CAVA_GENEID=C1orf159;
@@ -734,7 +735,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('NC_000001.11:g.1103994T[10]%3B[11]',
                          rec.variants[0].getFlag('HGVSg'))  # should only be one value
         # purely intronic variant, no protein and repeat-style annotation.
-        self.assertEqual('c.-135-11900A[10]%3B[11]_p.?', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.-135-11891dup', rec.variants[0].getFlag('CSN'))
 
 
 
@@ -778,7 +779,7 @@ class MyTestCase(unittest.TestCase):
 
         self.assertEqual('c.697_701del_p.Met233_Ter234del', rec.variants[0].getFlag('ALTANN'))
         # transcript on the + strand and variants gets right shifted outside of variant scope.
-        self.assertEqual('.', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.702_*5del_p.?', rec.variants[0].getFlag('CSN'))
 
     def test_IFvsSG(self):
         line = "chr7\t142751829\tSG_not_IF\tC\tT\t30\tPASS\t.\tGT\t0/1\n"
@@ -1004,7 +1005,7 @@ class MyTestCase(unittest.TestCase):
         line = "chr12\t32896726\t\tTGCCATGGGGCCGGTGGGGGCGACCGAGCTGCTCGCCTGCCTCTGGACTCGCGGGCGAAGCC\tT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('ESS', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('IM', rec.variants[0].getFlag('CLASS'))
 
     def testExonDelIntron2Intron(self): # chr12:32878910-32879040
         line = "chr12\t32878910\t\tGATATCCTACCTTTAGCATGTCATAGGTTTTAGGAACAGGGGAACGGCCTCCAACAAAATCATTTTCAACCAAGTGTAGGTTGTAGACATACTCAGGAACACTGCTGGTTCGGTGAAGATTTCCTGCAATC\tG\t30\tPASS\t.\tGT\t0/1\n"
@@ -1017,11 +1018,50 @@ class MyTestCase(unittest.TestCase):
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('ESS', rec.variants[0].getFlag('CLASS'))
 
-    def testESSinUTR3(self): # BTD(NM_001370658.1):c.-32-13T>G
-        line = "chr17\t80104552\t.\tT\tTTC\t30\tPASS\t.\tGT\t0/1\n"
+    def testnotESSinUTR5(self):# Insertion right before ESS at 3' end of intron
+        # .. ..but it's a repeated element and 3'shifting it would put it in the ESS
+        # According to 29680930, the 3'(acceptor) site first bind to the poly pyrimidine track and AG .. so
+        # shifting it left would be worst than shifting it right.. so
+        # Shift it right, means insertion is right after ESS .. so CLASS==5PU (but nor intronic)
+        line = "chr17\t80104552\t.\tC\tCAG\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
+        a=1
+        self.assertEqual('5PU', rec.variants[0].getFlag('CLASS'))
+
+    def testESSinUTR5(self): # Should lead to ESS
+        # Shift it right, means insertion is right after ESS .. so CLASS==5PU (but nor intronic)
+        line = "chr17\t80104552\t.\tC\tCA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        a=1
         self.assertEqual('ESS', rec.variants[0].getFlag('CLASS'))
+
+    def testESSvsFS(self):  # GAA(NM_001079804.3):c.-32-13T>G
+        line = "chr17\t80105746\t.\tT\tTAG\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        a = 1
+        self.assertEqual('FS', rec.variants[0].getFlag('CLASS'))
+
+    def testESSfromDel(self):  # GAA(NM_001079804.3):c.-32-13T>G
+        line = "chr17\t80105745\t.\tCTAGA\tC\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        a = 1
+        self.assertEqual('ESS', rec.variants[0].getFlag('CLASS'))
+
+    def testHGVSgPlus(self):
+        line = "chr13\t32339699\t.\tCAA\tC\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('NC_000013.11:g.32339700A[7]%3B[5]', rec.variants[0].getFlag('HGVSg'))
+
+    def test_hg38_test_insasdup(self):
+        line = "chr17\t43124093\tins_inframe_firstcodon\tC\tCCAT\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('c.1_3dup_p.Met1dup', rec.variants[0].getFlag('CSN'))
 
 class Options:
 
