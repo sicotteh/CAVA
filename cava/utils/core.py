@@ -882,6 +882,23 @@ class Tr_store:
     lasttr = dict
 
 
+class Secis(object):
+    def __init__(self,line):
+        cols = line.rstrip().split('\t')
+        #gene\tSECIS_maxstart\tSECIS_maxend\taccn\tlast_sec_pos\tcds_start\tcds_end\tmRNA_len\n
+        try:
+            for ai in [1,4,5,6]: # all of these must be defined integer
+                i = int(ai)
+            self.TRANSCRIPT = cols[3]
+            self.geneSymbol = cols[0]
+            cds_start = int(cols[5])
+            self.last_cesis = int(cols[1]) - cds_start +1 # 51 to 111 bp earlier than this, Stop codon will be recoded as Sel.
+            self.last_sel_fromATG = int(cols(4)) - cds_start + 1
+            self.cds_len = int(cols[6]) - cds_start+1
+        except:
+            self.geneSymbol = None
+
+
 # Class representing a single Ensembl transcript
 # noinspection PyUnresolvedReferences
 class Transcript(object):
@@ -901,6 +918,7 @@ class Transcript(object):
         self.codingStartGenomic = int(cols[9])  # coding start genomic 1-based
         self.codingEndGenomic = int(cols[10])  # coding end genomic 1-based (includes stop codon)
         self.is_selenocysteine = False
+        self.CESIS_data = None
         # Initializing and adding exons
         for i in range(1, len(cols) - 11, 2):
             self.exons.append(Exon(int((i + 1) / 2), int(cols[10 + i]),
@@ -1244,18 +1262,20 @@ class Transcript(object):
                 sys.stderr.write("ERROR: Variant crosses intron/exon boundary, cannot predict protein or utr5\n")
             return None, None, None, None  # Mutated protein is None when variant crosses intron/exon boundary. 2nd term not used by calling function for variant
 
-        if self.is_selenocysteine:  # some plants have selenocysteine genes on their mitochondrion, so selenocysteine genes have to ve first.
+        if  self.chrom in ['chrM', 'chrMT', 'M', 'MT']:  # No selenocysteine genes in mitochondrion genome
+            ret = Sequence(codingsequencealt).translate('4')
+        elif self.is_selenocysteine:  # some plants have selenocysteine genes on their mitochondrion, so selenocysteine genes have to ve first.
             # the 'CDS' annotation of that transcript was trusted.. any TAG remaining will be recoded
             # as Sec/U = Selenocysteine .. and not as 'X'
             # Some 25+ human genes genes recode  the UGA stop codons as selenocysteines,
             # most have name SELENO* so cannot remove the "X" .. must trust the annotation
             #
             # DIO1,DIO2,DIO3,GPX1,GPX2,GPX3,GPX4,GPX6,SELENO[F,H,I,K,M,N,O,P,S,T,U,V,W],MSRB1,SEPHS2,TXNRD1,TXNRD2,TXNRD3
+
             ret = Sequence(codingsequencealt).translate('7')
+
             if variant is None and ret[-1] == 'X':
                 ret = ret[0:(len(ret) - 1)] + 'X'
-        elif self.chrom in ['chrM', 'chrMT', 'M', 'MT']:  # No selenocysteine genes in mitochondrion genome
-            ret = Sequence(codingsequencealt).translate('4')
         else:
             ret = Sequence(codingsequencealt).translate(codon_usage)
         ret = trim_prot_after_stop(ret)  # trim end, keeping from start to and including the first X (if any)

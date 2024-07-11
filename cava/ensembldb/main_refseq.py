@@ -1,12 +1,17 @@
+# This is to import refseq databases.
 import datetime
 import gzip
 import os
 import pickle
 import sys
+import re
 from operator import itemgetter
+from pathlib import Path
 
 import pybedtools
 import requests
+from urllib.parse import urlparse
+
 import wget
 
 requests.packages.urllib3.disable_warnings()
@@ -47,6 +52,24 @@ def replace_chrom_names(line):
         _, _ = chrom[0].split('.')
         chrom[0] = 'MT'
         return '\t'.join(str(x) for x in chrom)
+    elif line.startswith('chr'):
+            base = chrom[0]
+            base = base[3:]
+            if base == 'M':
+                base = 'MT'
+            chrom[0] = base
+            res = '\t'.join(str(x) for x in chrom)
+            return res
+    elif chrom[0] in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18',
+                      '19', '20', '21', '22', '23', 'MT', 'X', 'Y', 'M']:
+        if chrom[0] == 'M':
+            chrom[0]= 'MT'
+            res = '\t'.join(str(x) for x in chrom)
+            return res
+        return line
+    else:
+        return line
+
 
 
 # Class representing a transcript
@@ -240,8 +263,10 @@ def write_temp(output_name, options, candidates, genesdata):
     # Initialize output list file if needed
     outfile_list = open(output_name, 'w')
 
+#    outfile_list.write(
+#        '# Created by CAVA refseq_db ' + options.version + ' based on refseq release ' + options.refseq + '\n')
     outfile_list.write(
-        '# Created by CAVA refseq_db ' + options.version + ' based on refseq release ' + options.refseq + '\n')
+        '# Created by CAVA refseq_db based on ' + options.url_gtf + '\n')
     outfile_list.write('#GENE1\tGENE2\tTRANSCRIPT\tPROTEIN\n')
 
     # Output transcripts of each gene
@@ -290,7 +315,27 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
         cols = line.split('\t')
 
         # Consider only certain types of lines
-        if cols[2] not in ['exon', 'transcript', 'start_codon', 'stop_codon']: continue
+        if cols[2] not in ['exon', 'transcript', 'start_codon', 'stop_codon']:
+            continue
+        if cols[0] not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16',
+                           '17',
+                           '18', '19', '20', '21', '22', '23', 'MT', 'X', 'Y', 'M'] and \
+                cols[0] not in ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10',
+                                'chr11',
+                                'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17',
+                                'chr18', 'chr19', 'chr20', 'chr21', 'chr22', 'chr23', 'chrMT', 'chrX', 'chrY'] and \
+                not cols[0].startswith('NC_0'):
+            continue
+        if cols[0].startswith("NC_0"):
+            pmatch = re.match('NC_[0]+([1-9]+[0-9]*)\.', cols[0])
+            if pmatch is None:
+                continue
+            id = pmatch.group(1)
+            if id not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16',
+                          '17', '18',
+                          '19', '20', '21', '22', '23', '24', '12920']:
+                continue
+
 
         # Annotation tags
         tags = cols[8].split(';')
@@ -300,7 +345,8 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
         # Do not consider transcript if it is not on the custom transcript list
         if options.input is not None and enst not in transIDs: continue
         # Exclude non-NM transcripts
-        if options.nm_only and 'NM' not in enst: continue
+        if options.nm_only is not None and not enst.startswith('NM'):
+            continue
 
         # Finalize and output transcript object
         if not enst == prevenst:
@@ -325,8 +371,9 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
             try:
                 transcript.PROT = tx_to_prot_dict[enst]
             except KeyError:
-                print(f'enst {enst} not in database ')
+                print(f'refseq:{enst} not in protein database. No protein_id tag in gtf ')
                 transcript.PROT = ''
+                transcript.PROTL = 0
 
             transcript.CHROM = cols[0]
             if cols[6] == '+':
@@ -384,11 +431,14 @@ def sort_tmpfile(f):
     data = dict()
     counter = 0
     for line in open(f, 'r'):
-        if not line.startswith('N'): continue
+# NM-only should already have been filtered out .. if specified as an option
+# if not line.startswith('N'): continue
         counter += 1
         line.rstrip()
         record = line.split('\t')
         record[6] = int(record[6])
+        chrom = record[4]
+
         if record[4] in list(data.keys()):
             data[record[4]].append(record)
         else:
@@ -436,13 +486,19 @@ def readTranscriptIDs(inputfn):
 def sortRecords(records, idx1, idx2):
     ret = []
     chroms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19',
-              '20', '21', '22', '23', 'MT', 'X', 'Y']
-    for i in range(len(chroms)):
-        chrom = chroms[i]
+              '20', '21', '22', '23', 'X', 'Y','MT']
+    allkeys = list(records.keys())
+    ordered_chroms = chroms
+    ordered_chroms.sort()
+    for key in allkeys:
+        if key not in ordered_chroms:
+            ordered_chroms.append(key)
+    for i in range(len(ordered_chroms)):
+        chrom = ordered_chroms[i]
         if chrom in list(records.keys()):
             records[chrom] = sorted(records[chrom], key=itemgetter(idx1, idx2))
-    for i in range(len(chroms)):
-        chrom = chroms[i]
+    for i in range(len(ordered_chroms)):
+        chrom = ordered_chroms[i]
         if chrom in list(records.keys()):
             for record in records[chrom]: ret.append(record)
     return ret
@@ -485,39 +541,54 @@ def process_data(options):
 
     ######################################################################
     # Download RefSeq data if necessary
-    source_compressed_gtf = options.refseq + '_genomic.gtf.gz'
+    url_compressed_gtf = options.url_gtf
+    pu = urlparse(url_compressed_gtf)
+    path = pu.path
+    paths = path.split('/')
+    source_compressed_gtf = paths[len(paths)-1]
+    fname = source_compressed_gtf
+
+    #source_compressed_gtf = options.refseq + '_genomic.gtf.gz'
     # https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/reference/GCF_000001405.39_GRCh38.p13/GCF_000001405.39_GRCh38.p13_genomic.gtf.gz
     source_compressed_gtf = os.path.join(options.output_dir, source_compressed_gtf)
 
     if not os.path.exists(source_compressed_gtf):
         sys.stdout.write('Downloading RefSeq database... ')
         sys.stdout.flush()
-        url = 'https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/reference/' + options.refseq + '/' + options.refseq + '_genomic.gtf.gz'
+
+        #url = 'https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/reference/' + options.refseq + '/' + options.refseq + '_genomic.gtf.gz'
+        url = options.url_gtf
         try:
             wget.download(url)
             sys.stdout.flush()
             # Convert chromosome names #Note we will lose unmapped transcripts here!
-            print(f'\nUnzipping {options.refseq + "_genomic.gtf.gz"}')
-            cmd = 'bgzip -d ' + options.refseq + '_genomic.gtf.gz'
+            # fname = options.refseq + "_genomic.gtf.gz"
+            print(f'\nUnzipping {fname}')
+            #cmd = 'bgzip -d ' + options.refseq + '_genomic.gtf.gz'
+            cmd = 'bgzip -d ' + fname
             os.system(cmd)
+            #gtf_fname = options.refseq + '_genomic.gtf'
+            gtf_fname = Path(fname).stem
             out = open('temp.txt', 'w')
-            print(f'Parsing {options.refseq + "_genomic.gtf"}')
-            with open(options.refseq + '_genomic.gtf', 'r') as g:
+            print(f'Parsing {gtf_fname}')
+            with open(gtf_fname, 'r') as g:
                 for line in g:
                     if line.startswith('#'): continue
                     try:
                         new_line = replace_chrom_names(line)
+                        line = new_line
                     except:
                         print(f'Failed: {line}')
                         exit()
-                    if new_line:
+                    if line is not None:
                         out.write(new_line)
             out.close()
-            print(f'Compressing the GTF into: {source_compressed_gtf}')
+            print(f'Compressing the GTF into: {fname}')
+            source_compressed_gtf = os.path.join(options.output_dir,fname)
             cmd = 'bgzip -c temp.txt > ' + source_compressed_gtf
             os.system(cmd)
             os.remove('temp.txt')
-            os.remove(options.refseq + "_genomic.gtf")
+            os.remove(gtf_fname)
         except Exception as e:
             print('\n\nCannot connect to RefSeq FTP site. No internet connection?\n')
             print(f'{e}\n{url}')
@@ -525,7 +596,8 @@ def process_data(options):
     ################################################################
     # Use crossmap to get hg19 if desired
     #################################################################
-    if options.no_hg19 is not False:
+    converted_gtf = None
+    if options.build == 'GRCh38' and options.no_hg19 is not False:
         requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'  # Needed for UCSC
         # only download if necessary
         if not os.path.exists(os.path.join('data', 'hg38ToHg19.over.chain.gz')):
@@ -541,10 +613,21 @@ def process_data(options):
                 print('\n\nCannot connect to UCSC FTP site. No internet connection?\n')
                 print(f'Exception: {e}')
                 quit()
+        if fname.endswith(".gtf.gz"):
+            fname_path = os.path.splitext(fname)
+            fname_path = os.path.splitext(fname_path[0])
+            basename = fname_path[0]
+        elif fname.endswith(".gtf"):
+            fname_path = os.path.splitext(fname)
+            basename = fname_path[0]
+        else:
+            basename = fname
+#        converted_gtf = os.path.join(options.output_dir, 'Homo_sapiens.RefSeq.hg19_converted.' + options.refseq + '.gtf')
+        converted_gtf = os.path.join(options.output_dir,
+                                     'Homo_sapiens.RefSeq.hg19_converted.' + basename + '.gtf')
 
-        converted_gtf = os.path.join(options.output_dir, 'Homo_sapiens.RefSeq.hg19_converted.' + options.refseq + '.gtf')
         if not os.path.exists(converted_gtf):
-            sys.stdout.write('\nMaking a hg19-conveterted GTF file\n')
+            sys.stdout.write('\nMaking a hg19-converted GTF file\n')
             mapTree, targetChromSizes, sourceChromSizes = read_chain_file(
                 os.path.join('data', 'hg38ToHg19.over.chain.gz'))
             crossmap_gff_file(mapTree, source_compressed_gtf, converted_gtf)
@@ -595,8 +678,8 @@ def process_data(options):
     # Begin converted GTF conversion
     # ################################################################
     hg19_records = []
-    if options.no_hg19 is not False:
-        sys.stdout.write('Extracting transcript data for hg19 version...')
+    if options.build == 'GRCh38' and options.no_hg19 is not False:
+        sys.stdout.write('Extracting transcript data from hg19 version...')
         sys.stdout.flush()
         transcript, prevenst, first, genesdata = parse_GTF(filename=converted_gtf,
                                                            options=options,
@@ -672,16 +755,14 @@ def is_number(s):
 
 def run(options):
     # Checking if all required options specified
-    if options.refseq is None:
-        print('\nError: no release specified. Use option -h to get help!\n')
-        quit()
+
     if options.output is None:
         print('\nError: no output file name specified. Use option -h to get help!\n')
         quit()
 
     # Genome build
     # genome_build = options.genome
-    genome_build = 'GRCh37' if 'GRCh37' in options.refseq else 'GRCh38'
+    genome_build = 'GRCh37' if 'GRCh37' in options.build else 'GRCh38'
 
     # Printing out version.py information
     print("\n---------------------------------------------------------------------------------------")
@@ -689,7 +770,7 @@ def run(options):
     print('Started: ', datetime.datetime.now(), '\n')
 
     # Print info
-    print('RefSeq version:  ' + options.refseq)
+    #print('RefSeq version:  ' + options.refseq)
     print('Reference genome: ' + genome_build)
 
     # Creating compressed output file

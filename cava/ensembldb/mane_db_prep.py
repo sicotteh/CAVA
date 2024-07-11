@@ -1,3 +1,5 @@
+# This is to import MANE transcript database, both a refseq and an ensembl versions.
+# MANE is only defined on GRCh38.
 import datetime
 import gzip
 import os
@@ -29,6 +31,40 @@ def warn(transcript):
     failed_conversions['ENST'].add(transcript.ENST)
     # print(f'FAILED: {failed_conversions["GENE"]}, failed_conversions['ENST']')
     # raise Exception(f"Messed up: {transcript.GENE}")
+
+def replace_chrom_names(line):
+    chrom = line.split('\t')
+    if line.startswith('NC_0000'):
+        base, v = chrom[0].split('.')
+        base = int(base.replace('NC_0000', ''))
+        if base == 23:
+            base = 'X'
+        if base == 24:
+            base = 'Y'
+        chrom[0] = base
+        res = '\t'.join(str(x) for x in chrom)
+        return res
+    elif line.startswith('NC_012920'):
+        _, _ = chrom[0].split('.')
+        chrom[0] = 'MT'
+        return '\t'.join(str(x) for x in chrom)
+    elif line.startswith('chr'):
+            base = chrom[0]
+            base = base[3:]
+            if base == 'M':
+                base = 'MT'
+            chrom[0] = base
+            res = '\t'.join(str(x) for x in chrom)
+            return res
+    elif chrom[0] in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18',
+                      '19', '20', '21', '22', '23', 'MT', 'X', 'Y', 'M']:
+        if chrom[0] == 'M':
+            chrom[0]= 'MT'
+            res = '\t'.join(str(x) for x in chrom)
+            return res
+        return line
+    else:
+        return line
 
 
 # Class representing a transcript
@@ -267,9 +303,17 @@ def parse_GTF(filename='', genesdata=None):
     tx_to_prot_dict = build_tx_to_prot_dict(opener, filename)
 
     for line in opener(filename, 'rt'):
-
-        line = line.strip().replace('chr', '')
         if line.startswith('#'): continue
+        line = line.strip()
+        try:
+            new_line = replace_chrom_names(line)
+            line = new_line
+        except:
+            print(f'Failed: {line}')
+            exit()
+        if line is None:
+            continue
+
         cols = line.split('\t')
 
         # Only consider transcripts on the following chromosomes
@@ -432,13 +476,19 @@ def readTranscriptIDs(inputfn):
 def sortRecords(records, idx1, idx2):
     ret = []
     chroms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19',
-              '20', '21', '22', '23', 'MT', 'X', 'Y']
-    for i in range(len(chroms)):
-        chrom = chroms[i]
+              '20', '21', '22', '23', 'X', 'Y','MT']
+    allkeys = list(records.keys())
+    ordered_chroms = chroms
+    ordered_chroms.sort()
+    for key in allkeys:
+        if key not in ordered_chroms:
+            ordered_chroms.append(key)
+    for i in range(len(ordered_chroms)):
+        chrom = ordered_chroms[i]
         if chrom in list(records.keys()):
             records[chrom] = sorted(records[chrom], key=itemgetter(idx1, idx2))
-    for i in range(len(chroms)):
-        chrom = chroms[i]
+    for i in range(len(ordered_chroms)):
+        chrom = ordered_chroms[i]
         if chrom in list(records.keys()):
             for record in records[chrom]: ret.append(record)
     return ret
@@ -465,7 +515,7 @@ def readRecords(inputfn):
     return ret
 
 
-# Process Ensembl data
+# Process Mane data
 def process_data(options):
     ref_records_hg19 = 0
     enst_records_hg19 = 0
@@ -481,8 +531,7 @@ def process_data(options):
         download_gtf(source_compressed_gtf_ens, options.ensembl)
         download_gtf(source_compressed_gtf_ref, options.ensembl)
     except Exception as e:
-        print('\n\nCannot connect to FTP site. No internet connection?\n')
-        print(f'{e}\n{url}')
+        print('\n\nError downloading mane gtf\n')
         exit(1)
 
 
@@ -572,7 +621,7 @@ def is_number(s):
 def run(options):
     # Checking if all required options specified
     if options.ensembl is None:
-        print('\nError: no release specified. Use option -h to get help!\n')
+        print('\nError: no release specified for mane_db_prep.run. Use option -h to get help!\n')
         quit()
 
     # Genome build

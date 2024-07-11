@@ -1,3 +1,4 @@
+# This main is for importing ensembl databases
 import datetime
 import gzip
 import os
@@ -8,8 +9,10 @@ from operator import itemgetter
 import pybedtools
 import requests
 import wget
+import re
 
 requests.packages.urllib3.disable_warnings()
+from urllib.parse import urlparse
 
 import pysam
 from cmmodule.utils import read_chain_file
@@ -29,6 +32,40 @@ def warn(transcript):
     failed_conversions['TRANSTYPE'].add(transcript.TRANSTYPE)
     failed_conversions['ENST'].add(transcript.ENST)
     # raise Exception(f"Messed up: {transcript.GENE}")
+
+def replace_chrom_names(line):
+    chrom = line.split('\t')
+    if line.startswith('NC_0000'):
+        base, v = chrom[0].split('.')
+        base = int(base.replace('NC_0000', ''))
+        if base == 23:
+            base = 'X'
+        if base == 24:
+            base = 'Y'
+        chrom[0] = base
+        res = '\t'.join(str(x) for x in chrom)
+        return res
+    elif line.startswith('NC_012920'):
+        _, _ = chrom[0].split('.')
+        chrom[0] = 'MT'
+        return '\t'.join(str(x) for x in chrom)
+    elif line.startswith('chr'):
+            base = chrom[0]
+            base = base[3:]
+            if base == 'M':
+                base = 'MT'
+            chrom[0] = base
+            res = '\t'.join(str(x) for x in chrom)
+            return res
+    elif chrom[0] in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18',
+                      '19', '20', '21', '22', '23', 'MT', 'X', 'Y', 'M']:
+        if chrom[0] == 'M':
+            chrom[0]= 'MT'
+            res = '\t'.join(str(x) for x in chrom)
+            return res
+        return line
+    else:
+        return line
 
 
 # Class representing a transcript
@@ -264,17 +301,49 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
     tx_to_prot_dict = build_tx_to_prot_dict(opener, filename)
 
     for line in opener(filename, 'rt'):
-
-        line = line.strip()
         if line.startswith('#'): continue
+        line = line.strip()
+        try:
+            new_line = replace_chrom_names(line)
+            line = new_line
+        except:
+            print(f'Failed: {line}')
+            exit()
+        if line is None:
+            continue
         cols = line.split('\t')
-
-        # Only consider transcripts on the following chromosomes
-        if cols[0] not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17',
-                           '18', '19', '20', '21', '22', '23', 'MT', 'X', 'Y']: continue
-
         # Consider only certain types of lines
         if cols[2] not in ['exon', 'transcript', 'start_codon', 'stop_codon']: continue
+
+
+        # # Only consider transcripts on the following chromosomes.. only to be used for ensembl code
+        # # since ensembl is only humans
+        # if cols[0] not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17',
+        #                    '18', '19', '20', '21', '22', '23', 'MT', 'X', 'Y', 'M'] and \
+        #     cols[0] not in ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10', 'chr11',
+        #                        'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17',
+        #                    'chr18', 'chr19', 'chr20', 'chr21', 'chr22', 'chr23', 'chrMT', 'chrX', 'chrY'] and \
+        #     not cols[0].startswith('NC_0'):
+        #     continue
+        #   Allow all chromosome types, but transformm NC and chr to integer format.
+        if cols[0].startswith("NC_0"):
+            pmatch = re.match('NC_[0]+([0-9]+)\.',cols[0])
+            if pmatch is not None:
+                id = pmatch.group(1)
+                if id in ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18',
+                              '19','20','21','22']:
+                    cols[0] = id
+                elif id == '23':
+                    cols[0] = 'X'
+                elif id == '24':
+                    cols[0] = 'Y'
+                elif id == '12920':
+                    cols[0] = 'MT'
+        elif cols[0].startswith("chr"):
+            cols[0] = cols[0][3:]
+            if cols[0] == "M":
+                cols[0] = "MT"
+
 
         # Annotation tags
         tags = cols[8].split(';')
@@ -285,81 +354,92 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
         if options.input is not None and enst not in transIDs: continue
 
         # Finalize and output transcript object
-        if not enst == prevenst:
-
+        if enst in tx_to_prot_dict and not enst == prevenst: # End of current transcript, start of a new one.
             # Finalize transcript and add to Gene object if candidate
-            if not first:
-                try:
-                    transcript.finalize()
-                except:
-                    warn(transcript)
+            if prevenst in tx_to_prot_dict:
+                if not first:
+                    try:
+                        transcript.finalize()
+                    except:
+                        warn(transcript)
 
-                if transcript.isCandidate():
-                    if transcript.ENSG not in list(genesdata.keys()):
-                        genesdata[transcript.ENSG] = Gene(transcript.GENE, transcript.ENSG)
-                    genesdata[transcript.ENSG].TRANSCRIPTS[transcript.ENST] = transcript
+                    if transcript.isCandidate():
+                        if transcript.ENSG not in list(genesdata.keys()):
+                            genesdata[transcript.ENSG] = Gene(transcript.GENE, transcript.ENSG)
+                        genesdata[transcript.ENSG].TRANSCRIPTS[transcript.ENST] = transcript
 
-            # Initialize new Transcript object
-            transcript = Transcript()
-            transcript.ENST = enst
-            transcript.GENE = getValue(tags, 'gene_name')
-            transcript.ENSG = getValue(tags, 'gene_id')
-            try:
+            if enst in tx_to_prot_dict: # only process protein-coding genes.. this line no longer needed, but keep for safety
+                # Initialize new Transcript object
+                transcript = Transcript()
                 transcript.PROT = tx_to_prot_dict[enst]
-            except KeyError:
-                sys.stderr.write("Error: Invalid GTF ensembl catalog ("+filename+") without protein id for transcript:"+enst+"\n")
-                transcript.PROT = 'Protein('+enst+')'
+                transcript.ENST = enst
+                transcript.GENE = getValue(tags, 'gene_name')
+                transcript.ENSG = getValue(tags, 'gene_id')
 
-            transcript.CHROM = cols[0]
-            if cols[6] == '+':
-                transcript.STRAND = '1'
-            else:
-                transcript.STRAND = '-1'
+                transcript.CHROM = cols[0]
+                if cols[6] == '+':
+                    transcript.STRAND = '1'
+                else:
+                    transcript.STRAND = '-1'
 
-            # Retrieve gene biotype and transcript biotype
-            transcript.GENETYPE = getValue(tags, 'gene_type')
-            if transcript.GENETYPE is None: transcript.GENETYPE = getValue(tags, 'gene_biotype')
-            transcript.TRANSTYPE = getValue(tags, 'transcript_type')
-            if transcript.TRANSTYPE is None: transcript.TRANSTYPE = getValue(tags, 'transcript_biotype')
-            if transcript.TRANSTYPE is None: transcript.TRANSTYPE = cols[1]
+                # Retrieve gene biotype and transcript biotype
+                transcript.GENETYPE = getValue(tags, 'gene_type')
+                if transcript.GENETYPE is None: transcript.GENETYPE = getValue(tags, 'gene_biotype')
+                transcript.TRANSTYPE = getValue(tags, 'transcript_type')
+                if transcript.TRANSTYPE is None: transcript.TRANSTYPE = getValue(tags, 'transcript_biotype')
+                if transcript.TRANSTYPE is None: transcript.TRANSTYPE = cols[1]
 
-        # If line represents an exon
-        if cols[2] == 'exon':
-            idx = 0
-            for x in tags:
-                x = x.strip()
-                if x.startswith('exon_number'):
-                    s = x[x.find('\"') + 1:]
-                    idx = int(s[:s.find('\"')]) - 1
-                    break
-            start = int(cols[3]) - 1
-            end = int(cols[4])
-            if idx >= len(transcript.EXONS):
-                for _ in range(len(transcript.EXONS), idx + 1): transcript.EXONS.append(None)
-            transcript.EXONS[idx] = Exon(start, end)
+        if enst in tx_to_prot_dict: # only process protein-coding transcripts
+            # If line represents an exon
+            if cols[2] == 'exon':
+                idx = 0
+                for x in tags:
+                    x = x.strip()
+                    if x.startswith('exon_number'):
+                        s = x[x.find('\"') + 1:]
+                        idx = int(s[:s.find('\"')]) - 1
+                        break
+                start = int(cols[3]) - 1
+                end = int(cols[4])
+                if idx >= len(transcript.EXONS):
+                    for _ in range(len(transcript.EXONS), idx + 1): transcript.EXONS.append(None)
+                transcript.EXONS[idx] = Exon(start, end)
 
-        if cols[2] == 'start_codon':
-            if transcript.STRAND == '1':
-                if transcript.CODING_START < 0 or int(cols[3]) < transcript.CODING_START: transcript.CODING_START = int(
-                    cols[3])
-            else:
-                if transcript.CODING_START < 0 or int(cols[4]) > transcript.CODING_START: transcript.CODING_START = int(
-                    cols[4])
+            elif cols[2] == 'start_codon':
+                if transcript.STRAND == '1':
+                    if transcript.CODING_START < 0 or int(cols[3]) < transcript.CODING_START: transcript.CODING_START = int(
+                        cols[3])
+                else:
+                    if transcript.CODING_START < 0 or int(cols[4]) > transcript.CODING_START: transcript.CODING_START = int(
+                        cols[4])
 
-        if cols[2] == 'stop_codon':
-            if transcript.STRAND == '1':
-                if transcript.CODING_END < 0 or int(cols[4]) > transcript.CODING_END: transcript.CODING_END = int(
-                    cols[4])
-            else:
-                if transcript.CODING_END < 0 or int(cols[3]) < transcript.CODING_END: transcript.CODING_END = int(
-                    cols[3])
+            elif cols[2] == 'stop_codon':
+                if transcript.STRAND == '1':
+                    if transcript.CODING_END < 0 or int(cols[4]) > transcript.CODING_END: transcript.CODING_END = int(
+                        cols[4])
+                else:
+                    if transcript.CODING_END < 0 or int(cols[3]) < transcript.CODING_END: transcript.CODING_END = int(
+                        cols[3])
 
-        # Check if transcript is complete and is a CCDS transcript
-        if transcript.isComplete is None:
-            transcript.isComplete = True
-            transcript.CCDS = True
-        prevenst = enst
-        if first: first = False
+            # Check if transcript is complete and is a CCDS transcript
+            if transcript.isComplete is None:
+                transcript.isComplete = True
+                transcript.CCDS = True
+            prevenst = enst
+            if first:
+                first = False
+
+    # finalize last transcript
+    if first is False and enst in tx_to_prot_dict:
+        try:
+            transcript.finalize()
+        except:
+            warn(transcript)
+        if transcript.isCandidate():
+            if transcript.ENSG not in list(genesdata.keys()):
+                genesdata[transcript.ENSG] = Gene(transcript.GENE, transcript.ENSG)
+            genesdata[transcript.ENSG].TRANSCRIPTS[transcript.ENST] = transcript
+
     return transcript, prevenst, first, genesdata
 
 
@@ -420,13 +500,19 @@ def readTranscriptIDs(inputfn):
 def sortRecords(records, idx1, idx2):
     ret = []
     chroms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19',
-              '20', '21', '22', '23', 'M', 'MT', 'X', 'Y']
-    for i in range(len(chroms)):
-        chrom = chroms[i]
+              '20', '21', '22', '23', 'X', 'Y', 'MT']
+    allkeys = list(records.keys())
+    ordered_chroms = chroms
+    ordered_chroms.sort()
+    for key in allkeys:
+        if key not in ordered_chroms:
+            ordered_chroms.append(key)
+    for i in range(len(ordered_chroms)):
+        chrom = ordered_chroms[i]
         if chrom in list(records.keys()):
             records[chrom] = sorted(records[chrom], key=itemgetter(idx1, idx2))
-    for i in range(len(chroms)):
-        chrom = chroms[i]
+    for i in range(len(ordered_chroms)):
+        chrom = ordered_chroms[i]
         if chrom in list(records.keys()):
             for record in records[chrom]: ret.append(record)
     return ret
@@ -476,16 +562,27 @@ def process_data(options, genome_build):
     ######################################################################
 
     # Download Ensembl data if necessary
-    source_compressed_gtf = 'Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz'
-    source_compressed_gtf = os.path.join(options.output_dir, source_compressed_gtf)
+    if options.url_gtf is not None:
+        pu = urlparse(options.url_gtf)
+        path = pu.path
+        paths = path.split('/')
+        source_compressed_gtf = paths[len(paths) - 1]
+        fname = source_compressed_gtf
+    else:
+        source_compressed_gtf = 'Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz'
+        fname = source_compressed_gtf
+        source_compressed_gtf = os.path.join(options.output_dir, source_compressed_gtf)
     if not os.path.exists(source_compressed_gtf):
         sys.stdout.write('Downloading Ensembl database... ')
         sys.stdout.flush()
-
-        url = 'ftp://ftp.ensembl.org/pub/release-' + options.ensembl + '/gtf/homo_sapiens/Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz'
+        if options.url_gtf is not None:
+            url = options.url_gtf
+        else:
+            url = 'ftp://ftp.ensembl.org/pub/release-' + options.ensembl + '/gtf/homo_sapiens/Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz'
         try:
             wget.download(url)
-            os.rename('Homo_sapiens.' + genome_build + '.' + options.ensembl + '.gtf.gz', source_compressed_gtf)
+            sys.stdout.write('Downloaded Ensembl database... ')
+            os.rename(fname, source_compressed_gtf)
         except Exception as e:
             print('\n\nCannot connect to Ensembl FTP site. No internet connection?\n')
             print(f'{e}\n{url}')
@@ -494,7 +591,7 @@ def process_data(options, genome_build):
     ################################################################
     # Use crossmap to get hg19 if desired
     #################################################################
-    if options.no_hg19 is not False:
+    if options.build == 'GRCh38' and options.no_hg19 is not False:
         requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'  # Needed for UCSC
         # only download if necessary
         if not os.path.exists(os.path.join('data', 'hg38ToHg19.over.chain.gz')):
@@ -563,7 +660,7 @@ def process_data(options, genome_build):
     # Begin converted GTF conversion
     # ################################################################
     hg19_records = []
-    if options.no_hg19 is not False:
+    if options.build == 'GRCh38' and options.no_hg19 is not False:
         sys.stdout.write('Extracting transcript data for hg19 version...')
         sys.stdout.flush()
         transcript, prevenst, first, genesdata = parse_GTF(filename=converted_gtf,
@@ -641,7 +738,7 @@ def is_number(s):
 def run(options):
     # Checking if all required options specified
     if options.ensembl is None:
-        print('\nError: no release specified. Use option -h to get help!\n')
+        print('\nError: main.run no release specified. Use option -h to get help!\n')
         quit()
     if not is_number(options.ensembl):
         print('\nError: Ensembl release specified is not an integer. Use option -h to get help!\n')
@@ -657,8 +754,11 @@ def run(options):
 
     # Genome build
     # genome_build = options.genome
-    genome_build = 'GRCh37' if int(options.ensembl) <= 75 else 'GRCh38'
-
+    if options.build is not None:
+        genome_build = options.build
+    else:
+        genome_build = 'GRCh37' if int(options.ensembl) <= 75 else 'GRCh38'
+    # for ensembl release 111, there is a hg19/?GRCh37 version too.
     # Printing out version.py information
     print("\n---------------------------------------------------------------------------------------")
     print('CAVA ' + options.version + ' transcript database preparation tool (ensembl_db) is now running')

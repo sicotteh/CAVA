@@ -1561,7 +1561,7 @@ def make_genomic_DNA_annotation(variant, reference):
     replen = len(rep_unit)
 
     if variant.is_insertion:
-        if repn > 1:  # Should try to represent as repeat if allowable
+        if repn > 1:  # Should try to represent as repeat if allowable, cannot be a dup
             rep_str = rep_unit + '[' + str(repn) + ']'
             return rep_str, rep_str
         insert = variant.alt

@@ -75,6 +75,7 @@ class Ensembl(object):
                             'SELENOP',
                             'SELENOS', 'SELENOT', 'SELENOU', 'SELENOV', 'SELENOW', 'MSRB1', 'SEPHS2',
                             'TXNRD1', 'TXNRD2', 'TXNRD3']
+        self.selenodata = dict()
         if 'selenogenes' in options.args:
             if len(str(options.args['selenogenes'])) > 1:
                 self.selenogenes = str(options.args['selenogenes']).split(",")
@@ -143,6 +144,8 @@ class Ensembl(object):
             transcript = core.Transcript(line)
             if transcript.geneSymbol in self.selenogenes:
                 transcript.is_selenocysteine = True
+                if transcript.TRANSCRIPT in self.selenodata:
+                    transcript.CESIS_data = self.selenodata[transcript.TRANSCRIPT]
             self.transcript_cache[transcriptid] = transcript
             if len(self.transcript_cache) > self.CACHESIZE:
                 vals = list(self.transcript_nvar.values())
@@ -750,6 +753,10 @@ class Ensembl(object):
                     csn_minus_arr = csn_minus_str.split("_p.")
                     if len(csn_minus_arr) == 1 or csn_minus_arr[1] in ["=", "(=)", "="]:
                         csn_minus_str = csn_minus_arr[0] + "_p.?"
+                if class_plus == "IG":
+                    so_plus = so_plus + '|' + 'initiation_gain_in_5utr'
+                if class_minus == "IG":
+                    so_minus = so_minus + '|' + 'initiation_gain_in_5utr'
                 CSNstring += csn_plus_str
                 CLASSstring += class_plus
                 ALTANN = csn_minus_str
@@ -772,6 +779,10 @@ class Ensembl(object):
                     csn_minus_arr = csn_minus_str.split("_p.")
                     if len(csn_minus_arr) == 1 or csn_minus_arr[1] in ["=", "(=)"]:
                         csn_minus_str = csn_minus_arr[0] + "_p.?"
+                if class_plus == "IG":
+                    so_plus = so_plus + '|' + 'initiation_gain_in_5utr'
+                if class_minus == "IG":
+                    so_minus = so_minus + '|' + 'initiation_gain_in_5utr'
                 CSNstring += csn_minus_str
                 CLASSstring += class_minus
                 ALTANN = csn_plus_str
