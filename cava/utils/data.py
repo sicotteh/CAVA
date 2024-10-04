@@ -6,18 +6,56 @@
 
 import os
 import sys
+import importlib.resources
 
 from . import conseq
 from . import core
 from . import csn
+
 
 # import time
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + '/pysamdir')
 import pysam
 
+import pathlib
+
 
 #######################################################################################################################
+
+class Seldata(object):
+    def __new__(cls,line):
+        if line[0].startswith("#") or line[0] == "gene":
+            return None
+        return super(Seldata,cls).__new__(cls)
+
+    def __init__(self, line):
+        if line[0].startswith("#") or line[0] == "gene":
+            return 
+        self.gene = line[0]
+        self.accn = line[3]
+        self.accn0 = line[3].split('.')[0]
+#        self.accn0 = accns[0]
+        try:
+            self.SECIS_maxstart = int(line[1])
+            self.SECIS_maxend = int(line[2])
+            self.last_sec_pos = int(line[4])
+            self.cds_start = int(line[5])
+            self.cds_end = int(line[6])
+            self.RNA_len = int(line[7])
+            self.last_sel_fromATG = self.last_sec_pos - self.cds_start + 1
+            self.cds_len = self.cds_end  - self.cds_start + 1
+        except:
+            sys.stderr.write("ERROR: Invalid format for SECIS config file: line="+"\t".join(line)+"\n")
+            exit(1)
+
+    def is_standard_stop_codonpos(self,gene_id,transcript_id, pos):
+        # If tramscript is not an exact match for the version, the only difference is the UTR.. so using
+        # CDS-relative position workds.
+        if self.accn != transcript_id:
+            return True
+
+
 
 # Class representing the Ensembl (transcript) dataset ( can be any database)
 class Ensembl(object):
@@ -36,6 +74,7 @@ class Ensembl(object):
         for chrom in self.tabixfile.contigs:
             if chrom in reference.reflens:
                 self.contigs[chrom] = reference.reflens[chrom]
+
         self.proteinSeqs = dict()
         self.exonSeqs = dict()
         self.exoncache_hit = dict()
@@ -79,6 +118,30 @@ class Ensembl(object):
         if 'selenogenes' in options.args:
             if len(str(options.args['selenogenes'])) > 1:
                 self.selenogenes = str(options.args['selenogenes']).split(",")
+
+        if 'selenofile' in options.args:
+            selenofile = options.args['selenofile']
+            try:
+                fid = open(selenofile,'r')
+                secis_lines = fid.readlines()
+                self.load_CESIS(secis_lines)
+            except IOError:
+                sys.stderr.write("ERROR: Error opening CESIS File="+selenofile+"\n")
+        else:
+            sys.path.append(str(pathlib.Path().resolve().parents[0]))
+            with importlib.resources.open_text("ensembldb", "SECIS_in_refseq_pos.txt") as fid:
+                secis_lines = fid.readlines()
+                self.load_CESIS(secis_lines)
+
+
+                
+    def load_CESIS(self,secis_lines):
+        for l in secis_lines:
+            line = l.rstrip().split("\t")
+            sel = Seldata(line)
+            if sel is not None:
+                self.selenodata[sel.accn0] = sel
+                self.selenodata[sel.accn] = sel  # accession.version
 
     # Get the list of transcript lines overlapping
     # returns either an iterator over a tabix file .. or a list (that can be iterated over)

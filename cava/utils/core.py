@@ -882,21 +882,6 @@ class Tr_store:
     lasttr = dict
 
 
-class Secis(object):
-    def __init__(self,line):
-        cols = line.rstrip().split('\t')
-        #gene\tSECIS_maxstart\tSECIS_maxend\taccn\tlast_sec_pos\tcds_start\tcds_end\tmRNA_len\n
-        try:
-            for ai in [1,4,5,6]: # all of these must be defined integer
-                i = int(ai)
-            self.TRANSCRIPT = cols[3]
-            self.geneSymbol = cols[0]
-            cds_start = int(cols[5])
-            self.last_cesis = int(cols[1]) - cds_start +1 # 51 to 111 bp earlier than this, Stop codon will be recoded as Sel.
-            self.last_sel_fromATG = int(cols(4)) - cds_start + 1
-            self.cds_len = int(cols[6]) - cds_start+1
-        except:
-            self.geneSymbol = None
 
 
 # Class representing a single Ensembl transcript

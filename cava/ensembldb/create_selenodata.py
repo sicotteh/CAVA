@@ -303,7 +303,7 @@ def getSel(outfile,organism,selenogenes,refseqids,refseq2ensembl):
             fout.write("\t".join(elemv)+"\n")
     fout.close()
 
-# search for /regulatoru POS..POS
+# search for /regulatory POS..POS
 # # /regulatory_class="recoding_stimulatory_region"
 # note SECIS element
 #/note="SECIS_element"fse
@@ -340,12 +340,35 @@ def main():
     if options.genes:
         selenogenes = readIDs(options.genes)
     else:
-        selenogenes = ['DIO1', 'DIO2', 'DIO3', 'GPX1', 'GPX2', 'GPX3', 'GPX4', 'GPX6',
-               'SELENOF',
-               'SELENOH', 'SELENOI', 'SELENOK', 'SELENOM', 'SELENON', 'SELENOO',
-               'SELENOP',
-               'SELENOS', 'SELENOT', 'SELENOU', 'SELENOV', 'SELENOW', 'MSRB1', 'SEPHS2',
-               'TXNRD1', 'TXNRD2', 'TXNRD3', "SEPHS2"]
+        selenogenes = [     'DIO1', '1733', 'TXDI1', 'THMA2',
+                            'DIO2', '1734', 'TXDI2', 'SELENOY', 'SELY', 'DIOII',
+                            'DIO3', '1735', 'TXDI3', '5DIII', 'DIOIII',
+                            'GPX1', '2876', 'GPXD', 'GSHPX1',
+                            'GPX2', '2877', 'GPRP', 'GSHPX-GI', 'GPX-2', 'GI-GPX', 'GPRP-2', 'GPX-GI', 'GSHPX-2',
+                            'GPX3', '2878', 'GPX-P', 'GSHPX-3', 'GSHPX-P',
+                            'GPX4', '2879', 'MCSP', 'PHGPX', 'SMDS',  'GPX-4', 'GSHPX-4', 'SNGPX', 'SNPHGPX',
+                            'GPX6', '257202', 'GPXP3', 'GPX5P', 'GPX-6', 'GSHPX-6', 'DJ1186N24', 'DJ1186N24.1',
+                            'SELENOF', '9403', 'SEP15',
+                            'SELENOH', '280636', 'C11orf31', 'C17orf10', 'SELH',
+                            'SELENOI', '85465', 'SELI', 'EPT1', 'SEPI', 'SPG81',
+                            'SELENOK', '58515', 'HSPC030', 'HSPC297', 'SELK',
+                            'SELENOM', '140606', 'SELM', 'SEPM',
+                            'SELENON', '57190', 'CFTD', 'CMYO3', 'CMYP3', 'MDRS1', 'RSMD1', 'RSS', 'SELN', 'SEPN1',
+                            'SELENOO', '83642', 'SELO',
+                            'SELENOP', '6414', 'SELP', 'SEPP', 'SEPP1', 'SEP',
+                            'SELENOS' '55829', 'AD-015', 'ADO15', 'SBBI8', 'SELS', 'SEPS1', 'VIMP',
+                            'SELENOT', '51714', 'SELT',
+                            'SELENOU', 'not human',
+                            'SELENOV', '348303', 'SELV',
+                            'SELENOW',  '6415', 'SEPW1', 'SELW',
+                            'SELENOP1', 'not in human', 'SELENOPZ', 'SEPP1',
+                            'SELENOP2', 'not in human', 'SELPB', 'SEPP1L', 'SEPP2',
+                            'MSRB1',  '51734', 'SELENOX', 'SELENOR', 'SELR', 'SELX', 'SEPX1', 'SEPR', 'HSOC270',
+                            'SEPHS2', '22928',  'SPS2', 'SPS2B',
+                            'TXNRD1',  '7296', 'TXNR', 'GRIM-12', 'TRXR1', 'TXNR1', 'TR', 'TR1', 'TRXR1',
+                            'TXNRD2', '10587', 'SELZ', 'TR',  'TRXR2',  'TR3', 'TXNR2', 'GCCD5',  'TR',  'TR-BETA',
+                            'TXNRD3', '114112',  'TXNRD3NB', 'TXNRD3IT1', 'TR2', 'TRXR3', 'TGR', 'TR2IT1', 'TXNRD3NT1', 'TXNR3', 'TGR']
+
 
     if options.ensembl_refseq:
         refseq2ensembl,refseqids = load_ensembl_mappings(options.ensembl_refseq)
