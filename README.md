@@ -96,8 +96,8 @@ Details can be found in [this README](cava/ensembldb/README.md). In short, we re
 so to get started, you would simply:
 ```bash
 # Download GTF files for either RefSeq or ENSEMB
-# Option 1: Use our script (after you install CAVA)
-python3 MANE.py --no_hg19 -e 1.1 --outdir data
+# Option 1: Use our script (after you install CAVA) .. change version number to latest (current is 1.3)
+python3 MANE.py --no_hg19 -e 1.3 --outdir data
 
 
 # Option 2: Download Manually (adjust version numbers to latest)
@@ -142,6 +142,8 @@ This version of CAVA includes the following changes (aside from bug fixes, espec
 -Bug fixes for insertions/deletions that can be normalized right at the intron/exon junction edge. Were missing SO values and were sometimes called INT.
 Introduced Initiator Gain (IG) (aka Start-Gain) features in 5'UTR for novel Start codons created upstream and in phase of the cannonical AUG. Annotated with CLASS=IG. Must update the impactdef tag in the config file to include an IMPACT for IG (currently IMPACT=3). Note that there is no SO equivalent for the IG tag.
 - Better support for large deletions spanning intron/exon junction.
-
+2.0.13 Changes
+- Full Support for Selenocysteine genes. Assume TGA get translated to Sel as long as 51bp before SECIS element or before position of annotated last Sel.
+  Download annotation from NCBI (refseq) and for ensembl transcripts use mapping table. Version differences in transcripts are tolerated if difference is only in the UTR. 
 
 

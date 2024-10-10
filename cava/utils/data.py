@@ -6,18 +6,69 @@
 
 import os
 import sys
+import importlib.resources
 
 from . import conseq
 from . import core
 from . import csn
 
-# import time
 
+# import time
+import pathlib
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + '/pysamdir')
 import pysam
 
 
+
 #######################################################################################################################
+class Seldata(object):
+    #
+    # The Seldqta object is meant to be hung off the Transcript object.
+    # The transcript object will provide the strand and coordinates
+    #
+    def __new__(cls, line):
+        if line[0].startswith("#") or line[0] == "gene":
+            return None
+        return super(Seldata,cls).__new__(cls)
+    def __init__(self, line):
+        self.gene = line[0]
+        self.accn = line[3]
+        accns = self.accn.split('.')
+        self.accn0 = accns[0]
+        try:
+            self.SECIS_maxstart = int(line[1])
+            self.SECIS_maxend = int(line[2])
+            self.last_sec_pos = int(line[4])
+            self.cds_start = int(line[5])
+            self.cds_end = int(line[6])
+            self.RNA_len = int(line[7])
+            self.last_sel_fromATG = self.last_sec_pos - self.cds_start + 1
+            self.cds_len = self.cds_end - self.cds_start + 1
+            self.spacing = 111
+            self.minspacing = 51
+
+        except:
+            sys.stderr.write("ERROR: Invalid format for SECIS config file: line="+"\t".join(line)+"\n")
+
+    def update_maxpos(self,maxpos_in_protein):
+        if maxpos_in_protein > self.last_sel_fromATG:
+            self.last_sel_fromATG = maxpos_in_protein
+    def secis_active(self,cDNA_pos):
+        #
+        # If tramscript is not an exact match for the version, the only difference is the UTR.. so using
+        # CDS-relative position workds.
+        # Because Seldata is hung on a transcript, the chromosome shouhld match.. besides, we won't have the chromosome
+        # in the SECIS annotation file.
+        if cDNA_pos <= self.last_sel_fromATG: # Before known Selenocystering codon .. guaranteed to be translated into Sel
+            return 1
+        elif cDNA_pos <= self.SECIS_maxstart - self.cds_start +1 - self.spacing: # SECIS most likely active, TAG recoded as Sel(U)
+            return 2
+        elif cDNA_pos <= self.SECIS_maxstart - self.cds_start +1 - self.minspacing: # SECIS may be active, TAG recoded as Sel(U)
+            return 3
+        else:
+            return 0
+
+
 
 # Class representing the Ensembl (transcript) dataset ( can be any database)
 class Ensembl(object):
@@ -36,6 +87,7 @@ class Ensembl(object):
         for chrom in self.tabixfile.contigs:
             if chrom in reference.reflens:
                 self.contigs[chrom] = reference.reflens[chrom]
+
         self.proteinSeqs = dict()
         self.exonSeqs = dict()
         self.exoncache_hit = dict()
@@ -68,22 +120,82 @@ class Ensembl(object):
             self.loadalltranscripts = True
         else:
             self.loadalltranscripts = False
+        # current gene symbols and old synonyms.
+        self.selenogenes =[ 'DIO1', '1733', 'TXDI1', 'THMA2',
+                            'DIO2', '1734', 'TXDI2', 'SELENOY', 'SELY', 'DIOII',
+                            'DIO3', '1735', 'TXDI3', '5DIII', 'DIOIII',
+                            'GPX1', '2876', 'GPXD', 'GSHPX1',
+                            'GPX2', '2877', 'GPRP', 'GSHPX-GI', 'GPX-2', 'GI-GPX', 'GPRP-2', 'GPX-GI', 'GSHPX-2',
+                            'GPX3', '2878', 'GPX-P', 'GSHPX-3', 'GSHPX-P',
+                            'GPX4', '2879', 'MCSP', 'PHGPX', 'SMDS',  'GPX-4', 'GSHPX-4', 'SNGPX', 'SNPHGPX',
+                            'GPX6', '257202', 'GPXP3', 'GPX5P', 'GPX-6', 'GSHPX-6', 'DJ1186N24', 'DJ1186N24.1',
+                            'SELENOF', '9403', 'SEP15',
+                            'SELENOH', '280636', 'C11orf31', 'C17orf10', 'SELH',
+                            'SELENOI', '85465', 'SELI', 'EPT1', 'SEPI', 'SPG81',
+                            'SELENOK', '58515', 'HSPC030', 'HSPC297', 'SELK',
+                            'SELENOM', '140606', 'SELM', 'SEPM',
+                            'SELENON', '57190', 'CFTD', 'CMYO3', 'CMYP3', 'MDRS1', 'RSMD1', 'RSS', 'SELN', 'SEPN1',
+                            'SELENOO', '83642', 'SELO',
+                            'SELENOP', '6414', 'SELP', 'SEPP', 'SEPP1', 'SEP',
+                            'SELENOS' '55829', 'AD-015', 'ADO15', 'SBBI8', 'SELS', 'SEPS1', 'VIMP',
+                            'SELENOT', '51714', 'SELT',
+                            'SELENOU',
+                            'SELENOV', '348303', 'SELV',
+                            'SELENOW',  '6415', 'SEPW1', 'SELW',
+                            'SELENOP1',  'SELENOPZ', 'SEPP1',
+                            'SELENOP2', 'SELPB', 'SEPP1L', 'SEPP2',
+                            'MSRB1',  '51734', 'SELENOX', 'SELENOR', 'SELR', 'SELX', 'SEPX1', 'SEPR', 'HSOC270',
+                            'SEPHS2', '22928',  'SPS2', 'SPS2B',
+                            'TXNRD1',  '7296', 'TXNR', 'GRIM-12', 'TRXR1', 'TXNR1', 'TR', 'TR1', 'TRXR1',
+                            'TXNRD2', '10587', 'SELZ', 'TR',  'TRXR2',  'TR3', 'TXNR2', 'GCCD5',  'TR',  'TR-BETA',
+                            'TXNRD3', '114112',  'TXNRD3NB', 'TXNRD3IT1', 'TR2', 'TRXR3', 'TGR', 'TR2IT1', 'TXNRD3NT1', 'TXNR3', 'TGR']
 
-        self.selenogenes = ['DIO1', 'DIO2', 'DIO3', 'GPX1', 'GPX2', 'GPX3', 'GPX4', 'GPX6',
-                            'SELENOF',
-                            'SELENOH', 'SELENOI', 'SELENOK', 'SELENOM', 'SELENON', 'SELENOO',
-                            'SELENOP',
-                            'SELENOS', 'SELENOT', 'SELENOU', 'SELENOV', 'SELENOW', 'MSRB1', 'SEPHS2',
-                            'TXNRD1', 'TXNRD2', 'TXNRD3']
+# Note, SELENOU and SELENOP1 and SELENOP2 are not in humans
+
+
         self.selenodata = dict()
         if 'selenogenes' in options.args:
             if len(str(options.args['selenogenes'])) > 1:
-                self.selenogenes = str(options.args['selenogenes']).split(",")
+                extraselenogenes = str(options.args['selenogenes']).split(",")
+                for gs in extraselenogenes:
+                    gs = gs.upper()
+                    if not gs in self.selenogenes:
+                        self.selenogenes.append(gs)
+
+        fid = None
+        if 'selenofile' in options.args:
+            selenofile = options.args['selenofile']
+            if selenofile.startswith("/"):
+                try:
+                    fid = open(selenofile,'r')
+                except IOError:
+                    sys.stderr.write("ERROR: Error opening CESIS File="+selenofile+"\n")
+            else:
+                sys.path.append(str(pathlib.Path().resolve().parents[0]))
+                try:
+                    fid = importlib.resources.open_text("ensembldb", selenofile)
+                except IOError:
+                    sys.stderr.write("ERROR: Error opening CESIS File=ensembldb/" + selenofile + "\n")
+        else:
+            sys.path.append(str(pathlib.Path().resolve().parents[0]))
+            fid = importlib.resources.open_text("ensembldb", "SECIS_in_refseq_pos.txt")
+        if fid is not None:
+            secis_lines = fid.readlines()
+            self.load_CESIS(secis_lines)
+            fid.close()
+
+
+    def load_CESIS(self,secis_lines):
+        for l in secis_lines:
+            line = l.rstrip().split("\t")
+            sel = Seldata(line)
+            if sel is not None:
+                self.selenodata[sel.accn0] = sel
+                self.selenodata[sel.accn] = sel  # accession.version
 
     # Get the list of transcript lines overlapping
     # returns either an iterator over a tabix file .. or a list (that can be iterated over)
-    def fetch_overlapping_transcripts(self, chrom, startpos0,
-                                      endpos1):  # Give 0-base coordinate for start and 1-base for stop
+    def fetch_overlapping_transcripts(self, chrom, startpos0, endpos1):  # Give 0-base coordinate for start and 1-base for stop
         # If current chromosome is not loaded, then
         #      get tabix iterator figure out length, figu.. and load all chromosomes lines
         # Check self.tabixfile.l
@@ -144,8 +256,15 @@ class Ensembl(object):
             transcript = core.Transcript(line)
             if transcript.geneSymbol in self.selenogenes:
                 transcript.is_selenocysteine = True
-                if transcript.TRANSCRIPT in self.selenodata:
-                    transcript.CESIS_data = self.selenodata[transcript.TRANSCRIPT]
+                if transcript.SECIS_data is None:
+                    if transcript.TRANSCRIPT in self.selenodata:
+                            transcript.SECIS_data = self.selenodata[transcript.TRANSCRIPT]
+                    else: #this will work mostly for refseq .. and ensembl if there are ".version" transcripts.
+                        transcriptid_split = transcriptid.split('.')
+                        if len(transcriptid_split) == 2:
+                            if transcriptid_split[0] in self.selenodata:
+                                transcript.CESIS_data = self.selenodata[transcriptid_split[0]]
+
             self.transcript_cache[transcriptid] = transcript
             if len(self.transcript_cache) > self.CACHESIZE:
                 vals = list(self.transcript_nvar.values())
@@ -404,15 +523,15 @@ class Ensembl(object):
         if variant.is_deletion or variant.is_insertion:  # optimization, MNP or substitutions cannot be shifted
             variant_plus = variant.alignOnPlusStrand(reference)
             variant_minus = variant.alignOnMinusStrand(reference)
+            # Checking if variant alignment makes any difference
+            if variant_plus.pos == variant_minus.pos:
+                difference = False
+            else:
+                difference = True
         else:
             variant_plus = variant
             variant_minus = variant
-
-        # Checking if variant alignment makes any difference
-        if variant_plus.pos == variant_minus.pos:
             difference = False
-        else:
-            difference = True
 
         # Initializing annotation strings
         TRANSCRIPTstring = ''
@@ -643,7 +762,7 @@ class Ensembl(object):
                                                                                                            self.codon_usage)
                 if mutprotein_plus is not None and (transcript.geneSymbol in self.selenogenes) and cds_ref is not None:
                     mutprotein_plus = transcript.trimSelenoCysteine(cds_ref, cds_mut_plus, protein, mutprotein_plus,
-                                                                    variant_plus)
+                                                                    variant_plus,transcript)
 
             if difference:
                 if notexonic_minus and in_utr5_minus is False:
@@ -654,7 +773,7 @@ class Ensembl(object):
                         reference, variant_minus, exonseqs, self.codon_usage)
                     if mutprotein_minus is not None and transcript.geneSymbol in self.selenogenes and cds_ref is not None:
                         mutprotein_minus = transcript.trimSelenoCysteine(cds_ref, cds_mut_minus, protein,
-                                                                         mutprotein_plus, variant_minus)
+                                                                         mutprotein_plus, variant_minus,transcript)
             else:
                 mutprotein_minus = mutprotein_plus
                 utr5_minus = utr5_plus
@@ -883,10 +1002,10 @@ class Ensembl(object):
 
 
 # Class representing the dbSNP dataset
-class dbSNP(object):
+class DbSnp(object):
     # Constructor
     def __init__(self, options):
-        # Openffning tabix file representing the dbSNP database
+        # Opening tabix file representing the dbSNP database
         self.tabixfile = pysam.Tabixfile(options.args['dbsnp'])
 
     # Annotating a variant based on dbSNP data
@@ -897,7 +1016,7 @@ class dbSNP(object):
             goodchrom = core.convert_chrom(variant.chrom, self.tabixfile.contigs)
             if goodchrom is None:
                 variant.addFlag('DBSNP', '')
-                return variant
+                return
             reg = goodchrom + ':' + str(variant.pos) + '-' + str(variant.pos)
             lines = self.tabixfile.fetch(region=reg)
             for line in lines:
@@ -906,10 +1025,11 @@ class dbSNP(object):
                 alts = cols[3].split(',')
                 if variant.alt in alts:
                     variant.addFlag('DBSNP', cols[0])
-            if not 'DBSNP' in variant.flags: variant.addFlag('DBSNP', '')
+            if not 'DBSNP' in variant.flags:
+                variant.addFlag('DBSNP', '')
         else:
             variant.addFlag('DBSNP', '')
-        return variant
+        return
 
 
 #######################################################################################################################
@@ -935,7 +1055,7 @@ class Reference(object):
             self.reflens[chrom] = lengths[i]
             self.reflens[chrom.upper()] = lengths[i]
             self.reflens[chrom.lower()] = lengths[i]
-            if chrom.startswith("chr"):
+            if chrom.startswith("chr") and chrom.find('_') == -1:
                 self.reflens[chrom[3:]] = lengths[i]
                 self.reflens[chrom[3:].upper()] = lengths[i]
                 self.reflens[chrom[3:].lower()] = lengths[i]

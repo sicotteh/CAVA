@@ -1063,6 +1063,47 @@ class MyTestCase(unittest.TestCase):
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('c.1_3dup_p.Met1dup', rec.variants[0].getFlag('CSN'))
 
+    def test_Sel_muttuU(self): # A91U (cDNA position 271..273 GCG-> UGA - Whole CDS is under SECIS influence.
+        line = "chr11\t57742119\tA91U\tGCG\tTGA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('c.271_273delinsTGA_p.Ala91Sel', rec.variants[0].getFlag('CSN'))
+
+    def test_Sel_muttuUU(self): # A91U (cDNA position 365..366 CG-> GA (364 is a T). Whole CDS is under SEL inflence.
+        line = "chr11\t57742213\tS91UX\tCG\tGA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('c.365_366delinsGA_p.Ser122Sel', rec.variants[0].getFlag('CSN'))
+
+    def test_Sel_muttuX(self): # SELENOV, end of CDS not under SECIS
+        # K322UX->U->X c.958-959
+        line = "chr19\t39519147\tS91UX\tAG\tGA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('c.1040_1041delinsGA_p.Ter347=', rec.variants[0].getFlag('CSN'))
+
+    def test_Sel_mutintoU(self):
+        # SELENOV, end of CDS not under SECIS
+        # hg19: chr1:26131654:G->A TGC->TAC C108/C142>Tyr
+        # GRCh38: chr1:25805163:G_A. TGC-> TAC , but there is a stop codon before that.
+        line = "chr1\t25805163\tC142Y\tG\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('c.425G>A_p.Cys142Tyr', rec.variants[0].getFlag('CSN'))
+
+
+    def test_Variant_inNN(self):
+        # SELENOV, end of CDS not under SECIS
+        # hg19: chr1:26131654:G->A TGC->TAC C108/C142>Tyr
+        # GRCh38: chr1:25805163:G_A. TGC-> TAC , but there is a stop codon before that.
+        line = "chr1\t125519865\tC142Y\tTA\tA\t30\tPASS\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('Deletion', rec.variants[0].getFlag('TYPE'))
+
+
+
+
 class Options:
 
 

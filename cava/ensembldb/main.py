@@ -49,7 +49,7 @@ def replace_chrom_names(line):
         _, _ = chrom[0].split('.')
         chrom[0] = 'MT'
         return '\t'.join(str(x) for x in chrom)
-    elif line.startswith('chr'):
+    elif line.startswith('chr') and chrom[0].find('_') == -1:
             base = chrom[0]
             base = base[3:]
             if base == 'M':
@@ -339,7 +339,7 @@ def parse_GTF(filename='', options=None, genesdata=None, transIDs=None):
                     cols[0] = 'Y'
                 elif id == '12920':
                     cols[0] = 'MT'
-        elif cols[0].startswith("chr"):
+        elif cols[0].startswith("chr") and cols[0].find('_') == -1:
             cols[0] = cols[0][3:]
             if cols[0] == "M":
                 cols[0] = "MT"

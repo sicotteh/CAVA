@@ -48,7 +48,7 @@ def replace_chrom_names(line):
         _, _ = chrom[0].split('.')
         chrom[0] = 'MT'
         return '\t'.join(str(x) for x in chrom)
-    elif line.startswith('chr'):
+    elif chrom[0].startswith('chr') and chrom[0].find('_') == -1:
             base = chrom[0]
             base = base[3:]
             if base == 'M':
