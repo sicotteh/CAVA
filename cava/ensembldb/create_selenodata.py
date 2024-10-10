@@ -1,4 +1,4 @@
-
+import urllib.error
 from urllib.request import urlopen
 from time import sleep
 import re
@@ -17,7 +17,7 @@ def readIDs(inputfile):
                 if not line.startswith("#"):
                     ret.append(line.strip())
         except FileNotFoundError as e:
-            sys.stderr.write(e)
+            sys.stderr.write(se)
     return ret
 
 # Annotation for SECIS elements only exists at NCBI, so we have to
@@ -40,7 +40,7 @@ def load_ensembl_mappings(ensembl_refseq_file):
                         refseq2ensembl[l[1]] = l[0]
 
     except FileNotFoundError as e:
-        sys.stderr.write(e)
+        sys.stderr.write(str(e))
 
     return refseq2ensembl,refseqids
 
@@ -55,12 +55,18 @@ def getRefseqUid(refseq_version):
     iurls = 0
     url = urls[iurls]
     while(url is not None and matchids is None):
-        sleep(0.151)
+        sleep(0.2)
         sys.stderr.write("posting to get old refseq: " + url + "\n")
-        page = urlopen(url)
-        html_bytes = page.read()
-        html = html_bytes.decode("utf-8")
-
+        OK = False
+        while OK is False:
+            try:
+                page = urlopen(url)
+                html_bytes = page.read()
+                html = html_bytes.decode("utf-8")
+                OK = True
+            except urllib.error.HTTPError as e:
+                sys.stderr.write(str(e))
+                sleep(5)
 
         matchids = re.search(r'<IdList>\n(.*)\n</IdList>',html,re.DOTALL)
         if matchids is None:
@@ -86,12 +92,20 @@ def getRefseqUid(refseq_version):
 def getDataFromNCBI(allids):
     SECIS = dict()
     for uid in allids:
-        sleep(0.151)
+        sleep(0.2)
         iurl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nucleotide&id="+uid+"&rettype=gb&retmode=xml"
         sys.stdout.write('posting ' + iurl + '\n')
-        ipage = urlopen(iurl)
-        ihtml_bytes = ipage.read()
-        ihtml = ihtml_bytes.decode("utf-8")
+        OK = False
+        while OK is False:
+            try:
+                ipage = urlopen(iurl)
+                ihtml_bytes = ipage.read()
+                ihtml = ihtml_bytes.decode("utf-8")
+                OK = True
+            except urllib.error.HTTPError as e:
+                sys.stderr.write(str(e))
+                sleep(5)
+
         root = ET.fromstring(ihtml)
         nmseq = ""
         nmlen = ""
@@ -183,7 +197,7 @@ def getDataFromNCBI(allids):
                                 if mtrans is not None:
                                     newsecpos = mtrans.group(1)
                                     newsecpos2 = mtrans.group(2)
-                                    if len(secpos2)>0:
+                                    if len(secpos2) > 0:
                                         if int(newsecpos2)> int(secpos2): #latest UGA recoded guarantees SECIS is working that far
                                             secpos = newsecpos
                                             secpos2 = newsecpos2
@@ -209,10 +223,19 @@ def getSel(outfile,organism,selenogenes,refseqids,refseq2ensembl):
 
     # scan for refseq transcripts with SECIS elements
     org = organism.replace('_','%20')
-    url='https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nuccore&term=SECIS%5bAll%20Fields%5d+AND+srcdb_refseq%5bPROP%5d+AND+%22'+org+'%22%5bORGANISM%5d+AND+%22biomol%20mrna%22%5bProperties%5d&retmax=1000'
-    page = urlopen(url)
-    html_bytes = page.read()
-    html = html_bytes.decode("utf-8")
+    url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nuccore&term=SECIS%5bAll%20Fields%5d+AND+srcdb_refseq%5bPROP%5d+AND+%22"+org+"%22%5bORGANISM%5d+AND+%22biomol%20mrna%22%5bProperties%5d&retmax=1000"
+    OK = False
+    sleep(0.2)
+    while OK is False:
+        try:
+            page = urlopen(url)
+            html_bytes = page.read()
+            html = html_bytes.decode("utf-8")
+            OK = True
+        except urllib.error.HTTPError as e:
+            sys.stderr.write(str(e))
+            sleep(5)
+
 
 
     matchids = re.search(r'<IdList>\n(.*)\n</IdList>',html,re.DOTALL)
@@ -228,13 +251,23 @@ def getSel(outfile,organism,selenogenes,refseqids,refseq2ensembl):
                 allids.append(newid)
 
     # scan for refseq transcripts in known selenogenes (ideally, this should not return any additional transcripts)
-    for gene in  selenogenes:
+    for gene in selenogenes:
         sleep(0.201)  # max rate is 10 request/min . so sleep at least 0.1 secs
-        gurl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nuccore&term=SECIS%5bAll%20Fields%5d+AND+"+gene+"%5bGENE%5d+AND+srcdb_refseq%5bPROP%5d+AND+%22'+org+'%22%5bORGANISM%5d+AND+%22biomol%20mrna%22%5bProperties%5d&retmax=1000'
-        gpage = urlopen(gurl)
-        sys.stdout.write('posting '+gurl+'\n')
-        ghtml_bytes = gpage.read()
-        ghtml = ghtml_bytes.decode("utf-8")
+        gurl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nuccore&term=SECIS%5bAll%20Fields%5d+AND+" \
+               + str(gene) + \
+               "%5bGENE%5d+AND+srcdb_refseq%5bPROP%5d+AND+%22"+org+"%22%5bORGANISM%5d+AND+%22biomol%20mrna%22%5bProperties%5d&retmax=1000"
+        sys.stdout.write("posting "+str(gurl)+"\n")
+        OK = False
+        while OK is False:
+            try:
+                gpage = urlopen(gurl)
+                ghtml_bytes = gpage.read()
+                ghtml = ghtml_bytes.decode("utf-8")
+                OK = True
+            except urllib.error.HTTPError as e:
+                sys.stderr.write(str(e))
+                sleep(5)
+
         matchids = re.search(r'<IdList>\n(.*)\n</IdList>', ghtml, re.DOTALL)
         if matchids  is not None:
             allidsstr = matchids.group(1)
@@ -303,7 +336,7 @@ def getSel(outfile,organism,selenogenes,refseqids,refseq2ensembl):
             fout.write("\t".join(elemv)+"\n")
     fout.close()
 
-# search for /regulatory POS..POS
+# search for /regulatoru POS..POS
 # # /regulatory_class="recoding_stimulatory_region"
 # note SECIS element
 #/note="SECIS_element"fse
@@ -340,7 +373,7 @@ def main():
     if options.genes:
         selenogenes = readIDs(options.genes)
     else:
-        selenogenes = [     'DIO1', '1733', 'TXDI1', 'THMA2',
+        selenogenes =[ 'DIO1', '1733', 'TXDI1', 'THMA2',
                             'DIO2', '1734', 'TXDI2', 'SELENOY', 'SELY', 'DIOII',
                             'DIO3', '1735', 'TXDI3', '5DIII', 'DIOIII',
                             'GPX1', '2876', 'GPXD', 'GSHPX1',
@@ -358,18 +391,19 @@ def main():
                             'SELENOP', '6414', 'SELP', 'SEPP', 'SEPP1', 'SEP',
                             'SELENOS' '55829', 'AD-015', 'ADO15', 'SBBI8', 'SELS', 'SEPS1', 'VIMP',
                             'SELENOT', '51714', 'SELT',
-                            'SELENOU', 'not human',
+                            'SELENOU',
                             'SELENOV', '348303', 'SELV',
                             'SELENOW',  '6415', 'SEPW1', 'SELW',
-                            'SELENOP1', 'not in human', 'SELENOPZ', 'SEPP1',
-                            'SELENOP2', 'not in human', 'SELPB', 'SEPP1L', 'SEPP2',
+                            'SELENOP1', 'SELENOPZ', 'SEPP1',
+                            'SELENOP2', 'SELPB', 'SEPP1L', 'SEPP2',
                             'MSRB1',  '51734', 'SELENOX', 'SELENOR', 'SELR', 'SELX', 'SEPX1', 'SEPR', 'HSOC270',
                             'SEPHS2', '22928',  'SPS2', 'SPS2B',
                             'TXNRD1',  '7296', 'TXNR', 'GRIM-12', 'TRXR1', 'TXNR1', 'TR', 'TR1', 'TRXR1',
                             'TXNRD2', '10587', 'SELZ', 'TR',  'TRXR2',  'TR3', 'TXNR2', 'GCCD5',  'TR',  'TR-BETA',
                             'TXNRD3', '114112',  'TXNRD3NB', 'TXNRD3IT1', 'TR2', 'TRXR3', 'TGR', 'TR2IT1', 'TXNRD3NT1', 'TXNR3', 'TGR']
 
-
+# Note, SELENOU and SELENOP1 and SELENOP2 are not in humans       
+        
     if options.ensembl_refseq:
         refseq2ensembl,refseqids = load_ensembl_mappings(options.ensembl_refseq)
     elif options.refseqs:

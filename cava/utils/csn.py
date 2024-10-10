@@ -148,6 +148,7 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
             elif left_result[3] - left_result[2] == 1:  # Duplication
                 skip_repeats = True
                 dna, dna_ins = 'dup', 'dup'
+                skip_repeats = True
             else:
                 range_start = left_result[1]
                 repeat_unit = left_result[4]

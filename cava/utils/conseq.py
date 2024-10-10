@@ -41,6 +41,7 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange, r
 
     # Intronic, splice site and essential splice site variants
 
+
     if transcript.isInEssentialSpliceSite(variant):
         return 'ESS'
     # Past this point, you cannot have a variant that crosses intron/exon boundary .. otherwise, it would have hit the ess
@@ -59,7 +60,8 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange, r
     #    else: This is no longer true .. can have a variant deleting the Stop cpdon and be Ex..-UTR3
     # raise Exception("CAVA: algorithmic error, still have variants crossing intron/exon after ESS determination with loc="+loc)
 
-    if transcript.isInSplicingRegion(variant, ssrange): return 'SS'
+    if transcript.isInSplicingRegion(variant, ssrange):
+        return 'SS'
 
     potSS = transcript.isInFirstOrLast3BaseOfExon(variant)
 
@@ -139,8 +141,15 @@ def getClassAnnotation(variant, transcript, protein, mutprotein, loc, ssrange, r
             variant.is_deletion or variant.is_complex):  # "Ex" actually means coding region Exon
         return 'SL'
 
+    if variant.overlaps_polyA is True:
+        return 'POLYA'
+    if variant.tss_start_affected:
+        return 'TSS'
+
     if 'In' in loc:
         return 'INT'
+    if loc == "<->": # Large Deletion of really large repeat/MNP.
+        return "GENE"
     if '<' in loc:
         return '5FLANK'
     if '>' in loc:
@@ -280,7 +289,8 @@ def getSequenceOntologyAnnotation(variant, transcript, protein, mutprotein, loc)
                 out.append('stop_gained')
 
     if ('stop_gained' in out) or ('stop_lost' in out):
-        if 'missense_variant' in out: out.remove('missense_variant')
+        if 'missense_variant' in out:
+            out.remove('missense_variant')
 
     return '|'.join(out)
 
