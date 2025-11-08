@@ -1,0 +1,45 @@
+# COLUMN METADATA
+
+	COLUMN       variation_type
+	TYPE         String
+	COUNT        1
+	DESCRIPTION  Accession Type as determined by ClinVar
+
+# CHARACTER STATS
+
+	Total Lines in file:      3672381
+	Num lines sampled:        3672381
+	Lines that had column:    3672381 (100.0%)
+	Total column value chars: 25707061
+
+	NON-Alphanumeric
+	      CHARACTER      LINE_COUNT          LINE_%      CHAR_COUNT          CHAR_%
+	        <space>              20            0.0%              40            0.0%
+	              ,              20            0.0%              20            0.0%
+	              ;               2            0.0%               2            0.0%
+
+	Alphanumeric
+	      CHARACTER      LINE_COUNT          LINE_%      CHAR_COUNT          CHAR_%
+	              H              29            0.0%              29            0.0%
+	              V         3672354          100.0%         3672354           14.3%
+	              a         3672381          100.0%         7344777           28.6%
+	              e              29            0.0%              49            0.0%
+	              g              20            0.0%              20            0.0%
+	              i         3672374          100.0%         3672394           14.3%
+	              l              29            0.0%              49            0.0%
+	              n         3672374          100.0%         3672394           14.3%
+	              o              29            0.0%              29            0.0%
+	              p              29            0.0%              58            0.0%
+	              r         3672374          100.0%         3672374           14.3%
+	              s              20            0.0%              20            0.0%
+	              t         3672381          100.0%         3672403           14.3%
+	              v              20            0.0%              20            0.0%
+	              y              29            0.0%              29            0.0%
+
+# VALUE STATS (sorted by descending frequency)
+
+	VALUE_COUNT  VALUE_%  VALUE
+	3672352      100.0%   Variant
+	20           0.0%     Haplotype, single variant
+	7            0.0%     Haplotype
+	2            0.0%     Haplotype;Variant

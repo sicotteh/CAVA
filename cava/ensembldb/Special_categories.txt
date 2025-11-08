@@ -1,0 +1,30 @@
+# Transcripts with an extra '_1' after transcript.
+
+gunzip -c data/RefseqLatest_GRCh38_Refseq.gtf.gz | gawk -F "\t" '$3=="CDS"' | perl -aE '$_ =~ /transcript_id "([^"]+)"/;$transcript=$1;if($transcript =~ /_.*_/){print $_}'  | perl -ane '$_ =~ /exception "([^"]+)"/;print $1 . "\n"' | sort | uniq -c
+
+
+162 "alternative start codon"
+53 "alternative start codon, annotated by transcript or proteomic data"
+   ==> Must support AUG start for PTEN_1 (PTEN alpha) gene
+
+85820 annotated by transcript or proteomic data
+2332 rearrangement required for product
+     ==> Cannot Support
+77 translation initiation by tRNA-Leu at CUG codon, annotated by transcript or proteomic data
+     ==> Support CUG codon
+
+
+gunzip -c data/RefseqLatest_GRCh38_Refseq.gtf.gz | gawk -F "\t" '$3=="CDS"' | perl -aE '$_ =~ /transcript_id "([^"]+)"/;$transcript=$1;if($transcript =~ /_.*_/){print $_}'  | grep 'translation initiation by tRNA-Leu' 
+
+# These are OK, but need to support a CUG as Start Codon (CTG is an L)
+gunzip -c data/RefseqLatest_GRCh38_Refseq.gtf.gz | gawk -F "\t" '$3=="CDS"' | perl -aE '$_ =~ /transcript_id "([^"]+)"/;$transcript=$1;if($transcript =~ /_.*_/){print $_}'  | grep 'alternative start codon' | more 
+
+
+# Skip those with partial, otherwise can take those variants
+
+gunzip -c data/RefseqLatest_GRCh38_Refseq.gtf.gz | gawk -F "\t" '$3=="CDS"' | perl -aE '$_ =~ /transcript_id "([^"]+)"/;$transcript=$1;if($transcript =~ /_.*_/){print $_}'  | grep 'annotated by transcript or proteomic data'  |  grep -v 'partial "true"' |  
+
+
+
+
+

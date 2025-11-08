@@ -1,0 +1,27 @@
+# COLUMN METADATA
+
+	COLUMN       strand
+	TYPE         String
+	COUNT        1
+	DESCRIPTION  Genomic Strand
+
+# CHARACTER STATS
+
+	Total Lines in file:      3672381
+	Num lines sampled:        3672381
+	Lines that had column:    3649966 (99.4%)
+	Total column value chars: 3649966
+
+	NON-Alphanumeric
+	      CHARACTER      LINE_COUNT          LINE_%      CHAR_COUNT          CHAR_%
+	              +         1811525           49.6%         1811525           49.6%
+	              -         1838441           50.4%         1838441           50.4%
+
+	Alphanumeric
+	      CHARACTER      LINE_COUNT          LINE_%      CHAR_COUNT          CHAR_%
+
+# VALUE STATS (sorted by descending frequency)
+
+	VALUE_COUNT  VALUE_%  VALUE
+	1838441      50.4%    -
+	1811525      49.6%    +

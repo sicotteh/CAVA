@@ -1,0 +1,148 @@
+# COLUMN METADATA
+
+	COLUMN       clinical_significance
+	TYPE         String
+	COUNT        .
+	DESCRIPTION  Is reported by submitters, explicitly for co-occurring variations which may contribute to the condition. One option, however, is not provided so that submitters are not required to calculate significance to submit their data.
+
+# CHARACTER STATS
+
+	Total Lines in file:      3672381
+	Num lines sampled:        3672381
+	Lines that had column:    3672381 (100.0%)
+	Total column value chars: 83808119
+
+	NON-Alphanumeric
+	      CHARACTER      LINE_COUNT          LINE_%      CHAR_COUNT          CHAR_%
+	        <space>         3282532           89.4%         3580932            4.3%
+	              "         3672381          100.0%         7345634            8.8%
+	              ,             427            0.0%             448            0.0%
+	              -            4520            0.1%            4520            0.0%
+	              /           93189            2.5%           93199            0.1%
+	              [         3672381          100.0%         3672381            4.4%
+	              \           93189            2.5%           93199            0.1%
+	              ]         3672381          100.0%         3672381            4.4%
+
+	Alphanumeric
+	      CHARACTER      LINE_COUNT          LINE_%      CHAR_COUNT          CHAR_%
+	              A             151            0.0%             151            0.0%
+	              B          268841            7.3%          268841            0.3%
+	              C          148635            4.0%          148635            0.2%
+	              L         1191843           32.5%         1191860            1.4%
+	              P          207580            5.7%          207587            0.2%
+	              U         1932590           52.6%         1932737            2.3%
+	              a         2393234           65.2%         4657556            5.6%
+	              b         1055029           28.7%         1055029            1.3%
+	              c         2393329           65.2%         6738266            8.0%
+	              d            9085            0.2%           16196            0.0%
+	              e         3667164           99.9%         6887809            8.2%
+	              f         2081960           56.7%         2379760            2.8%
+	              g         3658369           99.6%         3900309            4.7%
+	              h          461233           12.6%          494641            0.6%
+	              i         3664330           99.8%        11639964           13.9%
+	              k         1192462           32.5%         1192618            1.4%
+	              l         1340837           36.5%         1490405            1.8%
+	              m             170            0.0%             170            0.0%
+	              n         3665689           99.8%        11327048           13.5%
+	              o          471029           12.8%          958383            1.1%
+	              p          294275            8.0%          294315            0.4%
+	              r         1943979           52.9%         1947132            2.3%
+	              s         2084422           56.8%         2384807            2.8%
+	              t         2401851           65.4%         2881531            3.4%
+	              u            2144            0.1%            2144            0.0%
+	              v            7010            0.2%            7010            0.0%
+	              w              12            0.0%              12            0.0%
+	              y         1340492           36.5%         1340509            1.6%
+
+# VALUE STATS (sorted by descending frequency)
+
+	VALUE_COUNT  VALUE_%  VALUE
+	1932371      52.6%    ["Uncertain significance"]
+	995281       27.1%    ["Likely benign"]
+	209060       5.7%     ["Benign"]
+	174114       4.7%     ["Pathogenic"]
+	148578       4.0%     ["Conflicting classifications of pathogenicity"]
+	103358       2.8%     ["Likely pathogenic"]
+	59705        1.6%     ["Benign\/Likely benign"]
+	33275        0.9%     ["Pathogenic\/Likely pathogenic"]
+	6941         0.2%     ["not provided"]
+	4520         0.1%     ["-"]
+	1857         0.1%     ["drug response"]
+	1538         0.0%     ["other"]
+	364          0.0%     ["risk factor"]
+	328          0.0%     ["association"]
+	170          0.0%     ["no classifications from unflagged records"]
+	147          0.0%     ["Uncertain significance\/Uncertain risk allele"]
+	135          0.0%     ["Affects"]
+	95           0.0%     ["Likely risk allele"]
+	74           0.0%     ["Pathogenic","other"]
+	55           0.0%     ["Pathogenic","drug response"]
+	35           0.0%     ["protective"]
+	33           0.0%     ["Uncertain risk allele"]
+	22           0.0%     ["Conflicting classifications of pathogenicity","other"]
+	22           0.0%     ["Likely pathogenic","drug response"]
+	19           0.0%     ["Benign","risk factor"]
+	18           0.0%     ["Pathogenic","risk factor"]
+	16           0.0%     ["Conflicting classifications of pathogenicity","risk factor"]
+	13           0.0%     ["Benign","other"]
+	13           0.0%     ["Likely pathogenic\/Likely risk allele"]
+	11           0.0%     ["Benign","association"]
+	11           0.0%     ["Benign\/Likely benign","other"]
+	11           0.0%     ["Likely benign","other"]
+	11           0.0%     ["Uncertain significance","other"]
+	11           0.0%     ["confers sensitivity"]
+	10           0.0%     ["Pathogenic\/Likely risk allele"]
+	10           0.0%     ["Uncertain significance","drug response"]
+	8            0.0%     ["Likely pathogenic","risk factor"]
+	8            0.0%     ["Uncertain significance","risk factor"]
+	7            0.0%     ["Conflicting classifications of pathogenicity","association"]
+	7            0.0%     ["Pathogenic","Affects"]
+	7            0.0%     ["Uncertain significance","association"]
+	7            0.0%     ["no classification for the single variant"]
+	6            0.0%     ["Likely pathogenic","association"]
+	5            0.0%     ["Benign","drug response"]
+	5            0.0%     ["Likely benign","drug response"]
+	5            0.0%     ["Likely pathogenic, low penetrance"]
+	5            0.0%     ["Pathogenic\/Likely pathogenic","other"]
+	5            0.0%     ["Pathogenic\/Likely pathogenic\/Pathogenic, low penetrance"]
+	4            0.0%     ["Benign","protective"]
+	4            0.0%     ["Likely benign","drug response","other"]
+	4            0.0%     ["Pathogenic","association"]
+	4            0.0%     ["Pathogenic\/Likely pathogenic\/Likely risk allele"]
+	4            0.0%     ["association not found"]
+	4            0.0%     ["protective","risk factor"]
+	3            0.0%     ["Benign","Affects"]
+	3            0.0%     ["Benign\/Likely benign","drug response","other"]
+	3            0.0%     ["Conflicting classifications of pathogenicity","drug response"]
+	3            0.0%     ["Conflicting classifications of pathogenicity","other","risk factor"]
+	3            0.0%     ["Pathogenic\/Likely pathogenic","risk factor"]
+	2            0.0%     ["Benign\/Likely benign","drug response"]
+	2            0.0%     ["Conflicting classifications of pathogenicity","association","risk factor"]
+	2            0.0%     ["Conflicting classifications of pathogenicity","protective"]
+	2            0.0%     ["Likely benign","risk factor"]
+	2            0.0%     ["Uncertain significance","Affects"]
+	1            0.0%     ["Benign","Affects","association","other"]
+	1            0.0%     ["Benign","confers sensitivity"]
+	1            0.0%     ["Benign\/Likely benign","association"]
+	1            0.0%     ["Benign\/Likely benign","other","risk factor"]
+	1            0.0%     ["Benign\/Likely benign","risk factor"]
+	1            0.0%     ["Conflicting classifications of pathogenicity","Affects"]
+	1            0.0%     ["Conflicting classifications of pathogenicity","drug response","other"]
+	1            0.0%     ["Likely benign","Affects","association"]
+	1            0.0%     ["Likely benign","association"]
+	1            0.0%     ["Likely pathogenic","Affects"]
+	1            0.0%     ["Likely pathogenic","other"]
+	1            0.0%     ["Likely pathogenic","protective"]
+	1            0.0%     ["Pathogenic","association","protective"]
+	1            0.0%     ["Pathogenic","confers sensitivity"]
+	1            0.0%     ["Pathogenic","protective"]
+	1            0.0%     ["Pathogenic\/Likely pathogenic","association"]
+	1            0.0%     ["Pathogenic\/Likely pathogenic\/Pathogenic, low penetrance","risk factor"]
+	1            0.0%     ["Pathogenic\/Pathogenic, low penetrance","other"]
+	1            0.0%     ["Uncertain risk allele","risk factor"]
+	1            0.0%     ["association","drug response","risk factor"]
+	1            0.0%     ["association","risk factor"]
+	1            0.0%     ["confers sensitivity","other"]
+	1            0.0%     ["drug response","other"]
+	1            0.0%     ["drug response","risk factor"]
+	1            0.0%     ["other","risk factor"]

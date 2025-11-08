@@ -11,14 +11,14 @@ import importlib.resources
 from . import conseq
 from . import core
 from . import csn
+from .. import ensembldb
+import re
 
 
 # import time
 import pathlib
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + '/pysamdir')
 import pysam
-
-
 
 #######################################################################################################################
 class Seldata(object):
@@ -79,10 +79,10 @@ class Ensembl(object):
         self.contigs = dict()
         try:
             self.tabixfile = pysam.Tabixfile(options.args['ensembl'])
-        except:
+        except Exception as e:
             try:
                 self.tabixfile = pysam.TabixFile(options.args['ensembl'])
-            except:
+            except Exception as e:
                 sys.stderr.write("CAVA: ERROR: error trying to open Tabix file for " + options.args['ensembl'] + "\n")
         for chrom in self.tabixfile.contigs:
             if chrom in reference.reflens:
@@ -173,12 +173,13 @@ class Ensembl(object):
             else:
                 sys.path.append(str(pathlib.Path().resolve().parents[0]))
                 try:
-                    fid = importlib.resources.open_text("ensembldb", selenofile)
+                    fid = importlib.resources.open_text(ensembldb, selenofile)
                 except IOError:
                     sys.stderr.write("ERROR: Error opening CESIS File=ensembldb/" + selenofile + "\n")
         else:
             sys.path.append(str(pathlib.Path().resolve().parents[0]))
-            fid = importlib.resources.open_text("ensembldb", "SECIS_in_refseq_pos.txt")
+            fid = importlib.resources.open_text(ensembldb, "SECIS_in_refseq_pos.txt")
+
         if fid is not None:
             secis_lines = fid.readlines()
             self.load_CESIS(secis_lines)
@@ -467,7 +468,8 @@ class Ensembl(object):
     def inrange(self, x, y, a):
         return x <= a <= y or y <= a <= x
 
-    # Parse CSN coordinates
+    # Parse intron CSN coordinates .. only works well from the part before the "dup" string
+    #return None id these are not intronic coordinates.
     def getIntronBases(self, x):
         idx = x.find('-')
         if idx < 1:
@@ -475,34 +477,212 @@ class Ensembl(object):
             if idx < 1: return None
             return int(x[idx:])
         return int(x[idx:])
+    # Parse Exon CSN coordinates .. only works well from the part before the "dup" string
+    # return none, if these are not intronic coordinates
+    def getExonBases(self, x):
+        idx = x.find('-')
+        if idx < 1:
+            idx = x.find('+')
+            if idx < 1: return None
+            return int(x[0:idx])
+        return int(x[0:idx])
+
+
+    def getExtractPosOrPosRange(self,x):
+        if x is None:
+            return None
+        x = x.split('%3B')[0]
+        if x.startswith('['):
+            x=x[1:]
+        if x.find('[')>=0: # repeat inside string
+            x=re.sub(r'\[[0-9]+\]','',x)
+            if x.endswith(']'): # has to occur after the regex
+                x=x[0:len(x)-1]
+        if x.endswith(']'): # bracket around a non-repeat
+            x=x[0:len(x)-1]
+        m=re.match(r'^([0-9\-\+_]+)ins-.*inv',x)
+        if m:
+            x=m.group(1)
+
+        x = re.sub(r'[A-Za-z]', '', x)  # remove bases and keywords like ins del or dup
+        return x
+
+
+    # argument is a partially parsed csn string
+    # x as in c.x_p.proteinHGVS
+    def parseRep(self,csnpart):
+        # This is for a repeat that is not an insertion.
+        # [position_positionGC[4]]%3G[position_positionGC[6]]
+        # [position_-11position-4GC[4]]%3G[position-11_position-4GC[6]]
+
+        if csnpart is None or csnpart.find('%3B')==-1:
+            return None
+        [x,y] = csnpart.split('%3B')
+        if x.startswith('['):
+            x=x[1:]
+        if x.find('[')>=0: # repeat inside string
+            m = re.search(r'^([0-9_+\-]+)([A-Z,a-z]+)\[([0-9]+)\]',x)
+            if m:
+                [crange,repeat_seq,n_ref] = [m.group(1),m.group(2),m.group(3)]
+            else:
+                return [None,None,None,None]
+        else:
+            return [None, None, None, None]
+        if y.startswith('['):
+            y=y[1:]
+        if y.find('[')>=0: # repeat inside string
+            m = re.search(r'^([0-9_+\-]+)([A-Z,a-z]+)\[([0-9]+)\]',y)
+            if m:
+                [crange,repeat_seq,n_alt ] = [m.group(1),m.group(2),m.group(3)]
+                return [crange,repeat_seq,int(n_ref),int(n_alt)]
+            else:
+                return [None,None,None,None]
+        else:
+            return [None, None, None, None]
+        return [x,None,None,None]
+
 
     # Check if variant is duplication overlapping SS boundary
+    # ssrange is the size of the intron region (default 8, possible values should be >6)
+    # This function needs to return True only if the duplication intervaal
+    # touches the edge of the ss region and is inside.. so that class can be corrected
+    # from SS to INT.
+    # if the Duplication interval does not meet the creteria for shifting out, return False.
+    #
+    # XXX-HS This function is not 100 percent. If a repeat is annotated as a Dup, it is possible
+    # that the repeat could extend beyond the dup region. This yields a conservative result
+    #
+
     def isDupOverlappingSSBoundary(self, csnval, ssrange=8):
 
+        if ssrange == 0 or csnval is None or len(csnval)==0:
+            return False  # Nothing to correct, since nothing will overlap the splice region.
         if '_p' in csnval:
             [cpart, _] = csnval.split('_p')
         else:
             cpart = csnval
+        if cpart.startswith("c."):
+            cpart=cpart[2:]
+        if cpart.find("del")>=0:
+            return False
+        isDup = False
+        isIns = False
+        if cpart.find('ins') !=-1:
+            isIns = True
+        elif cpart.find('dup') != -1:
+            isDup = True
+        elif cpart.find('[') != -1:
+            isitoverlappingSSboundary = self.isRepOverlappingSSBoundary(cpart,ssrange)
+            return isitoverlappingSSboundary
+        else:
+            return False
 
-        idx = cpart.find('dup')
-        if idx == -1: return False
-
-        cpart = cpart[2:idx]
+        cpart = self.getExtractPosOrPosRange(cpart)
 
         if '_' in cpart:
-            [x, y] = cpart.split('_')
-        else:
+            [xs, ys] = cpart.split('_')
+        else: # Single-base duplication
             x = self.getIntronBases(cpart)
             if x is None: return False
-            return x == ssrange or x == -ssrange
+            return x == ssrange or x == -ssrange # dup at the edge of the region, splicosome will not see it as being inside
 
-        x = self.getIntronBases(x)
-        y = self.getIntronBases(y)
-        if x is None or y is None: return False
+        x = self.getIntronBases(xs)
+        y = self.getIntronBases(ys)
+#        if x is None or y is None: return False
+        # pre-2025, this was not correct two ways:
+        #      Duplication can only shift out if one edge of the dup is
+        #      either right at the SS boundary or overlapping it .. (and the other end does not have to be in splice regioin)
 
-        return self.inrange(x, y, ssrange) or self.inrange(x, y, -ssrange)
+        if x is None and y is None: # No possibility of shifting
+            return False
+        xe= self.getExonBases(xs)
+        ye=self.getExonBases(ys)
+        if isIns is True:
+            if x is not None:
+                if x==(-ssrange-1):
+                    return True
+                if x == ssrange:
+                    return True
+            return False # Nothing to rescue.
+        if xe is None or ye is None or xe!=ye: # Duplication across different exons or might cover whole ss area
+            return False
+        elif isDup is True:
+            # Next few lines don't do the 'proper' thing for a very short intron ..
+            #   they will not rescue events spanning the middle of the intron.(coordinate change)
+            # .. but we'll assume that very small introns will get disrupted by any sequence insertioin, so we don't want to rescur anything
+            if xe is not None and ye is not None:
+                if xe != ye: # two ends of dup in different exons, do not rescue.
+                    return False
+                elif x>ssrange or y< -ssrange: # Don't change anything. outside intron SS regions
+                    return False
+                elif x==ssrange or y == -ssrange:
+                    return True
+            if x is None or y is None or xe is None or ye is None: # One of the ends of the dup, crosses the intron/exon boundary, so if it were to be
+                return False             # to be rescued, it would create an entire splice site, likely has some functional impact .. so do not rescue
+            if y> -ssrange: # Dup will insert before acceptor site, doesn't matter if y is in intron.
+                if x<= -ssrange:
+                    return True
+                return False
+            if x < ssrange:  # Dup will insert before acceptor site, doesn't matter if y is in intron.
+                if y >= ssrange:
+                    return True
+                return False
+            return False
+        return False
 
-    # Correct CLASS annotations for duplications overlapping SS boundary
+        # Now deal with isRep
+
+#pre102025        if x is None or y is None: return False
+#pre102025        return self.inrange(x, y, ssrange) or self.inrange(x, y, -ssrange)
+
+
+    # input is partially parsed csn, e.g. c.cpart_p.proteinHGVS
+    # Returns true if could shift an event targetting the splice range to outside
+    # False, means to leave class as-is (either in intron or in SS)
+    #
+    def isRepOverlappingSSBoundary(self, cpart, ssrange=8):
+        [cpart, repeat_seq,n_ref,n_alt] = self.parseRep(cpart)
+        if repeat_seq is None:
+            return False
+        repeat_len = len(repeat_seq)
+        if '_' in cpart:
+            [xs, ys] = cpart.split('_')
+        else:  # Single base repeat with one copy
+               # Cannot be a deletion .. has to be a repeat expansion..
+               # can we insert the repeated bases outside the splice region.
+            x = self.getIntronBases(cpart)
+            if x is None: return False
+            return x == ssrange or x == -ssrange  # 3 or more repeats at the edge of the region, splicosome will not see it as being inside
+
+        x = self.getIntronBases(xs)
+        y = self.getIntronBases(ys)
+        #        if x is None or y is None: return False
+        # pre-2025, this was not correct two ways:
+        #      Duplication can only shift out if one edge of the dup is
+        #      either right at the SS boundary or overlapping it .. (and the other end does not have to be in splice regioin)
+
+        if x is None and y is None:  # No possibility of shifting solely within ssregion.
+            return False
+        xe = self.getExonBases(xs)
+        ye = self.getExonBases(ys)
+        if xe is None or ye is None: # One of them in exon, no rescue.
+            return False
+        if n_ref>n_alt: # Deletion. need at least (n_ref-n_alt)*repeat_len past edge of ssboundary.
+            keepbases = (n_ref-n_alt)*repeat_len
+            if y<0 and x<0 and y>=-ssrange and  x+(keepbases-1) < -ssrange:
+                return True
+            if x>0 and y>0 and x<=ssrange and y-(keepbases-1) > ssrange:
+                return True
+        elif n_ref<n_alt: # Insertion, can insert anywhere as long as art of repeat is past ssrange.
+            if x<= -ssrange or y>= ssrange:
+                return True
+        return False
+
+
+    # Correct CLASS annotations for duplications overlapping SS boundary because the splicing biology
+    # will no lomger use the 3' shifting rule ..and the dup will be read as being in the intron
+    # .. though it could still affect the ESS
+
     def correctClasses(self, mycsn, class_plus, class_minus):
         if self.isDupOverlappingSSBoundary(mycsn, ssrange=int(self.options.args['ssrange'])):
             if class_plus == 'SS' and class_minus == 'INT': return 'INT', 'INT'
@@ -532,6 +712,10 @@ class Ensembl(object):
             variant_plus = variant
             variant_minus = variant
             difference = False
+        # If givealt is True, then will evaluate csn for the variant in the 'wrong/opposite' left-right shifting
+        givealt=False
+        if 'givealt' in self.options.args and self.options.args['givealt'] == 'True':
+            givealt=True
 
         # Initializing annotation strings
         TRANSCRIPTstring = ''
@@ -552,6 +736,7 @@ class Ensembl(object):
         PROTALTstring = ''
 
         # Collecting transcripts that overlap with the variant
+        # transcript overlapping left-end and right end of variant ("OUT" is empty for single-bases)
         transcripts_plus, transcriptsOUT_plus = self.findTranscripts(variant_plus)
         transcripts_minus, transcriptsOUT_minus = self.findTranscripts(variant_minus)
 
@@ -680,7 +865,8 @@ class Ensembl(object):
 
             # Creating reference and mutated protein sequence
             #  not_exonic_plus= means outside transcript .. which can (now) happen for deletion or MNP
-            # Cannot call protein when variant spans intron/exon boundary
+            # Cannot call protein when variant spans intron/exon boundary, because they affect splicing
+            #   so any predicted protein would be very uncertain .. bettter to trigger a p.?
             #
             # XXX-HS need to add Start Gain in 5'UTR.. from SNP/insertion/deletions
             #
@@ -691,6 +877,8 @@ class Ensembl(object):
             notexonic_plus = transcript.isOutsideTranslatedRegion(variant_plus)
             in_utr5_plus = False
             in_utr5_minus = False
+            start_aa = "M"
+            is_methionine = True
             if variant.is_insertion:
                 if transcript.isPositionOutsideCDS_5prime(variant_plus.pos) or \
                         (transcript.strand == 1 and variant_plus.pos == transcript.transcriptStart + 1):
@@ -727,6 +915,13 @@ class Ensembl(object):
                 if not transcript.TRANSCRIPT in list(self.proteinSeqs.keys()):
                     protein, exonseqs, cds_ref, utr5_ref = transcript.getProteinSequence(reference, None, None,
                                                                                          self.codon_usage)
+                    if len(protein)>0 and protein[0]!= 'M': # Support alternate start codon at the price of not supporting partial as well.
+                        # Support the following alt start codons AUA,AUU,CUG,GUG,ACG,UUG,AUC,AAG,AGG
+                        codon=cds_ref[0]+cds_ref[1]+cds_ref[2]
+                        if codon in ['ATA','ATT','CTG','GTG','ACG','TTG','ATC','AAG','AGG']:
+                            start_aa=protein[0]
+                            is_methionine = False
+                            protein="M"+protein[1:]
                     self.proteinSeqs[transcript.TRANSCRIPT] = protein
                     self.exonSeqs[transcript.TRANSCRIPT] = exonseqs
                     self.cds_ref[transcript.TRANSCRIPT] = cds_ref
@@ -752,7 +947,7 @@ class Ensembl(object):
                 cds_ref = ''
                 utr5_ref = ''
 
-            if notexonic_plus is True and in_utr5_plus is False:
+            if (transcript.strand == -1 and  givealt is False)  or (notexonic_plus is True and in_utr5_plus is False): # No chance to have a protein or even an alt-start
                 mutprotein_plus = None
                 utr5_plus = None
             else:
@@ -760,41 +955,44 @@ class Ensembl(object):
                                                                                                            variant_plus,
                                                                                                            exonseqs,
                                                                                                            self.codon_usage)
+                # support alternate start codon .. but don't support one alternate mutating to another alternate start codon, just
+                # because these kinds of change lead to a large change in expression and these would be invible with a synonymous Methionine->Methionine mutation
+                # We support alternate start codon, because we respect non-partial annotation.
+                if mutprotein_plus is not None and is_methionine is False and len(mutprotein_plus)>0:
+                    if mutprotein_plus[0] == start_aa and cds_mut_plus[0]==cds_ref[0] and cds_mut_plus[1]==cds_ref[1] and cds_mut_plus[2]==cds_ref[2]:
+                        mutprotein_plus='M'+mutprotein_plus[1:]
                 if mutprotein_plus is not None and (transcript.geneSymbol in self.selenogenes) and cds_ref is not None:
                     mutprotein_plus = transcript.trimSelenoCysteine(cds_ref, cds_mut_plus, protein, mutprotein_plus,
                                                                     variant_plus,transcript)
 
-            if difference:
-                if notexonic_minus and in_utr5_minus is False:
-                    mutprotein_minus = None
-                    utr5_minus = None
-                else:
-                    mutprotein_minus, exonseqsalt_minus, cds_mut_minus, utr5_minus = transcript.getProteinSequence(
-                        reference, variant_minus, exonseqs, self.codon_usage)
-                    if mutprotein_minus is not None and transcript.geneSymbol in self.selenogenes and cds_ref is not None:
-                        mutprotein_minus = transcript.trimSelenoCysteine(cds_ref, cds_mut_minus, protein,
-                                                                         mutprotein_plus, variant_minus,transcript)
+            if (transcript.strand == 1 and  givealt is False) or (notexonic_minus is True and in_utr5_minus is False):
+                mutprotein_minus = None
+                utr5_minus = None
             else:
-                mutprotein_minus = mutprotein_plus
-                utr5_minus = utr5_plus
+                mutprotein_minus, exonseqsalt_minus, cds_mut_minus, utr5_minus = transcript.getProteinSequence(
+                    reference, variant_minus, exonseqs, self.codon_usage)
+            # support alternate start codon .. but don't support one alternate mutating to another alternate start codon
+                if mutprotein_minus is not None and is_methionine is False and len(mutprotein_minus)>0:
+                    if mutprotein_minus[0] == start_aa and cds_mut_minus[0]==cds_ref[0] and cds_mut_minus[1]==cds_ref[1] and cds_mut_minus[2]==cds_ref[2]:
+                        mutprotein_minus='M'+mutprotein_minus[1:]
+                if mutprotein_minus is not None and transcript.geneSymbol in self.selenogenes and cds_ref is not None:
+                    mutprotein_minus = transcript.trimSelenoCysteine(cds_ref, cds_mut_minus, protein,
+                                                                     mutprotein_plus, variant_minus,transcript)
 
             # Creating the CSN annotations both for left and right aligned variant
-            if TRANSCRIPT in transcripts_allplus:
+            if TRANSCRIPT in transcripts_allplus and (givealt is True or transcript.strand == 1):
                 csn_plus, protchange_plus = csn.getAnnotation(variant_plus, transcript, reference, protein,
                                                               mutprotein_plus)
                 csn_plus_str = csn_plus.getAsString()
             else:
                 csn_plus_str, protchange_plus = '.', ('.', '.', '.')
 
-            if difference:
-                if TRANSCRIPT in transcripts_allminus:
-                    csn_minus, protchange_minus = csn.getAnnotation(variant_minus, transcript, reference, protein,
+            if TRANSCRIPT in transcripts_allminus and (givealt is True or transcript.strand == -1):
+                csn_minus, protchange_minus = csn.getAnnotation(variant_minus, transcript, reference, protein,
                                                                     mutprotein_minus)
-                    csn_minus_str = csn_minus.getAsString()
-                else:
-                    csn_minus_str, protchange_minus = '.', ('.', '.', '.')
+                csn_minus_str = csn_minus.getAsString()
             else:
-                csn_minus_str, protchange_minus = csn_plus_str, protchange_plus
+                csn_minus_str, protchange_minus = '.', ('.', '.', '.')
 
             # CLASS, SO and IMPACT
 
@@ -814,15 +1012,12 @@ class Ensembl(object):
                 else:
                     class_plus = '.'
 
-                if difference:
-                    if TRANSCRIPT in transcripts_allminus:
+                if TRANSCRIPT in transcripts_allminus:
                         class_minus = conseq.getClassAnnotation(variant_minus, transcript, protein, mutprotein_minus,
                                                                 loc_minus, int(self.options.args['ssrange']),
                                                                 reference, exonseqs, utr5_ref, utr5_minus)
-                    else:
-                        class_minus = '.'
                 else:
-                    class_minus = class_plus
+                        class_minus = '.'
 
             # Determining the IMPACT flag
             if not impactdir is None:
@@ -851,14 +1046,11 @@ class Ensembl(object):
                 else:
                     so_plus = '.'
 
-                if difference:
-                    if TRANSCRIPT in transcripts_allminus:
-                        so_minus = conseq.getSequenceOntologyAnnotation(variant_minus, transcript, protein,
-                                                                        mutprotein_minus, loc_minus)
-                    else:
-                        so_minus = '.'
+                if TRANSCRIPT in transcripts_allminus:
+                    so_minus = conseq.getSequenceOntologyAnnotation(variant_minus, transcript, protein,
+                                                                    mutprotein_minus, loc_minus)
                 else:
-                    so_minus = so_plus
+                    so_minus = '.'
 
             # Deciding which is the correct CSN and CLASS annotation
             if transcript.strand == 1:
@@ -914,7 +1106,7 @@ class Ensembl(object):
                 PROTREFstring += protchange_minus[1]
                 PROTALTstring += protchange_minus[2]
 
-            if 'givealt' in self.options.args and self.options.args['givealt']:
+            if  givealt is True:
                 # Creating the ALTANN annotation
                 if not csn_plus_str == csn_minus_str:
                     ALTANNstring += ALTANN
@@ -933,8 +1125,7 @@ class Ensembl(object):
                 else:
                     ALTSOstring += '.'
 
-            if ('givealt' in self.options.args and self.options.args['givealt'] is True) or \
-                    ('givealtflag' in self.options.args and self.options.args['givealtflag']):
+            if givealt is True:
                 # Creating the ALTFLAG annotation
 
                 if self.options.args['ontology'].upper() == 'CLASS':
@@ -986,7 +1177,7 @@ class Ensembl(object):
 
         if not impactdir is None: variant.addFlag('IMPACT', IMPACTstring)
 
-        if 'givealt' in self.options.args and self.options.args['givealt'] is True:
+        if givealt is True:
             variant.addFlag('ALTANN', ALTANNstring)
             if self.options.args['ontology'].upper() in ['CLASS', 'BOTH']: variant.addFlag('ALTCLASS', ALTCLASSstring)
             if self.options.args['ontology'].upper() in ['SO', 'BOTH']: variant.addFlag('ALTSO', ALTSOstring)

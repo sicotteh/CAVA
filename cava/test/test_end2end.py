@@ -51,7 +51,9 @@ class MyTestCase(unittest.TestCase):
         cls.transcriptlist = []
         cls.options = Options()
         cls.reference = Reference(cls.options)
+        cls.options.args['givealt'] = 'True'
         cls.ensembl = Ensembl(cls.options, cls.genelist, cls.transcriptlist, cls.codon_usage[0], cls.reference)
+
 
 
     def test_hg38_negStrand_simple_nc(self):
@@ -111,15 +113,14 @@ class MyTestCase(unittest.TestCase):
         line = "17\t43044804\t803399\tC\tCTTTTTTTTT\t.\t.\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        rec.variants[0].getFlag('CSN')
-        self.assertEqual('c.*863A[19]%3B[28]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.*865_*873dup', rec.variants[0].getFlag('CSN'))
 
     def test_hg38_negStrand_del3utr(self):
         line = "17\t43044804\t323411\tCTT\tC\t.\t.\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         rec.variants[0].getFlag('CSN')
-        self.assertEqual('c.*856A[19]%3B[17]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.[*855_*873A[19]]%3B[*855_*873A[17]]', rec.variants[0].getFlag('CSN')) # repeat .. but can and should be annotated as a dup.
 
     def test_hg38_negStrand_delins3utr(self):
         line = "17\t43044804\t323411\tCTT\tCG\t.\t.\t.\tGT\t0/1\n"
@@ -274,8 +275,8 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('c.67+1del_p.?', rec.variants[0].getFlag('CSN'))
         self.assertEqual('ESS', rec.variants[0].getFlag('CLASS'))
         self.assertEqual('splice_donor_variant', rec.variants[0].getFlag('SO'))
-        self.assertEqual('NC_000013.11:g.32316527G[2]%3B[1]', rec.variants[0].getFlag('HGVSg'))
-
+        # 2 to 1 repeat, change of une unit represented by del
+        self.assertEqual('NC_000013.11:g.32316528del', rec.variants[0].getFlag('HGVSg'))
 
     def test_hg38_splice_indel_exception_acceptor(self): # 3' shifting at DNA level should properly shift out a deletion of splice donor (BRCA2)
         line = "13\t32325075\tacceptor_deletion\tGG\tG\t.\t.\t.\tGT\t0/1\n"
@@ -284,7 +285,37 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('c.317del_p.Gly106GlufsTer15', rec.variants[0].getFlag('CSN'))
         self.assertEqual('FS', rec.variants[0].getFlag('CLASS'))
         self.assertEqual('splice_region_variant|frameshift_variant', rec.variants[0].getFlag('SO'))
-        self.assertEqual('NC_000013.11:g.32325075G[2]%3B[1]', rec.variants[0].getFlag('HGVSg'))
+        self.assertEqual('NC_000013.11:g.32325076del', rec.variants[0].getFlag('HGVSg')) # 2 to 1 del
+
+    def test_hg38_intronic_repeat(self): # 3' shifting at DNA level should properly shift out a deletion of splice donor (BRCA2)
+        line = "7\t117548628\tintronic_repeat\tGTT\tG\t.\t.\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('c.[1210-12_1210-6T[7]]%3B[1210-12_1210-6T[5]]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('INT', rec.variants[0].getFlag('CLASS'))
+        # not splice region variant because ssrange is 4 and repeat put it out of that range.
+        self.assertEqual('intron_variant', rec.variants[0].getFlag('SO'))
+        self.assertEqual('NC_000007.14:g.[117548629_117548635T[7]]%3B[117548629_117548635T[5]]', rec.variants[0].getFlag('HGVSg')) # 2 to 1 del
+
+    def test_hg38_nonintronic_repeat(self): # 3' shifting at DNA level should properly shift out a deletion of splice donor (BRCA2)
+        line = "16\t2071803\tchr16_2071803_GAGA_G\tGAGA\tG\t.\t.\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        self.assertEqual('c.[1967_1975AGA[3]]%3B[1967_1975AGA[2]]_p.Lys658del', rec.variants[0].getFlag('CSN'))
+
+    def test_hg38_repeat_shifting_out_of_SS_region(
+            self):  # 3' shifting at DNA level should properly shift out a deletion of splice donor (BRCA2)
+        line = "7\t291058\tintronic_repeat\tCGC\tC\t.\t.\t.\tGT\t0/1\n"
+        rec = core.Record(line, self.options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        csn = rec.variants[0].getFlag('CSN')
+        cdna_csn = csn.split("_p")[0]
+        if cdna_csn.startswith("c."):
+            cdna_csn = cdna_csn[2:]
+        sys.stdout.write("CSN_pos="+cdna_csn+"\n")
+        self.assertTrue(self.ensembl.isRepOverlappingSSBoundary(cdna_csn, ssrange=4))
+        self.assertEqual('INT', rec.variants[0].getFlag('CLASS'))
+
 
     def test_repeats(self):
         seq="TTTTT"
@@ -333,7 +364,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(dleftn[6], '')
 
         self.assertEqual(dfulln[0], 32329807)  # deletion
-        self.assertEqual(dfulln[1], 32329820)  # deletionleft shifted for HGVS .. position of first repeat
+        self.assertEqual(dfulln[1], 32329818)  # last base of "TA" pattern
         self.assertEqual(dfulln[2], 'TATATATATATA')  # ref
         self.assertEqual(dfulln[3], 'TATATATATA')  # alt
 
@@ -341,7 +372,7 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, self.options, None, self.reference)
         transcript = self.ensembl.findTranscripts(rec.variants[0])
         [ileftn, irightn, ifulln] = scan_for_repeat(rec.variants[0],  self.reference)
-        self.assertEqual(irightn[0], 32329815)  # insertion, 1 bp after insertion site
+        self.assertEqual(irightn[0], 32329819)  # insertion, 1 bp after insertion site
         self.assertEqual(irightn[1], 32329807)  # insertion left shifted for HGVS .. position of first repeat
         self.assertEqual(irightn[2], 6)  # Number of ref
         self.assertEqual(irightn[3], 8)   # number of alt
@@ -357,8 +388,8 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(ileftn[5], '')
         self.assertEqual(ileftn[6], 'TATA')
 
-        self.assertEqual(ifulln[0], 32329807)  # insertion, 1 bp after insertion site
-        self.assertEqual(ifulln[1], 32329820)  # insertion left shifted for HGVS .. position of first repeat
+        self.assertEqual(ifulln[0], 32329807)  # insertion, 1 bp after insertion site .. because after removing ref base common between ref/alt, ths indel position is after the insertion site.
+        self.assertEqual(ifulln[1], 32329819)  # rightmost insertion position (position after for insertion)
         self.assertEqual(ifulln[2], 'TATATATATATA')  # ref
         self.assertEqual(ifulln[3], 'TATATATATATATATA')  # alt
 
@@ -511,12 +542,13 @@ class MyTestCase(unittest.TestCase):
 
 # Already two 'G' there, so could be called dup, but because we are inserting two G ..it could be repeated allele
     # ... but the G's are inserted in the coding region, so it should NOT be a repeat (not a length 3 repeat)
+    # when a variant CAN be described as a dup, it must be.. tricky one!
     def test_hhg38_MSH6_dupGG_right_at_boundary_repeat(self):
-        line = "2\t47806203\tdupG_junction\tG\tGGG\t30\tPASS\t.\tGT\t0/1\n"
+        line = "2\t47806203\tGGins_junction\tG\tGGG\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('c.3647-1_3647dup_p.Arg1217GlufsTer12', rec.variants[0].getFlag('CSN'))
-        self.assertEqual('NC_000002.12:g.47806203G[2]%3B[4]',rec.variants[0].getFlag('HGVSg'))
+        self.assertEqual('NC_000002.12:g.47806203_47806204dup',rec.variants[0].getFlag('HGVSg'))
 #        self.assertEqual('c.3647dup_p.Arg1217LysfsTer7', rec.variants[0].getFlag('CSN'))
 
 # This GG cannot be described as a repeat, must be a dup
@@ -524,7 +556,7 @@ class MyTestCase(unittest.TestCase):
         line = "2\t47806192\tdupTT_intron\tT\tTTT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('c.3647-14T[4]%3B[6]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.3647-12_3647-11dup', rec.variants[0].getFlag('CSN'))
 
 # This TTT should NOT be described as a repeat, even though it's in the coding region because 'T' is not a multiple of 3
 # .. and although 3 T is a multiple of 3, other variants of 'T' repeat may not be.
@@ -540,8 +572,8 @@ class MyTestCase(unittest.TestCase):
         line = "2\t47804943\tdupGG_junction\tT\tTGTTGTT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('c.3470GTT[2]%3B[4]_p.Cys1158[1]%3B[3]', rec.variants[0].getFlag('CSN'))
-        self.assertEqual('NC_000002.12:g.47804941GTT[2]%3B[4]',rec.variants[0].getFlag('HGVSg'))
+        self.assertEqual('c.3470_3475dup_p.[Cys1158[1]]%3B[Cys1158[3]]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('NC_000002.12:g.47804941_47804946dup',rec.variants[0].getFlag('HGVSg'))
 # chr13-32319070-T-A,TA
 # NM_000059.4(BRCA2):c.68-7T
 # NM_000059.4(BRCA2):c.68-7delins A,NM_000059.4(BRCA2):c.68-6_68-5ins&quot;A
@@ -641,7 +673,7 @@ class MyTestCase(unittest.TestCase):
         line = "chr3\t37050680\tnotarepeat\tG\tGGAGAGA\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('c.*28_*29insGA[3]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.*27_*28insGA[3]', rec.variants[0].getFlag('CSN'))
         a=1
 
 
@@ -650,7 +682,7 @@ class MyTestCase(unittest.TestCase):
         line = "chr1\t25562689\tisrepeat\tTTT\tT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('NC_000001.11:g.25562689T[3]%3B[1]', rec.variants[0].getFlag('HGVSg'))
+        self.assertEqual('NC_000001.11:g.[25562689_25562691T[3]]%3B[25562689_25562691T[1]]', rec.variants[0].getFlag('HGVSg'))
 #        self.assertEqual('c.505_507T[3]%3B[1]_p.Phe169Ter', rec.variants[0].getFlag('CSN'))
         self.assertEqual('c.506_507del_p.Phe169Ter', rec.variants[0].getFlag('CSN')) # Not a repeat because repeat unit is not a multiple of 3 in coding region
 
@@ -680,11 +712,11 @@ class MyTestCase(unittest.TestCase):
         line = "chr2\t47806751\tmulti_alleles\tCTT\tC,CT,<NON_REF>\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('NC_000002.12:g.47806752T[18]%3B[16]',
+        self.assertEqual('NC_000002.12:g.[47806752_47806769T[18]]%3B[47806752_47806769T[16]]',
                          rec.variants[0].getFlag('HGVSg'))  # should only be one value
         # purely intronic variant, no protein and repeat-style annotation.
-        self.assertEqual('c.4002-27T[18]%3B[16]', rec.variants[0].getFlag('CSN'))
-        self.assertEqual('c.4002-27T[18]%3B[17]', rec.variants[1].getFlag('CSN'))
+        self.assertEqual('c.[4002-27_4002-10T[18]]%3B[4002-27_4002-10T[16]]', rec.variants[0].getFlag('CSN'))
+
         # We manually checked the output using the debugger.. doesn't quite work as a unit test.
         rec.output('VCF', None, self.options, self.genelist, self.transcriptlist, snplist=list(), stdout=True)
 
@@ -698,7 +730,8 @@ class MyTestCase(unittest.TestCase):
         line = "chr1\t933741\trepeat_in_both\tT\tTG\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('NC_000001.11:g.933742G[8]%3B[9]',
+        #933742G[8]%3B[9]
+        self.assertEqual('NC_000001.11:g.933749dup',
                          rec.variants[0].getFlag('HGVSg'))  # should only be one value
         # purely intronic variant, no protein and repeat-style annotation.
         self.assertEqual('c.843-2023dup', rec.variants[0].getFlag('CSN'))
@@ -712,10 +745,11 @@ class MyTestCase(unittest.TestCase):
 
 
     def test_repeat_in_intron2(self):
-        line = "chr1\t933548\trepeat_insertion_in_both\tT\tTG\t30\tPASS\t.\tGT\t0/1\n"
+        line = "chr1\t933548\trepeat_insertion_in_both\tA\tAG\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('NC_000001.11:g.933549G[6]%3B[7]',
+        # repeat from 933549-933544 (6G->7G)
+        self.assertEqual('NC_000001.11:g.933554dup',
                          rec.variants[0].getFlag('HGVSg'))  # should only be one value
         # purely intronic variant, no protein and repeat-style annotation.
         self.assertEqual('c.843-2218dup', rec.variants[0].getFlag('CSN'))
@@ -732,7 +766,8 @@ class MyTestCase(unittest.TestCase):
         line = "chr1\t1103993\trepeat_insertion_in_both2\tC\tCT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('NC_000001.11:g.1103994T[10]%3B[11]',
+        #NC_000001.11:g.1103994T[10]%3B[11]',
+        self.assertEqual('NC_000001.11:g.1104003dup',
                          rec.variants[0].getFlag('HGVSg'))  # should only be one value
         # purely intronic variant, no protein and repeat-style annotation.
         self.assertEqual('c.-135-11891dup', rec.variants[0].getFlag('CSN'))
@@ -776,6 +811,9 @@ class MyTestCase(unittest.TestCase):
     # chr7    290169  290276  +       FOXL3:NM_001374838.1    Ex1
     # chr7    290652  290821  +       FOXL3:NM_001374838.1    Ex2
     # chr7    291062  291485  +       FOXL3:NM_001374838.1    Ex3
+     # This variant gets shifted to the last base of the Coding region (the transcript has no annotated UTR.
+     # This changes the Ter AA from TGA to TGG (Trp).. and
+     # and so this is a protein extension .. for sure.
 
         self.assertEqual('c.697_701del_p.Met233_Ter234del', rec.variants[0].getFlag('ALTANN'))
         # transcript on the + strand and variants gets right shifted outside of variant scope.
@@ -812,8 +850,9 @@ class MyTestCase(unittest.TestCase):
         line = "chr17\t43092110\t1139Ser[2];[1]\tGACT\tG\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-
-        self.assertEqual('c.3415AGT[2]%3B[1]_p.Ser1139[2]%3B[1]',rec.variants[0].getFlag('CSN'))
+        # 2 copies to 1 . AA 1139-1140 SerSer to Ser
+        # repeat from 3415_3420 AGTAGT beoomes AGT .. rightmost deletion.
+        self.assertEqual('c.3418_3420del_p.Ser1140del',rec.variants[0].getFlag('CSN'))
         self.assertEqual('IF', rec.variants[0].getFlag('CLASS'))
         self.assertEqual('inframe_deletion', rec.variants[0].getFlag('SO'))
 
@@ -1043,6 +1082,7 @@ class MyTestCase(unittest.TestCase):
         rec.annotate(self.ensembl, None, self.reference, None)
         a = 1
         self.assertEqual('FS', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('c.547-1_547dup_p.Ile183ArgfsTer39', rec.variants[0].getFlag('CSN'))
 
     def testESSfromDel(self):  # GAA(NM_001079804.3):c.-32-13T>G
         line = "chr17\t80105745\t.\tCTAGA\tC\t30\tPASS\t.\tGT\t0/1\n"
@@ -1055,7 +1095,7 @@ class MyTestCase(unittest.TestCase):
         line = "chr13\t32339699\t.\tCAA\tC\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('NC_000013.11:g.32339700A[7]%3B[5]', rec.variants[0].getFlag('HGVSg'))
+        self.assertEqual('NC_000013.11:g.[32339700_32339706A[7]]%3B[32339700_32339706A[5]]', rec.variants[0].getFlag('HGVSg'))
 
     def test_hg38_test_insasdup(self):
         line = "chr17\t43124093\tins_inframe_firstcodon\tC\tCCAT\t30\tPASS\t.\tGT\t0/1\n"
@@ -1100,6 +1140,7 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('Deletion', rec.variants[0].getFlag('TYPE'))
+
 
 
 

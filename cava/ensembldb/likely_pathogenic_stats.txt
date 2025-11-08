@@ -1,0 +1,58 @@
+# COLUMN METADATA
+
+	COLUMN       likely_pathogenic
+	TYPE         Integer
+	COUNT        1
+	DESCRIPTION  The counts of submissions reported the variants as Likely pathogenic. Calculated by Macarthur Scripts.
+
+# CHARACTER STATS
+
+	Total Lines in file:      3672381
+	Num lines sampled:        3672381
+	Lines that had column:    3672381 (100.0%)
+	Total column value chars: 3672590
+
+	NON-Alphanumeric
+	      CHARACTER      LINE_COUNT          LINE_%      CHAR_COUNT          CHAR_%
+
+	Alphanumeric
+	      CHARACTER      LINE_COUNT          LINE_%      CHAR_COUNT          CHAR_%
+	              0         3507518           95.5%         3507518           95.5%
+	              1          133245            3.6%          133286            3.6%
+	              2           20416            0.6%           20416            0.6%
+	              3            6446            0.2%            6446            0.2%
+	              4            2551            0.1%            2551            0.1%
+	              5            1268            0.0%            1268            0.0%
+	              6             551            0.0%             551            0.0%
+	              7             306            0.0%             306            0.0%
+	              8             156            0.0%             156            0.0%
+	              9              92            0.0%              92            0.0%
+
+# VALUE STATS (sorted by descending frequency)
+
+	VALUE_COUNT  VALUE_%  VALUE
+	3507453      95.5%    0
+	133045       3.6%     1
+	20373        0.6%     2
+	6426         0.2%     3
+	2539         0.1%     4
+	1256         0.0%     5
+	541          0.0%     6
+	298          0.0%     7
+	151          0.0%     8
+	90           0.0%     9
+	60           0.0%     10
+	41           0.0%     11
+	36           0.0%     12
+	16           0.0%     13
+	12           0.0%     14
+	12           0.0%     15
+	10           0.0%     16
+	7            0.0%     17
+	5            0.0%     18
+	4            0.0%     20
+	2            0.0%     23
+	1            0.0%     19
+	1            0.0%     29
+	1            0.0%     30
+	1            0.0%     37

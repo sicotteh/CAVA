@@ -1,0 +1,74 @@
+# COLUMN METADATA
+
+	COLUMN       benign
+	TYPE         Integer
+	COUNT        1
+	DESCRIPTION  The counts of submissions reported the variants as Benign. Calculated by Macarthur Scripts.
+
+# CHARACTER STATS
+
+	Total Lines in file:      3672381
+	Num lines sampled:        3672381
+	Lines that had column:    3672381 (100.0%)
+	Total column value chars: 3677207
+
+	NON-Alphanumeric
+	      CHARACTER      LINE_COUNT          LINE_%      CHAR_COUNT          CHAR_%
+
+	Alphanumeric
+	      CHARACTER      LINE_COUNT          LINE_%      CHAR_COUNT          CHAR_%
+	              0         3371784           91.8%         3371784           91.7%
+	              1          176678            4.8%          177513            4.8%
+	              2           76477            2.1%           76545            2.1%
+	              3           22100            0.6%           22103            0.6%
+	              4           10935            0.3%           10935            0.3%
+	              5            6631            0.2%            6631            0.2%
+	              6            4623            0.1%            4623            0.1%
+	              7            3133            0.1%            3133            0.1%
+	              8            2279            0.1%            2279            0.1%
+	              9            1661            0.0%            1661            0.0%
+
+# VALUE STATS (sorted by descending frequency)
+
+	VALUE_COUNT  VALUE_%  VALUE
+	3370483      91.8%    0
+	172191       4.7%     1
+	75438        2.1%     2
+	21575        0.6%     3
+	10561        0.3%     4
+	6322         0.2%     5
+	4407         0.1%     6
+	2944         0.1%     7
+	2117         0.1%     8
+	1517         0.0%     9
+	1180         0.0%     10
+	835          0.0%     11
+	633          0.0%     12
+	438          0.0%     13
+	354          0.0%     14
+	280          0.0%     15
+	203          0.0%     16
+	176          0.0%     17
+	152          0.0%     18
+	137          0.0%     19
+	112          0.0%     20
+	93           0.0%     21
+	68           0.0%     22
+	50           0.0%     23
+	24           0.0%     25
+	16           0.0%     24
+	12           0.0%     26
+	9            0.0%     27
+	8            0.0%     30
+	8            0.0%     32
+	7            0.0%     28
+	7            0.0%     29
+	5            0.0%     35
+	4            0.0%     31
+	4            0.0%     37
+	3            0.0%     33
+	3            0.0%     38
+	2            0.0%     41
+	1            0.0%     34
+	1            0.0%     36
+	1            0.0%     40

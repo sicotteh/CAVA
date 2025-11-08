@@ -209,9 +209,10 @@ class SingleJob(multiprocessing.Process):
                 if line.startswith('@chrom'):
                     chroms = line[line.find('=') + 1:].strip().split(',')
                     self.chroms = chroms
-        if self.chroms[0] == '.':
-            self.chroms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17',
-                           '18', '19', '20', '21', '22', 'X', 'Y', 'MT']
+        if self.chroms[0] == '.': # Change default, no limit.
+#            self.chroms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17',
+#                           '18', '19', '20', '21', '22', 'X', 'Y', 'MT']
+            self.chroms = None
 
         # Input file
         if copts.input.endswith('.gz') or copts.input.endswith('.bgz'):
@@ -316,7 +317,7 @@ class SingleJob(multiprocessing.Process):
             if self.options.args['filter'] and not record.filter == 'PASS': continue
 
             # Only annotate records of allowed chromosome names
-            if record.chrom not in self.chroms:
+            if self.chroms is not None and record.chrom not in self.chroms:
                 logging.warning(
                     "\t!!!!!!Chromosome " + record.chrom + " not found, skipping annotation, " +
                     "but still outputting in VCF as long as within target region (if specified)!!!!!!\n")

@@ -17,16 +17,19 @@ In this case, we will use release 1.3, but other options are listed further down
 
 ```
 # Download GTF files for MANE 
-wget -O data/MANE1.3_ENST.gtf.gz https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.3/MANE.GRCh38.v1.3.ensembl_genomic.gtf.gz 
-wget -O data/MANE1.3_RefSeq.gtf.gz https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.3/MANE.GRCh38.v1.3.refseq_genomic.gtf.gz
+export MANEVERSION="1.4"
+export ENSEMBLVERSION="114"
+
+wget -O data/MANE${MANEVERSION}_ENST.gtf.gz https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_${MANEVERSION}/MANE.GRCh38.v${MANEVERSION}.ensembl_genomic.gtf.gz 
+wget -O data/MANE${MANEVERSION}_RefSeq.gtf.gz https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_${MANEVERSION}/MANE.GRCh38.v${MANEVERSION}.refseq_genomic.gtf.gz
 # Download GTF files for current Refseq.
 wget -O data/RefseqLatest_GRCh38_Refseq.gtf.gz https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_genomic.gtf.gz
 # Download GTF files for latest GRCh37 annotation release
 wget -O data/Refseq_GRCh37_Refseq.gtf.gz https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.gtf.gz
 # Download GTF file for build 38 ensembl release
-wget -O data/Homo_sapiens.GRCh38.111.gtf.gz https://ftp.ensembl.org/pub/release-111/gtf/homo_sapiens/Homo_sapiens.GRCh38.111.gtf.gz
+wget -O data/Homo_sapiens.GRCh38.114.gtf.gz https://ftp.ensembl.org/pub/release-114/gtf/homo_sapiens/Homo_sapiens.GRCh38.114.gtf.gz
 # Download GTF file for build 37 ensembl release
-wget -O data/Homo_sapiens.GRCh37.87.gtf.gz https://ftp.ensembl.org/pub/grch37/release-111/gtf/homo_sapiens/Homo_sapiens.GRCh37.87.chr.gtf.gz
+wget -O data/Homo_sapiens.GRCh37.87.gtf.gz https://ftp.ensembl.org/pub/grch37/release-${ENSEMBLVERSION}/gtf/homo_sapiens/Homo_sapiens.GRCh37.87.chr.gtf.gz
 wget -O data/Homo_sapiens.GRCh37.75.gtf.gz https://ftp.ensembl.org/pub/release-75/gtf/homo_sapiens/Homo_sapiens.GRCh37.75.gtf.gz
 gunzip -c data/Homo_sapiens.GRCh37.75.gtf.gz | wc -l
 #2828317
@@ -44,26 +47,77 @@ gunzip -c data/Homo_sapiens.GRCh37.87.gtf.gz | wc -l
 ### Create lists of wanted transcripts
 ```
 # MANE Ensembl transcripts.
-zcat data/MANE1.3_ENST.gtf.gz |gawk -F "\t" '$1 ~ /^[chr]*[^_]+$/{print $9}' | perl -ane 'if ($_ =~ /transcript_id "([^"]+)"/){print $1 . "\n"}' |grep ENST|sed 's/;//;s/\"//g'|sort -u > data/MANE1.3_ENST.txt
+zcat data/MANE${MANEVERSION}_ENST.gtf.gz |gawk -F "\t" '$1 ~ /^[chr]*[^_]+$/{print $9}' | perl -ane 'if ($_ =~ /transcript_id "([^"]+)"/){print $1 . "\n"}' |grep ENST|sed 's/;//;s/\"//g'|sort -u > data/MANE${MANEVERSION}_ENST.txt
 #All Recent build 38 transcripts.
-zcat data/Homo_sapiens.GRCh38.111.gtf.gz  |gawk -F "\t" '$1 ~ /^[chr]*[^_]+$/{print $9}' | perl -ane 'if ($_ =~ /transcript_id "([^"]+)"/){print $1 . "\n"}' |grep ENST|sed 's/;//;s/\"//g'|sort -u > data/Ensembl111.GRCh38.ENST.txt
+zcat data/Homo_sapiens.GRCh38.${ENSEMBLVERSION}.gtf.gz  |gawk -F "\t" '$1 ~ /^[chr]*[^_]+$/{print $9}' | perl -ane 'if ($_ =~ /transcript_id "([^"]+)"/){print $1 . "\n"}' |grep ENST|sed 's/;//;s/\"//g'|sort -u > data/Ensembl${ENSEMBLVERSION}.GRCh38.ENST.txt
 zcat data/Homo_sapiens.GRCh37.87.gtf.gz  |gawk -F "\t" '$1 ~ /^[chr]*[^_]+$/{print $9}' | perl -ane 'if ($_ =~ /transcript_id "([^"]+)"/){print $1 . "\n"}' |grep ENST|sed 's/;//;s/\"//g'|sort -u > data/Ensembl87.GRCh37.ENST.txt
 zcat data/Homo_sapiens.GRCh37.75.gtf.gz  |gawk -F "\t" '$1 ~ /^[chr]*[^_]+$/{print $9}' | perl -ane 'if ($_ =~ /transcript_id "([^"]+)"/){print $1 . "\n"}' |grep ENST|sed 's/;//;s/\"//g'|sort -u > data/Ensembl75.GRCh37.ENST.txt
 #Refseq transcripts, limited to NM_ (e.g. ) with a protein..
 
-zcat data/MANE1.3_RefSeq.gtf.gz | gawk -F "\t" '$1 ~ /^[chr]*[^_]+$/{print $9}'| perl -ane 'if ($_ =~ /transcript_id "([^"]+)"/){$NM=$1;print $NM . "\n"}' | uniq | sort | uniq > data/MANE_1.3.RefSeq.txt
+zcat data/MANE${MANEVERSION}_RefSeq.gtf.gz | gawk -F "\t" '$1 ~ /^[chr]*[^_]+$/{print $9}'| perl -ane 'if ($_ =~ /transcript_id "([^"]+)"/){$NM=$1;print $NM . "\n"}' | uniq | sort | uniq > data/MANE_${MANEVERSION}.RefSeq.txt
 ```
 Some transcripts are mapped on alternate contigs instead of the reference genome. For example, 
 Refseq transcript NM_014219.3 is NOT derived from the reference genome .. and the genomic sequence does
-not have a proper translated protein where this transcripts maps to. The MANE GTF also defines transcripts on alternate 
-sequences .. and they give them alternate names.  e.g. NM_014219.3_3 is annotated and produces a protein. We have excludes these
-from this catalog by limiting to GRCh38 1-22,X,Y,M
+not have a proper translated protein where this transcripts maps to. 
 
-The ABO gene is not part of MANE, but, given it's importance, you may want to add it. Only 1 refseq transcript is defined for ABO
+
+
+
+
+The MANE GTF also defines transcripts on alternate 
+sequences .. and they give them alternate names.  e.g. NM_014219.3_3 is annotated and produces a protein. 
+Since CAVA generate transcripts from the underlying sequence, these alt-mapped transcripts may not produce the same mRNA as the base reference transcript.
+!!! Including those may produce errors if a sequence-based stop codon is encountered before the expected end of the annotated transcript!!!
+Ideally, exclude from the catalog by limiting to GRCh38 1-22,X,Y,M
+
+Reviewing transcripts with an exception tag, we found that transcript NM_001424184.1 is missing one base to actually get a stop codon, and the next base in the genome is not an "A". This A is added by polyadenylation and creates a stop codon. It has to be excluded as it is partial.
+
+Annotation for 'alternative start codon' do not matter as long as the GTF properly points to it. This version 2.0.14 of CAVA or later only.
+AUU and AUA are accepted alternative start codons (Normal Methionine is AUG .. so only the wobble position changes).
+
+
+For a few genes, the reference sequence sequence does not include the gene, they are instead located on alt or fixed contigs.
+This command will show which genes (those without an '_' in their name) are primarily mapped on an alt contig.
+
+gunzip -c data/MANE${MANEVERSION}_RefSeq.gtf.gz | gawk -F "\t" '$3=="transcript"{print $0}' | perl -aE '@a=split(/\t/,$_);if ($a[0] =~ /_/){if($_ =~ /gene_id "([^"]+)"/) {if(! ($1 =~ /_/)) {$gene=$1;$_ = ~ /transcript_id "([^"]+)"/; $transcript = $1;print $a[0] . "\t" . $gene . "\t" . $transcript . "\n"}}}' |  uniq
+
+chr1_KQ031383v1_fix	PRAMEF22	NM_001100631.2
+chr1_MU273333v1_fix	LOC102724250	NM_001405530.2
+chr11_JH159136v1_alt	OR8U8	NM_001013356.2
+chr11_JH159136v1_alt	OR8U9	NM_001013357.1
+chr11_JH159137v1_alt	OR9G9	NM_001013358.2
+chr12_GL877876v1_alt	TAS2R45	NM_176886.2
+chr19_GL949746v1_alt	LILRA3	NM_006865.5
+chr22_KI270879v1_alt	GSTT1	NM_000853.4
+chr17_KI270909v1_alt	CCL3L1	NM_021006.6
+chr17_KI270909v1_alt	CCL4L1	NM_207007.4
+chr6_GL000254v2_alt	LOC110384692	NM_001352000.1
+
+
+The GSTT1 can be added to the catalog. LILRA3,CCL3L1,CCL4L4 also have variants in Clinvar. The other genes are not as important.
+
+
+
+The Ensembl Catalog has a lot more transcripts that have multiple location (both ref and alt contigs)
+The only transcript we have to exclude is : ENST00000434431.2 because it is partial (this is NM_001424184.1 , described above)
+
+gunzip -c data/MANE1.4_ENST.gtf.gz | gawk -F "\t" '$3=="transcript"{print $0}' | perl -aE '@a=split(/\t/,$_);if ($a[0] =~ /_/){if($_ =~ /gene_name "([^"]+)"/) {if(! ($1 =~ /_/)) {$gene=$1;$_ = ~ /transcript_id "([^"]+)"/; $transcript = $1;print $a[0] . "\t" . $gene . "\t" . $transcript . "\n"}}}' |  uniq | cut -f2 > ensembls.alt
+
+for i in `cat ensembls.alt `; do  n=`gunzip -c data/MANE1.4_ENST.gtf.gz | grep $i | gawk -F "\t" '$3=="transcript"' | grep -v '_alt' | grep -v '_fix' | wc -l`; if [[ $n -eq 0 ]] ; then echo "$i";fi;done
+
+
+# Skip all transcripts with pseudo tag
+gunzip -c data/RefseqLatest_GRCh38_Refseq.gtf.gz | gawk -F "\t" '$3=="start_codon"{print $0}' | perl -aE '@a=split(/\t/);if($a[8] =~ /gene_id "([^"]+)"/) {$gene=$1;$a[8] =~ /transcript_id "([^"]+)"/; $transcript = $1;if ($transcript =~ /_.*_/){print $_}}'  | grep -v 'unassigned_transcript' | grep 'pseudo "true' | more
+
+
+
+The ABO gene is not part of MANE, but, given it's importance, you may want to add it. It is not known to produce a protein, but it is transcribed. THat is the only
+requirement for safely adding a gene.
+Only 1 refseq transcript is defined for ABO
 NM_020469.3  which matches ENST00000644422.3
 ```
-echo "NM_020469.3" >> data/MANE1.3_RefSeq.txt
-echo "ENST00000644422.3" >> data/MANE_1.3_ENST.txt
+echo "NM_020469.3" >> data/MANE${MANEVERSION}_RefSeq.txt
+echo "ENST00000644422.3" >> data/MANE_${MANEVERSION}_ENST.txt
 
 ```
 
@@ -124,7 +178,7 @@ automatically create an hg19 coordinate version unless you tell it not to (--no_
 Using our example from above, the command
 
 ```
-python3 $CAVAGITREPO/CAVA/cava/EnsemblDB.py -e 111 -o ENST101 -D data -i data/ENST.txt
+python3 $CAVAGITREPO/CAVA/cava/EnsemblDB.py -e ${ENSEMBLVERSION} -o ENST101 -D data -i data/ENST.txt
 ``` 
 
 
@@ -194,7 +248,7 @@ Options:
   -e version, --mane_version=version
   --no_hg19             Set this to skip hg19 builds
 
-Example usage: MANE.py -e 1.3 -o mane_1.3
+Example usage: MANE.py -e ${MANEVERSION} -o mane_${MANEVERSION}
 Note: by default, hg19 will be created using crossmap.
 Version: 1.3.3
 ```
@@ -225,10 +279,10 @@ In fact, we already created this file in the distribution. Two columns,first one
 mysql -u anonymous  -h ensembldb.ensembl.org  -D homo_sapiens_core_75_37 -e 'SELECT transcript.stable_id, xref.display_label FROM transcript, object_xref, xref,external_db WHERE transcript.transcript_id = object_xref.ensembl_id AND object_xref.ensembl_object_type = "Transcript"  AND object_xref.xref_id = xref.xref_id AND xref.external_db_id = external_db.external_db_id AND external_db.db_name = "RefSeq_mRNA"' > ensembl_refseq_GRCh37_75.txt
 ```
 
-If you want the latest GRCh38 ensembl, you can do the following. At this time, releast 111 is the latest. Update the '111' as needed.
+If you want the latest GRCh38 ensembl, you can do the following. At this time, releast ${ENSEMBLVERSION} is the latest. Update the '${ENSEMBLVERSION}' as needed.
 
 ```
-mysql -u anonymous  -h ensembldb.ensembl.org  -D homo_sapiens_core_111_38 -e 'SELECT transcript.stable_id, xref.display_label FROM transcript, object_xref, xref,external_db WHERE transcript.transcript_id = object_xref.ensembl_id AND object_xref.ensembl_object_type = "Transcript"  AND object_xref.xref_id = xref.xref_id AND xref.external_db_id = external_db.external_db_id AND external_db.db_name = "RefSeq_mRNA"' > ensembl_refseq_GRCh38_111.txt
+mysql -u anonymous  -h ensembldb.ensembl.org  -D homo_sapiens_core_${ENSEMBLVERSION}_38 -e 'SELECT transcript.stable_id, xref.display_label FROM transcript, object_xref, xref,external_db WHERE transcript.transcript_id = object_xref.ensembl_id AND object_xref.ensembl_object_type = "Transcript"  AND object_xref.xref_id = xref.xref_id AND xref.external_db_id = external_db.external_db_id AND external_db.db_name = "RefSeq_mRNA"' > ensembl_refseq_GRCh38_${ENSEMBLVERSION}.txt
 ```
 
 the first few lines are
@@ -289,10 +343,10 @@ python3 create_selenodata.py  --refseqs data/RefSeq.txt -O data -t refseq_latest
 
 Create Selenoysterine data, but replace refseq ids by Entrez Stable ids (without a .version). Entrez will be queried for the
 refseq version specified in the 2nd column of the file (if a refseq with different/same version is known to have SECIS annotation). <br>
-The following will create a file data/SECIS_in_refseq_pos.homo_sapiens.ensembl_GRCh38_111.txt
+The following will create a file data/SECIS_in_refseq_pos.homo_sapiens.ensembl_GRCh38_${ENSEMBLVERSION}.txt
 
 ```
-python3 create_selenodata.py  --ensembl_refseq ensembl_refseq_GRCh38_111.txt -O data -t ensembl_GRCh38_111
+python3 create_selenodata.py  --ensembl_refseq ensembl_refseq_GRCh38_${ENSEMBLVERSION}.txt -O data -t ensembl_GRCh38_${ENSEMBLVERSION}
 ```
 The following will create a file data/SECIS_in_refseq_pos.homo_sapiens.ensembl_GRCh37_75.txt
 
@@ -379,14 +433,14 @@ there may be an entry with the unmodified refseq id , but the protein id will be
 
 #### Steps 1-3
 ```
-wget -O data/MANE.GRCh38.v1.3.refseq_genomic.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.3/MANE.GRCh38.v1.3.refseq_genomic.gtf.gz
+wget -O data/MANE.GRCh38.v${MANEVERSION}.refseq_genomic.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_${MANEVERSION}/MANE.GRCh38.v${MANEVERSION}.refseq_genomic.gtf.gz
 wget -O data/GCF_000001405.25_GRCh37.p13_genomic.gtf.gz https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.gtf.gz
 
 # All GRCH37 transcipts for which we have proper annotation on chrs1-22,X,Y,M
 gunzip -c data/GCF_000001405.25_GRCh37.p13_genomic.gtf.gz | gawk -F "\t" '$1 ~ /^NC_[^_]+$/{print $9}' | grep transcript | perl -ane 'if($_ =~ /transcript_id "([^"]+)"/) {print $1 . "\n"}' | uniq | sort | uniq > Refseq_GRCh37_transcripts.txt
 # All MANE GRCh38 transcripts, irrespective of wether they map properly (because transcripts with sequence differences on GRCh38 may match the GRCh37 sequence)
-gunzip -c data/MANE.GRCh38.v1.3.refseq_genomic.gtf.gz | gawk -F "\t" '$1 ~ /^[chr]*[^_]+$/{print $9}' | grep transcript | perl -ane 'if($_ =~ /transcript_id "([^"]+)"/) {print $1 . "\n"}' | uniq | sort | uniq > MANE1.3.GRCh38.transcripts.txt
-gawk -F "\t" 'BEGIN{while(getline<"MANE1.3.GRCh38.transcripts.txt"){MANEV[$1]=1;split($1,a,".");MANE[a[1]]=1}}MANEV[$1]==1{print $1;next}{split($1,a,".");if(MANE[a[1]]==1){print $1}}' Refseq_GRCh37_transcripts.txt | sort | uniq | perl -ane 'if(! ( $_ =~ /\.[0-9]_/)){print $_}' > tokeep.GRCh37
+gunzip -c data/MANE.GRCh38.v${MANEVERSION}.refseq_genomic.gtf.gz | gawk -F "\t" '$1 ~ /^[chr]*[^_]+$/{print $9}' | grep transcript | perl -ane 'if($_ =~ /transcript_id "([^"]+)"/) {print $1 . "\n"}' | uniq | sort | uniq > MANE${MANEVERSION}.GRCh38.transcripts.txt
+gawk -F "\t" 'BEGIN{while(getline<"MANE${MANEVERSION}.GRCh38.transcripts.txt"){MANEV[$1]=1;split($1,a,".");MANE[a[1]]=1}}MANEV[$1]==1{print $1;next}{split($1,a,".");if(MANE[a[1]]==1){print $1}}' Refseq_GRCh37_transcripts.txt | sort | uniq | perl -ane 'if(! ( $_ =~ /\.[0-9]_/)){print $_}' > tokeep.GRCh37
 ```
 
 Watch the error messages. We can see that one of the transcript of MANE (NM_004892.6) 
@@ -394,7 +448,7 @@ does not end up in the catalog since there is no protein_id in the gtf because o
 the transcript sequence (from GRh38) and GRCh37.
 
 
-In MANE 1.3, some of the refseq (also) have the ids that are not purely refseq, they are derived from refseq 
+In MANE ${MANEVERSION}, some of the refseq (also) have the ids that are not purely refseq, they are derived from refseq 
 ids with an extra  '_[0-9]' suffix. For MANE 1.3 this is what we got.
 
 - 19290 transcripts in GRCh38 MANE 1.3 on chroms 1-22,X,Y,M
@@ -404,7 +458,7 @@ ids with an extra  '_[0-9]' suffix. For MANE 1.3 this is what we got.
 #### Step 4, final catalog creation.
 ```
 cd ../..
-python3 cava/RefSeqDB.py --no_hg19 -b GRCh37 --nm-only -i cava/ensembldb/tokeep.GRCh37  -D cava/ensembldb/data -o GRCh37.MANE1.3.refseq  --url_gtf "https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.gtf.gz"
+python3 cava/RefSeqDB.py --no_hg19 -b GRCh37 --nm-only -i cava/ensembldb/tokeep.GRCh37  -D cava/ensembldb/data -o GRCh37.MANE${MANEVERSION}.refseq  --url_gtf "https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.gtf.gz"
 ```
 
 ### GRCh37 MANE with ensembl transcripts with newest annotation from refseq
@@ -414,7 +468,7 @@ and just use the ensembl_refseq_GRCh37.txt to substitute the ids
 We have to allow unexact match (e.g. different version), otherwise we only get 491 transcripts
 ```
 # 
-gunzip -c cava/ensembldb/data/GRCh37.MANE1.3.refseq.gz | gawk -F "\t" 'BEGIN{while(getline<"cava/ensembldb/ensembl_refseq_GRCh37_75.txt"){if ( $1 ~ /ENST.*/) {enst=$1;refseq=$2;split(refseq,arr,".");refseq0=arr[1];if(refseq in R2E){split(R2E[refseq],arr,",");arr[length(arr)+1]=enst;elem=arr[1];for(i=2;i<=length(arr);i+=1){elem = elem "," arr[i]};R2E[refseq]=elem} else{R2E[refseq]=enst}; if(refseq0 in R02E){split(R02E[refseq0],arr,",");arr[length(arr)+1]=enst;elem=arr[1];for(i=2;i<=length(arr);i+=1){elem = elem "," arr[i]};R02E[refseq0]=elem} else{R02E[refseq0]=enst};  }}} $0 ~ /#.*/{print $0;next}{transcript = $1;split($1,arr,".");nm=arr[1];if(transcript in R2E){n=split(R2E[transcript],arr,",");for(i=1;i<=n;i+=1) {OFS="\t";$1=arr[i];print $0}} else {if(nm in R02E){n=split(R02E[nm],arr,",");for(i=1;i<=n;i+=1) {OFS="\t";$1=arr[i];print $0}} }}' > cava/ensembldb/data/MANE_ensembl_GRCh37.gtf
+gunzip -c cava/ensembldb/data/GRCh37.MANE${MANEVERSION}.refseq.gz | gawk -F "\t" 'BEGIN{while(getline<"cava/ensembldb/ensembl_refseq_GRCh37_75.txt"){if ( $1 ~ /ENST.*/) {enst=$1;refseq=$2;split(refseq,arr,".");refseq0=arr[1];if(refseq in R2E){split(R2E[refseq],arr,",");arr[length(arr)+1]=enst;elem=arr[1];for(i=2;i<=length(arr);i+=1){elem = elem "," arr[i]};R2E[refseq]=elem} else{R2E[refseq]=enst}; if(refseq0 in R02E){split(R02E[refseq0],arr,",");arr[length(arr)+1]=enst;elem=arr[1];for(i=2;i<=length(arr);i+=1){elem = elem "," arr[i]};R02E[refseq0]=elem} else{R02E[refseq0]=enst};  }}} $0 ~ /#.*/{print $0;next}{transcript = $1;split($1,arr,".");nm=arr[1];if(transcript in R2E){n=split(R2E[transcript],arr,",");for(i=1;i<=n;i+=1) {OFS="\t";$1=arr[i];print $0}} else {if(nm in R02E){n=split(R02E[nm],arr,",");for(i=1;i<=n;i+=1) {OFS="\t";$1=arr[i];print $0}} }}' > cava/ensembldb/data/MANE_ensembl_GRCh37.gtf
 bgzip cava/ensembldb/data/MANE_ensembl_GRCh37.gtf
 ```
 
@@ -422,14 +476,14 @@ bgzip cava/ensembldb/data/MANE_ensembl_GRCh37.gtf
 ### GRCh37 ***MANE*** with old annotation. (can use ensembl 75 .. or provide the url and download 87/111 annotaion)
 ```
 cd $CAVAGITREPO/CAVA
-python3 cava/EnsemblDB.py -e 75 -o ENST75_GRCh37 -D ensembldb/cava/data --no_hg19 -b GRCh37 -i cava/ensembldb/data/MANE1.3_ENST.txt
+python3 cava/EnsemblDB.py -e 75 -o ENST75_GRCh37 -D ensembldb/cava/data --no_hg19 -b GRCh37 -i cava/ensembldb/data/MANE${MANEVERSION}_ENST.txt
 ``` 
 or
 ```
 cd $CAVAGITREPO/CAVA/
-python3 cava/EnsemblDB.py -o ENST87_GRCh37 -D data  -e 87 -b GRCh37 --no_hg19 -i cava/ensembldb/data/MANE1.3_ENST.txt --url_grf "https://ftp.ensembl.org/pub/grch37/release-111/gtf/homo_sapiens/Homo_sapiens.GRCh37.87.gtf.gz"
+python3 cava/EnsemblDB.py -o ENST87_GRCh37 -D data  -e 87 -b GRCh37 --no_hg19 -i cava/ensembldb/data/MANE${MANEVERSION}_ENST.txt --url_grf "https://ftp.ensembl.org/pub/grch37/release-111/gtf/homo_sapiens/Homo_sapiens.GRCh37.87.gtf.gz"
 ``` 
-### GRCh37 ***ensembl*** with old annotation. (can use ensembl 75 .. or provide the url and download 87/111 annotaion)
+### GRCh37 ***ensembl*** with old annotation. (can use ensembl 75 .. or provide the url and download 87/111 annotation)
 ```
 cd $CAVAGITREPO/CAVA
 python3 cava/EnsemblDB.py -e 75 -o ENST75_GRCh37 -D ensembldb/cava/data --no_hg19 -b GRCh37 

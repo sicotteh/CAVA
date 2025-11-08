@@ -1,3 +1,6 @@
+8/22/2025 2.0.14 change. Now allow alt-contigs annotation by default (if no chromosomes if specified) and remove error message for the HGVSg is alt-contigs cannot be
+	remapped to 'NC_' nucleotide sequences. Must assume that the reference fasta contains those reference sequence.
+	
 7/28/2022
     There is still a limitation of CAVA when calling deletions overlapping the edges. It doesn't do it. This is only a problem for a protein coding
     gene without annotated UTR. We have one example in the unit test set for the TAAR2 gene.

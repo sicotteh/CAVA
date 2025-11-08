@@ -11,7 +11,7 @@ import os
 import re
 import sys
 import time
-
+import traceback
 
 
 from . import csn
@@ -22,51 +22,120 @@ from . import csn
 # Class representing a single variant call
 class Variant(object):
     # Constructor
-    def __init__(self, chrom, pos, vcf_ref, vcf_alt):
+    def __init__(self, chrom, pos, vcf_ref, vcf_alt, endstr="",svlenstr="", reference = None):
+        # Need INFO field if the variant is a <DEL>
         vcf_ref = vcf_ref.upper()
         vcf_alt = vcf_alt.upper()
         self.chrom = chrom
         self.id = chrom + ":" + str(pos) + ":" + vcf_ref + "/" + vcf_alt
         self.pos = pos
         self.vcf_padded_base = ''
-        shift_pos, a, b = self.trimCommonStart(vcf_ref, vcf_alt)
-        self.pos = self.pos + shift_pos
-        shiftpos2, x, y = self.trimCommonEnd(a, b)
-        if (len(x) == 0 or len(y) == 0) and shift_pos > 0:
-            self.vcf_padded_base = vcf_ref[shift_pos - 1]
-
-        self.ref = Sequence(x)
-        self.alt = Sequence(y)
         self.flags = []
         self.flagvalues = []
         self.alignonplus = None  # Cache the result of alignment because it is expensive and can be done many times.
         self.alignonminus = None
-        lx = len(x)
-        ly = len(y)
-        if lx == 1 and ly == 1:
-            self.is_substitution = True
-            self.is_deletion = False
-            self.is_insertion = False
-            self.is_complex = False
-            self.is_in_frame = True
-        elif lx == 0 and ly > 0:
+        if vcf_alt.startswith("<"):
+            svlen = sys.maxsize
             self.is_substitution = False
-            self.is_deletion = False
-            self.is_insertion = True
-            self.is_complex = False
-            self.is_in_frame = ((lx - ly) % 3 == 0)
-        elif lx > 0 and ly == 0:
-            self.is_substitution = False
-            self.is_deletion = True
-            self.is_insertion = False
-            self.is_complex = False
-            self.is_in_frame = ((lx - ly) % 3 == 0)
-        else:
-            self.is_substitution = False
-            self.is_deletion = False
-            self.is_insertion = False
-            self.is_complex = True
-            self.is_in_frame = ((lx - ly) % 3 == 0)
+            if vcf_alt.startswith("<INS") : # Can't rescue this kind of Variant.
+                try:
+                    if svlenstr is not None and len(svlenstr) > 0:
+                        svlen = int(svlenstr)
+                        self.is_in_frame = (svlen % 3 == 0)
+                    else:
+                        self.is_in_frame = False # Can't compute that, just make it so it is worst consequence
+                except:
+                    self.is_in_frame = False # Default to that so consequences will be worst.
+                self.is_deletion = False
+                self.is_insertion = True
+                self.is_complex = False
+                endpos = pos + 1
+            elif vcf_alt.startswith("<DUP"): # Could be <DUP or <DUP:TANDEM
+                svlen = -1
+                if svlenstr is not None and len(svlenstr) > 0:
+                    try:
+                        svlen = int(svlenstr)
+                    except:
+                        svlen =-1
+                if svlen == -1 and endstr is not None and len(endstr)>0:
+                    try:
+                        endpos = int(endstr)
+                        svlen = endpos+1-pos
+                    except:
+                        nop = True
+                if svlen != -1 and reference is not None:
+                    vcf_alt = reference.getReference(self.chrom, self.pos, self.pos+svlen-1)
+                    self.is_in_frame = ( svlen % 3 == 0)
+                else:
+                    self.is_in_frame = False
+                endpos = pos + 1
+                self.is_deletion = False
+                self.is_insertion = True
+                self.is_complex = False
+
+                endpos = pos + 1
+            elif  vcf_alt.startswith("<DEL"):
+                svlen = sys.maxsize
+                if svlenstr is not None and len(svlenstr) > 0:
+                    try:
+                        svlen = abs(int(svlenstr))
+                    except:
+                        svlen = sys.maxsize
+                if svlen == sys.maxsize and endstr is not None and len(endstr) > 0:
+                    try:
+                        endpos = int(endstr)
+                        svlen = endpos - pos
+                    except:
+                        nop = True
+                if svlen != sys.maxsize and reference is not None:
+                    vcf_alt = reference.getReference(self.chrom, self.pos, self.pos +svlen) # FIrst base is not deleted in VCF Deletion
+                    self.is_in_frame = (svlen % 3 == 0)
+                else:
+                    self.is_in_frame = False
+                self.is_deletion = True
+                self.is_insertion = False
+                self.is_complex = False
+            else: # Don't expect to get here because calling function should not pass this kind of combination
+                self.is_complex = True
+                self.is_deletion = False
+                self.is_insertion = False
+                self.is_in_frame = True
+
+        if not vcf_alt.startswith("<"): # Only go here for normal alleles or <> rescued above
+            shift_pos, a, b = self.trimCommonStart(vcf_ref, vcf_alt)
+            self.pos = self.pos + shift_pos
+            shiftpos2, x, y = self.trimCommonEnd(a, b)
+            if (len(x) == 0 or len(y) == 0) and shift_pos > 0:
+                self.vcf_padded_base = vcf_ref[shift_pos - 1]
+            self.ref = Sequence(x)
+            self.alt = Sequence(y)
+
+            lx = len(x)
+            ly = len(y)
+            if lx == 1 and ly == 1:
+                self.is_substitution = True
+                self.is_deletion = False
+                self.is_insertion = False
+                self.is_complex = False
+                self.is_in_frame = True
+            elif lx == 0 and ly > 0:
+                self.is_substitution = False
+                self.is_deletion = False
+                self.is_insertion = True
+                self.is_complex = False
+                self.is_in_frame = ((lx - ly) % 3 == 0)
+            elif lx > 0 and ly == 0:
+                self.is_substitution = False
+                self.is_deletion = True
+                self.is_insertion = False
+                self.is_complex = False
+                self.is_in_frame = ((lx - ly) % 3 == 0)
+            else:
+                self.is_substitution = False
+                self.is_deletion = False
+                self.is_insertion = False
+                self.is_complex = True
+                self.is_in_frame = ((lx - ly) % 3 == 0)
         self.left_result = None
         self.right_result = None
         self.full_reult = None
@@ -386,9 +455,20 @@ class Record(object):
             raise Exception("Invalid Input format type")
 
         altsclean = []
+        endstr = ""
+        svlenstr = ""
+        parsed_info = False
         for alt in alts:
             if not alt.startswith('<'):
                 altsclean.append(alt)
+            elif parsed_info is False:
+                infos = self.info.split(";")
+                for info in infos:
+                    if info.startswith("END="):
+                        endstr = info.split("=")[1]
+                    if info.startswith("SVLEN="):
+                        svlenstr = info.split("=")[1]
+                parsed_info = True
         # Creating a Variant object for each variant/alt-allele  in the record
         # as long as they pass filtering.
         #
@@ -408,15 +488,26 @@ class Record(object):
                     alts[ia] = alts[ia][ntrim:]
 
         for alt in alts:
+            var = None
             # Keep original alt alleles because each alt-allele may normalize differently and have different positions
             self.alts.append(alt)
             # Initializing each Variant object with different alt allele
             if alt.startswith('<'):
-                var = None
+                    # Skip NON_REF/* no variation allele and don't support CNV or breakpoint.
+                if alt.startswith("<DEL") or alt.startswith("<DUP") or alt.startswith("<INV") or alt.startswith("<INS"):
+                    if len(endstr) >0 or len(svlenstr) >0:
+                        try:
+                            var = Variant(self.chrom, self.pos, self.ref, alt, endstr,svlenstr,reference)
+                        except Exception as e:
+                            sys.stderr.write(str(e) + "\n")
+                            var = None
             else:
                 var = Variant(self.chrom, self.pos, self.ref, alt)
 
-                # DO  NOT FILTER
+            if var is None:
+                continue
+            if var is not None:
+                # DO  NOT FILTER anymore because it's nice if no missing variants in output
                 """
                 if 'N' in self.ref or 'N' in alt:
                     logging.info('Variant ignored as allele contains unknown base (\'N\'): ' + self.chrom + ':' + str(
@@ -452,9 +543,11 @@ class Record(object):
                 # The logic is that the user should be able to decide which variant has the best support in the sequencing data (read count)
                 # .. and not be biased by the most deleterious option.
                 # At least 1 must pass the BED filtering - if requested (otherwise all alt-alleles (whole variant) are excluded)
-            self.variants.append(var)
+
 
             # Filtering by BED file, if required
+            if var is not None:
+                self.variants.append(var)
             if targetBED is not None and var is not None:
                 goodchrom = convert_chrom(var.chrom + "", targetBED.contigs)
                 if goodchrom is None:
@@ -526,7 +619,8 @@ class Record(object):
                     #else:
                         #variant.addFlag('HGVSg', csn.get_genomic_Annotation(variant, self.build, reference))
                 except Exception as e:
-                    sys.stderr.write("ERROR: CAVA :" + str(e))
+                    sys.stderr.write(f"ERROR: CAVA :{e}")
+                    traceback.print_exc()
 
     # Writing record (a ref, multiple alts) to output file
     def output(self, outformat, outfile, options, genelist, transcriptlist, snplist, stdout):
@@ -1099,9 +1193,9 @@ class Transcript(object):
                                 if i != len(self.exons) - 1:
                                     raise Exception(
                                         "Variant crossing intron/exon boundary.. Catch this exception and set mutprot=None")
-                                else: # overlaps end of transcript, may affect polyA site termination.
+                                else: # overlaps past the wnd of transcript, may affect polyA site termination.
                                     self.overlaps_polyA = True
-                                    raise Exception("Variant crossing polyA site")
+                                    sys.stderr.write("WARNING:" +variant.id +" Variant crossing past end of transcript")
                             trans_pos += (variant.pos - exon.start)  # Position of variant in transcript coordinates
                             bef_end_index = variant.pos - exon.start - 1  # Points to variant pos .. this index will not be included in sequence
                             upstream = exonseq[
@@ -1134,7 +1228,7 @@ class Transcript(object):
                                     self.id+"\n")
                             else:
                                 raise Exception(
-                                    "Variant crossing intron/exon boundary.. Catch this exception and set mutprot=None")
+                                    "Genomic Coordinate Variant crossing intron/exon boundary.. Catch this exception and set mutprot=None")
                         elif variant.pos < exon.start + 1 and variant.pos + len(
                                 variant.ref) - 1 > exon.end:  # variant encompasses whole exon
                             if i == 0: # (whole first exon affected)
@@ -1524,7 +1618,7 @@ class Transcript(object):
             elif pos > maxpos:
                 return "<"
         # Should not get a . unless there are no exons in this transcript or single-base exon.
-        sys.stderr.write("CAVA: WARNING: Getting a dot in whereIsThisPosition : "+self.TRANSCRIPT+":"+ self.chrom+":"+str(pos))
+        sys.stderr.write("CAVA: WARNING: WhereIsThisPosition returning a period fot his variants (likely because the variant is incorrect relative the ref genome): "+self.TRANSCRIPT+":"+ self.chrom+":"+str(pos))
         return '.'
 
     # Checking where a given variant is located in the transcript
@@ -1536,6 +1630,8 @@ class Transcript(object):
         else:
             first = self.whereIsThisPosition(variant.pos)
             second = self.whereIsThisPosition(variant.pos + len(variant.ref) - 1)
+        if first == "." or second == ".":
+            return "."
         if first == second: # both on same side of transcript.
             if first == '<' or first == '>':
                 return '.'
