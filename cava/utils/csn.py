@@ -1152,7 +1152,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
                         nMatch_ref0 = nMatch_ref  # Repeats in the original protein
                         break
 
-        if nDup <=1 or mMatch_ref0<=1:  # No Repeats .. straight Deletion .. not frameshift .. not ins or complex
+        if nDup <=1 or nMatch_ref0<=1:  # No Repeats .. straight Deletion .. not frameshift .. not ins or complex
             if len(trim_prot) == 1:
                 return '_p.' + changeTo3lettersTer(trim_prot[0]) + str(leftindex) + "del", (
                     str(leftindex), trim_prot, '-')

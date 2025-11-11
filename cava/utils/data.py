@@ -11,7 +11,7 @@ import importlib.resources
 from . import conseq
 from . import core
 from . import csn
-from .. import ensembldb
+from cava import ensembldb
 import re
 
 
@@ -479,18 +479,29 @@ class Ensembl(object):
         return int(x[idx:])
     # Parse Exon CSN coordinates .. only works well from the part before the "dup" string
     # return none, if these are not intronic coordinates
+    # e.g. 123-12 or 122+12
+    #  New for 2025
+    #    edge cases: 5' UTR splice -134-11  or -135+12
+    #                3' UTR splice *14+3 *15-5
+    # starloc code is repetitive to optimize
     def getExonBases(self, x):
-        idx = x.find('-')
-        if idx < 1:
-            idx = x.find('+')
+        # remove leading '*' (3') or '-' (5') .. and support remove incorrect leading '+'
+        if x[0] == '*' or x[0]=='-' or x[0]=='+':
+            x=x[1:]
+        idx = x.find('-',1)
+        if idx < 1: 
+            idx = x.find('+',1)
             if idx < 1: return None
             return int(x[0:idx])
         return int(x[0:idx])
 
 
+
     def getExtractPosOrPosRange(self,x):
         if x is None:
             return None
+        if x.startswith('c.'):
+            x=x[2:]
         x = x.split('%3B')[0]
         if x.startswith('['):
             x=x[1:]
@@ -500,7 +511,7 @@ class Ensembl(object):
                 x=x[0:len(x)-1]
         if x.endswith(']'): # bracket around a non-repeat
             x=x[0:len(x)-1]
-        m=re.match(r'^([0-9\-\+_]+)ins-.*inv',x)
+        m=re.match(r'^([0-9\-\+_\*]+)ins.*inv',x)
         if m:
             x=m.group(1)
 
@@ -554,7 +565,6 @@ class Ensembl(object):
     #
 
     def isDupOverlappingSSBoundary(self, csnval, ssrange=8):
-
         if ssrange == 0 or csnval is None or len(csnval)==0:
             return False  # Nothing to correct, since nothing will overlap the splice region.
         if '_p' in csnval:
@@ -580,7 +590,10 @@ class Ensembl(object):
         cpart = self.getExtractPosOrPosRange(cpart)
 
         if '_' in cpart:
-            [xs, ys] = cpart.split('_')
+            xsys = cpart.split('_')
+            if len(xsys)>2:
+                sys.stderr.write("CAVA error: Too many underscores in interval :"+cpart+" from CSN_range="+csnval+"\n")
+            [xs, ys] = xsys[0:2]
         else: # Single-base duplication
             x = self.getIntronBases(cpart)
             if x is None: return False

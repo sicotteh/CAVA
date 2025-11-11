@@ -256,7 +256,7 @@ class SingleJob(multiprocessing.Process):
             self.ensembl = None
 
         if (not options.args['dbsnp'] == '.') and (not options.args['dbsnp'] == ''):
-            self.dbsnp = data.dbSNP(options)
+            self.dbsnp = data.DbSNP(options)
             if options.args['logfile'] and threadidx == 1: logging.info('Connected to dbSNP database.')
         else:
             self.dbsnp = None

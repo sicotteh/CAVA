@@ -1136,7 +1136,7 @@ class Transcript(object):
         protein = protein[0:(len(protein) - 1)] +'X'
 
         currpos = isame + 1
-        while currpos<=len(mutprotein):
+        while currpos<len(mutprotein):
             aaU = mutprotein[currpos]
             if aaU == "U":
                 activity_code = transcript.SECIS_data.secis_active(3*currpos)

@@ -17,7 +17,7 @@ def readIDs(inputfile):
                 if not line.startswith("#"):
                     ret.append(line.strip())
         except FileNotFoundError as e:
-            sys.stderr.write(se)
+            sys.stderr.write(e)
     return ret
 
 # Annotation for SECIS elements only exists at NCBI, so we have to
