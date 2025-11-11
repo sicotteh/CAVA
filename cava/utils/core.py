@@ -1195,7 +1195,7 @@ class Transcript(object):
                                         "Variant crossing intron/exon boundary.. Catch this exception and set mutprot=None")
                                 else: # overlaps past the wnd of transcript, may affect polyA site termination.
                                     self.overlaps_polyA = True
-                                    sys.stderr.write("WARNING:" +variant.id +" Variant crossing past end of transcript")
+                                    sys.stderr.write("WARNING:" +variant.id +" Variant crossing past end of transcript\n")
                             trans_pos += (variant.pos - exon.start)  # Position of variant in transcript coordinates
                             bef_end_index = variant.pos - exon.start - 1  # Points to variant pos .. this index will not be included in sequence
                             upstream = exonseq[
@@ -1596,12 +1596,12 @@ class Transcript(object):
                         self.strand == -1 and pos < self.codingEndGenomic):
                     return '3UTR'
                 return 'Ex' + str(exon.index)
-            if exon.start < minpos:
-                minpos = exon.start
+            if exon.start+1 < minpos:
+                minpos = exon.start+1
             if exon.end < minpos:
                 minpos = exon.end
-            if exon.start > maxpos:
-                maxpos = exon.start
+            if exon.start+1 > maxpos:
+                maxpos = exon.start+1
             if exon.end > maxpos:
                 maxpos = exon.end
 
@@ -1618,7 +1618,7 @@ class Transcript(object):
             elif pos > maxpos:
                 return "<"
         # Should not get a . unless there are no exons in this transcript or single-base exon.
-        sys.stderr.write("CAVA: WARNING: WhereIsThisPosition returning a period fot his variants (likely because the variant is incorrect relative the ref genome): "+self.TRANSCRIPT+":"+ self.chrom+":"+str(pos))
+        sys.stderr.write("CAVA: WARNING: WhereIsThisPosition returning a period fot his variants (likely because the variant is incorrect relative the ref genome): "+self.TRANSCRIPT+":"+ self.chrom+":"+str(pos)+",minpos="+str(minpos)+",maxpos="+str(maxpos)+"\n")
         return '.'
 
     # Checking where a given variant is located in the transcript
