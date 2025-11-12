@@ -727,7 +727,7 @@ class Ensembl(object):
             difference = False
         # If givealt is True, then will evaluate csn for the variant in the 'wrong/opposite' left-right shifting
         givealt=False
-        if 'givealt' in self.options.args and self.options.args['givealt'] == 'True':
+        if 'givealt' in self.options.args and self.options.args['givealt'] is True:
             givealt=True
 
         # Initializing annotation strings
