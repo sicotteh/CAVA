@@ -11,7 +11,7 @@ import importlib.resources
 from . import conseq
 from . import core
 from . import csn
-from cava import ensembldb
+#from CAVA.cava import ensembldb
 import re
 
 
@@ -173,12 +173,12 @@ class Ensembl(object):
             else:
                 sys.path.append(str(pathlib.Path().resolve().parents[0]))
                 try:
-                    fid = importlib.resources.open_text(ensembldb, selenofile)
+                    fid = importlib.resources.open_text('ensembldb', selenofile)
                 except IOError:
                     sys.stderr.write("ERROR: Error opening CESIS File=ensembldb/" + selenofile + "\n")
         else:
             sys.path.append(str(pathlib.Path().resolve().parents[0]))
-            fid = importlib.resources.open_text(ensembldb, "SECIS_in_refseq_pos.txt")
+            fid = importlib.resources.open_text('ensembldb', "SECIS_in_refseq_pos.txt")
 
         if fid is not None:
             secis_lines = fid.readlines()
@@ -1195,8 +1195,7 @@ class Ensembl(object):
             if self.options.args['ontology'].upper() in ['CLASS', 'BOTH']: variant.addFlag('ALTCLASS', ALTCLASSstring)
             if self.options.args['ontology'].upper() in ['SO', 'BOTH']: variant.addFlag('ALTSO', ALTSOstring)
 
-        if ('givealt' in self.options.args and self.options.args['givealt'] is False) or \
-                ('givealtflag' in self.options.args and self.options.args['givealtflag']):
+        if (givealt is True and ('givealtflag' in self.options.args and self.options.args['givealtflag'] is True)):
             variant.addFlag('ALTFLAG', ALTFLAGstring)
 
         return variant

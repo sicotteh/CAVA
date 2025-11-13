@@ -1,3 +1,4 @@
+import copy
 import unittest
 from cava.utils.data import Ensembl, Reference
 import cava.utils.core as core
@@ -6,6 +7,7 @@ from cava.utils.csn import scan_for_repeat
 import os
 import pycurl
 import sys
+from pathlib import Path
 
 def check_materials():
     base_dir = os.path.dirname(os.path.dirname(__file__)) # This file in cava/test .. this points to base_dir=cava
@@ -51,7 +53,7 @@ class MyTestCase(unittest.TestCase):
         cls.transcriptlist = []
         cls.options = Options()
         cls.reference = Reference(cls.options)
-        cls.options.args['givealt'] = 'True'
+        cls.options.args['givealt'] = True
         cls.ensembl = Ensembl(cls.options, cls.genelist, cls.transcriptlist, cls.codon_usage[0], cls.reference)
 
 
@@ -1141,15 +1143,24 @@ class MyTestCase(unittest.TestCase):
         rec.annotate(self.ensembl, None, self.reference, None)
         self.assertEqual('Deletion', rec.variants[0].getFlag('TYPE'))
 
+    def test_trpv6bug(self):
+        line = "chr7\t142885541\tchr7_142885541_G_A\tG\tA\t30\tPASS\t.\tGT\t0/1\n"
+        mane14options = copy.deepcopy(self.options)
+        base_dir = Path(os.path.dirname(os.path.dirname(__file__)))
+
+        mane14options.args['ensembl'] = os.path.join(base_dir.parent.parent, 'data', 'MANE.GRCh38.v1.4.refseq_genomic.db.gz'),
+        rec = core.Record(line, mane14options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+        # The bug is that a lot of variant in TRPV6 get p.Met1?
+        #
+        self.assertEqual('96C>T_p.Ala32=', rec.variants[0].getFlag('CSN'))
+
 
 
 
 
 class Options:
-
-
     """Helper class for setting up testing options"""
-
     def __init__(self):
         base_dir = os.path.dirname(os.path.dirname(__file__))
         self.args = {#'ensembl': os.path.join(base_dir, 'data', 'RefSeq_small.gz'),
@@ -1160,6 +1171,7 @@ class Options:
                      'type': 'ALL',
                      'ontology': 'BOTH',
                      'givealt': True,
+                     'givealtflag' : True,
                      'ssrange': 4,
                      'impactdef': 'SG,ESS,FS|SS5,IM,SL,EE,IF,NSY|SY,SS,INT,5PU,3PU'
                      }
@@ -1167,6 +1179,8 @@ class Options:
         self.transcript2protein = None
         super().__init__()
         self.transcript2protein = core.read_dict(self, 'transcript2protein')
+
+
 
 
 if __name__ == '__main__':

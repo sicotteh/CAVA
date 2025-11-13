@@ -1,5 +1,5 @@
 [project]
-name = "CAVA_sicotte"
+name = "CAVA"
 version = "2.0.14"
 authors = [
     {name="Steven-N-Hart",email="hart.steven@mayo.edu"},
@@ -12,11 +12,19 @@ license = {text = "MIT"}
 classifiers = [
 "Programming Language :: Python 3",
 "Operating System :: OS Independent"]
-
+dependencies = [
+  'wget',
+  'pycurl >= 7.45.1',
+]
 [project.urls]
 "Homepage" = "https://github.com/sicotteh/CAVA"
 "Previous" = "https://github.com/Steven-N-Hart/CAVA"
 [build-system]
 requires = ["setuptools>=42", "wheel"]   # PEP 508 specifications.
 [tool.setuptools]
-packages = ["cava"]
+include-package-data = true
+packages = ["cava","cava.utils","cava.ensembldb","cava.data","cava.ensembldb.data","cava.test"]
+
+#[tool.setuptools.packages.find]
+#namespaces = true
+#where = ["."]

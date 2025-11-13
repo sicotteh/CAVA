@@ -2,7 +2,7 @@
 import os
 from optparse import OptionParser
 
-from utils import main
+from cava.utils  import main
 
 with open(os.path.join(os.path.dirname(__file__), 'VERSION')) as version_file:
     version = version_file.read().strip()
