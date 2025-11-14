@@ -928,13 +928,6 @@ class Ensembl(object):
                 if not transcript.TRANSCRIPT in list(self.proteinSeqs.keys()):
                     protein, exonseqs, cds_ref, utr5_ref = transcript.getProteinSequence(reference, None, None,
                                                                                          self.codon_usage)
-                    if len(protein)>0 and protein[0]!= 'M': # Support alternate start codon at the price of not supporting partial as well.
-                        # Support the following alt start codons AUA,AUU,CUG,GUG,ACG,UUG,AUC,AAG,AGG
-                        codon=cds_ref[0]+cds_ref[1]+cds_ref[2]
-                        if codon in ['ATA','ATT','CTG','GTG','ACG','TTG','ATC','AAG','AGG']:
-                            start_aa=protein[0]
-                            is_methionine = False
-                            protein="M"+protein[1:]
                     self.proteinSeqs[transcript.TRANSCRIPT] = protein
                     self.exonSeqs[transcript.TRANSCRIPT] = exonseqs
                     self.cds_ref[transcript.TRANSCRIPT] = cds_ref
@@ -955,6 +948,13 @@ class Ensembl(object):
                     exonseqs = self.exonSeqs[transcript.TRANSCRIPT]
                     cds_ref = self.cds_ref[transcript.TRANSCRIPT]
                     utr5_ref = self.utr5_ref[transcript.TRANSCRIPT]
+                if len(protein) > 0 and protein[0] != 'M':  # Support alternate start codon at the price of not supporting partial as well.
+                    # Support the following alt start codons AUA,AUU,CUG,GUG,ACG,UUG,AUC,AAG,AGG
+                    codon = cds_ref[0] + cds_ref[1] + cds_ref[2]
+                    if codon in ['ATA', 'ATT', 'CTG', 'GTG', 'ACG', 'TTG', 'ATC', 'AAG', 'AGG']:
+                        start_aa = protein[0]
+                        is_methionine = False
+                        protein = "M" + protein[1:]
             else:
                 protein = ''
                 cds_ref = ''
