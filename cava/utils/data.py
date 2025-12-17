@@ -747,6 +747,7 @@ class Ensembl(object):
         PROTPOSstring = ''
         PROTREFstring = ''
         PROTALTstring = ''
+        CSNALTstring = ''
 
         # Collecting transcripts that overlap with the variant
         # transcript overlapping left-end and right end of variant ("OUT" is empty for single-bases)
@@ -799,6 +800,7 @@ class Ensembl(object):
                 PROTPOSstring += ':'
                 PROTREFstring += ':'
                 PROTALTstring += ':'
+                CSNALTstring += ':'
 
             TRANSCRIPTstring += TRANSCRIPT
             GENEstring += transcript.geneSymbol
@@ -818,6 +820,7 @@ class Ensembl(object):
             PROTPOSstring += '.'
             PROTREFstring += '.'
             PROTALTstring += '.'
+            CSNALTstring += '.'
 
         # Iterating through the list of transcripts with  variant fully inside transcript
         #  or Del/MNP with one end in transcript
@@ -849,6 +852,7 @@ class Ensembl(object):
                 PROTPOSstring += ':'
                 PROTREFstring += ':'
                 PROTALTstring += ':'
+                CSNALTstring += ':'
 
             # Creating the TRANSCRIPT, GENE and TRINFO annotations
             TRANSCRIPTstring += TRANSCRIPT
@@ -994,18 +998,26 @@ class Ensembl(object):
 
             # Creating the CSN annotations both for left and right aligned variant
             if TRANSCRIPT in transcripts_allplus and (givealt is True or transcript.strand == 1):
-                csn_plus, protchange_plus = csn.getAnnotation(variant_plus, transcript, reference, protein,
+                csn_plus, protchange_plus,csn_plus_alt = csn.getAnnotation(variant_plus, transcript, reference, protein,
                                                               mutprotein_plus)
                 csn_plus_str = csn_plus.getAsString()
-            else:
-                csn_plus_str, protchange_plus = '.', ('.', '.', '.')
+                if csn_plus_alt is not None:
+                    csn_plus_alt_str = csn_plus_alt.getAsString()
+                else:
+                    csn_plus_alt_str = '.'
 
+            else:
+                csn_plus_str, protchange_plus,csn_plus_alt_atr = '.', ('.', '.', '.'),'.'
             if TRANSCRIPT in transcripts_allminus and (givealt is True or transcript.strand == -1):
-                csn_minus, protchange_minus = csn.getAnnotation(variant_minus, transcript, reference, protein,
+                csn_minus, protchange_minus,csn_minus_alt = csn.getAnnotation(variant_minus, transcript, reference, protein,
                                                                     mutprotein_minus)
                 csn_minus_str = csn_minus.getAsString()
+                if csn_minus_alt is not None:
+                    csn_minus_alt_str = csn_minus_alt.getAsString()
+                else:
+                    csn_minus_alt_str = '.'
             else:
-                csn_minus_str, protchange_minus = '.', ('.', '.', '.')
+                csn_minus_str, protchange_minus,csn_minus_alt_str = '.', ('.', '.', '.'), '.'
 
             # CLASS, SO and IMPACT
 
@@ -1092,6 +1104,7 @@ class Ensembl(object):
                 PROTPOSstring += protchange_plus[0]
                 PROTREFstring += protchange_plus[1]
                 PROTALTstring += protchange_plus[2]
+                CSNALTstring += csn_plus_alt_str
             else:
                 class_plus, class_minus = self.correctClasses(csn_minus_str, class_plus, class_minus)
                 so_plus, so_minus = self.correctSOs(csn_minus_str, so_plus, so_minus)
@@ -1118,6 +1131,7 @@ class Ensembl(object):
                 PROTPOSstring += protchange_minus[0]
                 PROTREFstring += protchange_minus[1]
                 PROTALTstring += protchange_minus[2]
+                CSNALTstring += csn_minus_alt_str
 
             if  givealt is True:
                 # Creating the ALTANN annotation
@@ -1184,6 +1198,7 @@ class Ensembl(object):
         variant.addFlag('PROTPOS', PROTPOSstring)
         variant.addFlag('PROTREF', PROTREFstring)
         variant.addFlag('PROTALT', PROTALTstring)
+        variant.addFlag('CSNALT', CSNALTstring)
 
         if self.options.args['ontology'].upper() in ['CLASS', 'BOTH']: variant.addFlag('CLASS', CLASSstring)
         if self.options.args['ontology'].upper() in ['SO', 'BOTH']: variant.addFlag('SO', SOstring)

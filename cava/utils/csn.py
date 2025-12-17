@@ -86,7 +86,6 @@ class CSNAnnot:
 def getAnnotation(variant, transcript, reference, prot, mutprot):
     # Creating csn annotation coordinates
     coord1, intr1, coord2, intr2, nout1, nout2 = calculateCSNCoordinates(variant, transcript)
-
     # Creating DNA level annotation
     if variant.alt.startswith("<"):  # Tolerate gVCF or any symbolic ID (e.g. CNV)
         dna, dna_ins = 'X', 'X'
@@ -96,7 +95,7 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                        dna_ins)
         csn.nout1 = nout1
         csn.nout2 = nout2
-        return csn, protchange
+        return csn, protchange, None
 
     # Creating protein level annotation
     skip_repeats = False
@@ -110,7 +109,7 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
         skip_repeats = False
     elif (not '-' in where) and "Ex" in where:  # Purely in the one coding  exons
         protein, protchange = makeProteinString(variant, prot, mutprot, coord1)
-        skip_repeats = False
+        skip_repeats = False # This case can become True if cDNA change is not a multiple of 3.
     elif where.startswith('5UTR-Ex'):  # Need an HGVS p.? to indicate there is an effect on protein.
         protein, protchange = '_p.?', ('.', '.', '.')
         skip_repeats = False
@@ -134,15 +133,20 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
             protein, protchange = '_p.?', ('.', '.', '.')
             skip_repeats = False  # Allow cDNA repeat across in intron/exon boundary
 
-    try:
+    try: # First pass with skip_repeats = False, so can know if there is a repeat here.
         dna, dna_ins = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2, nout1, nout2,
-                                         skip_repeats)
+                                         False)
     except TypeError:
         dna, dna_ins = 'X', 'X'
+    dna_alt = ''
+    dna_ins_alt = ''
+    csn_alt = None
+
 
     # Transforming coordinates if the variant is a an insertion
     # of a multi-base repeat so that the range points to the repeat unit..
     # .. as opposed to the insertion site.
+    generate_csn_alt = False
     if (variant.is_insertion is True or variant.is_deletion is True) and (len(dna_ins) == 0 or dna_ins.find(
             '[') >= 0):  # empty or repeated sequence,repeat_unit[repeat_len] (skip if dup)
         [left_result, right_result, full_result] = scan_for_repeat(variant, reference)
@@ -154,7 +158,7 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                 skip_repeats = True
             elif left_result[2] == 1 and left_result[3] == 0:  #Simple deletion
                 skip_repeats = True
-            elif left_result[3] - left_result[2] == 1:  # Duplication
+            elif left_result[3] - left_result[2] == 1:  # Duplication (can't have something like dupTT, that's a repeat)
                 skip_repeats = True
                 dna, dna_ins = 'dup', 'dup'
                 skip_repeats = True
@@ -182,14 +186,27 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                             if ((intr1new is None or intr1new == 0) or (
                                     intr2new is None or intr2new == 0)):  # if not at least one end in CDS
                                 skip_repeats = True
+
+
                 if skip_repeats is False:
-                    if variant.is_insertion is False:
+                    if variant.is_insertion is False:  # Expand to full range.
                         coord1, intr1, nout1 = coord1new, intr1new, nout1new
                         coord2, intr2, nout2 = coord2new, intr2new, nout2new
                     if n_repeat_ref == 0:
                         dna = 'ins' + repeat_unit + '[' + str(n_repeat_alt) + ']'
                     else:
                         dna = repeat_unit + '[' + str(n_repeat_ref) + ']%3B'+repeat_unit + '[' + str(n_repeat_alt) + ']'
+                    # New feature: If annotating as repeat, also want to support a new ALTCSN class.
+                    # if is useful to know the "del" or "ins" position of a repeat because some databases (like Clinvar) or other
+                    # tools report it at the wrong location.
+                    generate_csn_alt = True
+                    try:
+                        dna_alt, dna_ins_alt = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,
+                                                         nout1, nout2, True)
+                    except TypeError:
+                        dna_alt, dna_ins_alt = 'X', 'X'
+                    coord1alt, intr1alt, coord2alt, intr2alt, nout1alt, nout2alt = coord1, intr1, coord2, intr2, nout1, nout2
+
                 else:  # Repeat is not allowed, try next best thing.
                     try:
                         dna, dna_ins = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,
@@ -233,7 +250,12 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                                     intr2new is None or intr2new == 0)):  # if not at least one end in CDS
                                 skip_repeats = True  # Cannot allow not multiple of 3 in CDS
 
+
                 if skip_repeats is False:
+                    # 10/2025 for minus strand need coord1 to be highest genomic (lowest cDNA)
+                    if variant.is_insertion is False:
+                        coord1, intr1, nout1 = coord1new, intr1new, nout1new
+                        coord2, intr2, nout2 = coord2new, intr2new, nout2new
                     if n_repeat_ref == 0: # simple insertion of a repeat.
                         dna = 'ins' + core.Sequence(repeat_unit).reverseComplement() + \
                               '[' + str(n_repeat_alt) + ']'
@@ -241,15 +263,23 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                         rev_unit = core.Sequence(repeat_unit).reverseComplement()
                         dna = rev_unit + '[' + str(n_repeat_ref) + ']%3B' +  rev_unit + '[' + str(
                             n_repeat_alt) + ']'
-                    # 10/2025 for minus strand need coord1 to be highest genomic (lowest cDNA)
-                    coord1, intr1, nout1 = coord1new, intr1new, nout1new
-                    coord2, intr2, nout2 = coord2new, intr2new, nout2new
+
+                    try:
+                        dna_alt, dna_ins_alt = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,
+                                                         nout1, nout2, True)
+                    except TypeError:
+                        dna_alt, dna_ins_alt = 'X', 'X'
+
+                    coord1alt, intr1alt, coord2alt, intr2alt, nout1alt, nout2alt = coord1, intr1, coord2, intr2, nout1, nout2
+
                 else:  # Repeat is not allowed (because it is a del or dup or violates CDS rules), try next best thing.
                     try:
                         dna, dna_ins = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,
                                                          nout1, nout2, True)
                     except TypeError:
                         dna, dna_ins = 'X', 'X'
+
+
     # shift coordinates if have to point to previous bases for dup or inv.
     if dna_ins == 'dup':
         # Shift position for insertions longer than 1 bp that are "dup"
@@ -260,6 +290,7 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
         coord1, intr1, coord2, intr2, nout1, nout2 = duplicationCoordinates(variant, transcript)
         csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
                        dna_ins)
+        coord1, intr1, coord2, intr2 = coord1_ins, intr1_ins, coord2_ins, intr2_ins # needed for cns_alt
     elif dna_ins == 'insinv':
         coord1_ins, intr1_ins, coord2_ins, intr2_ins = coord1, intr1, coord2, intr2
         # Point to range before insertion site, in cDNA coordinates, but do not skip over introns
@@ -271,11 +302,12 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
         dna = 'ins' + csn.makeDNArange() + 'inv'
         csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
                        dna_ins)
-    elif len(dna_ins)>0 and not ('[' in dna_ins):  # del,delins*
-        coord1_ins, intr1_ins, coord2_ins, intr2_ins = '', '', '', ''
+        coord1, intr1, coord2, intr2 = coord1_ins, intr1_ins, coord2_ins, intr2_ins # needed for csn_alt
+    elif len(dna_ins)>0 and not ('[' in dna_ins):  # Regular insertion.
+        coord1_ins, intr1_ins, coord2_ins, intr2_ins = '', None, '', None
         csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
                        dna_ins)
-    else: # ins*
+    else: # Repeat insertion/deltion or deletion.
         coord1_ins, intr1_ins, coord2_ins, intr2_ins = coord1, intr1, coord2, intr2
         csn = CSNAnnot(coord1, intr1, coord2, intr2, dna, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
                        dna_ins)
@@ -283,7 +315,40 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
     csn.nout1 = nout1
     csn.nout2 = nout2
 
-    return csn, protchange
+    if generate_csn_alt is True: # In case of repeat, also generate non-repeat annotation.
+        if dna_ins_alt == 'dup':
+            # Shift position for insertions longer than 1 bp that are "dup"
+            # if the repeat unit is "1", coord1 will already point to the bp before the insertion site.
+            coord1_ins, intr1_ins, coord2_ins, intr2_ins = coord1alt, intr1alt, coord2alt, intr2alt
+            # Point to range before insertion site, in cDNA coordinates, but do not skip over introns
+            # This can be a multi-base duplication
+            coord1, intr1, coord2, intr2, nout1, nout2 = duplicationCoordinates(variant, transcript)
+            csn_alt = CSNAnnot(coord1, intr1, coord2, intr2, dna_alt, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
+                           dna_ins_alt)
+        elif dna_ins_alt == 'insinv':
+            coord1_ins, intr1_ins, coord2_ins, intr2_ins = coord1, intr1, coord2, intr2
+            # Point to range before insertion site, in cDNA coordinates, but do not skip over introns
+            coord1_prev, intr1_prev, coord2_prev, intr2_prev, nout1_prev, nout2_prev = duplicationCoordinates(variant,
+                                                                                                              transcript)
+            csn_alt = CSNAnnot(coord1_prev, intr1_prev, coord2_prev, intr2_prev, dna_alt, protein, coord1_ins, intr1_ins,
+                           coord2_ins, intr2_ins,
+                           dna_ins_alt)
+            dna_alt = 'ins' + csn_alt.makeDNArange() + 'inv'
+            csn_alt = CSNAnnot(coord1alt, intr1alt, coord2alt, intr2alt, dna_alt, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
+                           dna_ins_alt)
+        elif len(dna_ins_alt) > 0 and not ('[' in dna_ins_alt):  # Regular insertion
+            coord1_ins, intr1_ins, coord2_ins, intr2_ins = '', None, '', None
+            csn_alt = CSNAnnot(coord1alt, intr1alt, coord2alt, intr2alt, dna_alt, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
+                           dna_ins_alt)
+        else:  # repeat in/del or regular deletion.
+            coord1_ins, intr1_ins, coord2_ins, intr2_ins = coord1alt, intr1alt, coord2alt, intr2alt
+            csn_alt = CSNAnnot(coord1alt, intr1alt, coord2alt, intr2alt, dna_alt, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
+                           dna_ins_alt)
+
+        csn_alt.nout1 = nout1
+        csn_alt.nout2 = nout2
+
+    return csn, protchange, csn_alt
 
 
 # Calculating csn annotation coordinates
@@ -693,6 +758,11 @@ def scan_for_repeat(variant, reference):
 #   Consequently, use NM_024312.4:c.2692_2693dup and not NM_024312.4:c.2686A[10],
 #   use NM_024312.4:c.1741_1742insTATATATA and not NM_024312.4:c.1738TA[6].
 # so the original CAVA code is correct unless repeat units are *3
+#   in Summary: use repeat unit nomenclature if in coding region and a multiple of 3.
+#               use repeat unit nomenclature if in UTR or intron or not a multiple of 3.
+#               use ins if there were no copy of repeated element in genome (repeat is required to be on ref)
+#
+#
 #
 # The original CAVA version has one problem, it may call dups across exon/intron boundaries
 #

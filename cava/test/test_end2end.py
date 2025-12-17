@@ -1153,8 +1153,18 @@ class MyTestCase(unittest.TestCase):
         rec.annotate(self.ensembl, None, self.reference, None)
         # The bug is that a lot of variant in TRPV6 get p.Met1?
         #
-        self.assertEqual('96C>T_p.Ala32=', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.96C>T_p.Ala32=', rec.variants[0].getFlag('CSN'))
 
+    def test_intron_del_polyA(self):
+        line = "chr7\t117548628\tc.1210-12del\tTT\tT\t30\tPASS\t.\tGT\t0/1\n"
+        mane14options = copy.deepcopy(self.options)
+        base_dir = Path(os.path.dirname(os.path.dirname(__file__)))
+
+        mane14options.args['ensembl'] = os.path.join(base_dir.parent.parent, 'data', 'MANE.GRCh38.v1.4.refseq_genomic.db.gz'),
+        rec = core.Record(line, mane14options, None, self.reference)
+        rec.annotate(self.ensembl, None, self.reference, None)
+       # the bug was that this was annotated as a repeat instead of a del.
+        self.assertEqual('c.1210-12del', rec.variants[0].getFlag('CSNALT'))
 
 
 

@@ -680,7 +680,8 @@ class Record(object):
                         'PROTPOS', 'PROTREF', 'PROTALT', 'CLASS', 'SO', 'ALTFLAG',
                         'CAVA_TYPE', 'CAVA_TRANSCRIPT', 'CAVA_GENE', 'CAVA_GENEID', 'CAVA_TRINFO',
                         'CAVA_LOC', 'CAVA_CSN',
-                        'CAVA_PROTPOS', 'CAVA_PROTREF', 'CAVA_PROTALT', 'CAVA_CLASS', 'CAVA_SO', 'CAVA_ALTFLAG']
+                        'CAVA_PROTPOS', 'CAVA_PROTREF', 'CAVA_PROTALT', 'CAVA_CLASS', 'CAVA_SO', 'CAVA_ALTFLAG',
+                        'IMPACT','CAVA_IMPACT','ALTANN','CAVA_ALTANN','ALTCLASS','CAVA_ALTCLASS','ALTSO','CAVA_ALTSO']
             for item in infos:
                 items = item.split("=")
                 if not (items[0] in rmfields):
