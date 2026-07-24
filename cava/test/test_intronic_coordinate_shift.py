@@ -1,6 +1,7 @@
 import unittest
 
 from cava.utils.core import Transcript, Variant
+from cava.utils import csn
 from cava.utils.csn import calculateCSNCoordinates, transformToCSNCoordinate
 
 
@@ -70,6 +71,46 @@ class TestIntronicCoordinateShift(unittest.TestCase):
         )
         central_pos = 115  # Intron 111..119
         self.assertEqual(('11', 5, 0), transformToCSNCoordinate(central_pos, odd_intron_tx))
+
+    def test_single_repeat_unit_deletion_uses_del_not_repeat(self):
+        var = Variant('1', 112, 'AA', 'A')
+        shifted = var.alignOnPlusStrand(self.reference)
+
+        annotation, _, alt_annotation = csn.getAnnotation(shifted, self.transcript, self.reference, '', None)
+
+        self.assertEqual('c.12-1del', annotation.getAsString())
+        self.assertIsNone(alt_annotation)
+
+    def test_single_repeat_unit_multibase_deletion_uses_del_not_repeat(self):
+        # Exons 100..110 and 123..132, intron 111..122 contains six TA copies.
+        transcript = Transcript(
+            '\t'.join(
+                ['TX3', 'GENE', 'G1', '.', '1', '1', '99', '132', '1', '100', '132', '99', '110', '122', '132']
+            )
+        )
+        reference = MockReference('C' * 99 + 'G' * 11 + 'TA' * 6 + 'T' * 10 + 'C' * 100)
+        var = Variant('1', 111, 'TAT', 'T')
+        shifted = var.alignOnPlusStrand(reference)
+
+        annotation, _, alt_annotation = csn.getAnnotation(shifted, transcript, reference, '', None)
+
+        self.assertEqual('c.12-1_12del', annotation.getAsString())
+        self.assertIsNone(alt_annotation)
+
+    def test_single_repeat_unit_multibase_insertion_uses_dup(self):
+        transcript = Transcript(
+            '\t'.join(
+                ['TX3', 'GENE', 'G1', '.', '1', '1', '99', '132', '1', '100', '132', '99', '110', '122', '132']
+            )
+        )
+        reference = MockReference('C' * 99 + 'G' * 11 + 'TA' * 6 + 'T' * 10 + 'C' * 100)
+        var = Variant('1', 112, 'T', 'TTA')
+        shifted = var.alignOnPlusStrand(reference)
+
+        annotation, _, alt_annotation = csn.getAnnotation(shifted, transcript, reference, '', None)
+
+        self.assertEqual('c.12-1_12dup', annotation.getAsString())
+        self.assertIsNone(alt_annotation)
 
 
 if __name__ == '__main__':

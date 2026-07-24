@@ -158,8 +158,9 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                 skip_repeats = True
             elif (left_result[2] == 0 and left_result[3]<=1):  # Simple insertion
                 skip_repeats = True
-            elif left_result[2] == 1 and left_result[3] == 0:  #Simple deletion
+            elif left_result[2] - left_result[3] == 1:  # Single repeat-unit deletion should stay a deletion.
                 skip_repeats = True
+                dna, dna_ins = 'del', ''
             elif left_result[3] - left_result[2] == 1:  # Duplication (can't have something like dupTT, that's a repeat)
                 skip_repeats = True
                 dna, dna_ins = 'dup', 'dup'
@@ -234,8 +235,9 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
             elif right_result[3] - right_result[2] == 1:  # Duplication
                 skip_repeats = True
                 dna, dna_ins = 'dup', 'dup'
-            elif right_result[2] == 1 and right_result[3] == 0:  # Simple deletion
+            elif right_result[2] - right_result[3] == 1:  # Single repeat-unit deletion should stay a deletion.
                 skip_repeats = True
+                dna, dna_ins = 'del', ''
             else:
                 range_end = right_result[1] # left-shifted HGVS position.
                 repeat_unit = right_result[4]
