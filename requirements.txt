@@ -1,4 +1,4 @@
-Cython
+Cython>=3
 pybedtools
 pysam
 crossmap
@@ -6,13 +6,11 @@ wget
 requests
 bx-python
 pyBigWig
-pybedtools
-numpy== 1.17.4
+numpy<2
 certifi
 charset-normalizer
 idna
 six
 urllib3
-wget
-wheel
-pip
+pycurl>=7.45.1
+pytest

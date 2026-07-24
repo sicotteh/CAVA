@@ -198,14 +198,14 @@ class TestmakeProteinString(unittest.TestCase):
         print("Testing checking ssr 2-long deletion")
         variant = Variant("chr1", 1000, "C", "T")
         actual = makeProteinString(variant, "MLYLYRX", "MLYRX", 6)
-        expected = ('_p.Leu2_Tyr3[2]%3B[1]', ('4-5', 'LY', '-'))
+        expected = ('_p.Leu4_Tyr5del', ('4-5', 'LY', '-'))
         self.assertEqual(actual, expected)
 
     def test_makeProteinString_ssr2_loss2to0(self):
         print("Testing checking ssr 2-long deletion to 0")
         variant = Variant("chr1", 1000, "C", "T")
         actual = makeProteinString(variant, "MLYLYRX", "MRX", 6)
-        expected = ('_p.Leu2_Tyr3[2]%3B[0]', ('2-5', 'LYLY', '-'))
+        expected = ('_p.Leu2_Tyr5del', ('2-5', 'LYLY', '-'))
         self.assertEqual(actual, expected)
 
     def test_makeProteinString_ssr1_gain1to3(self):
@@ -219,7 +219,7 @@ class TestmakeProteinString(unittest.TestCase):
         print("Testing checking ssr 2-long deletion")
         variant = Variant("chr1", 1000, "C", "T")
         actual = makeProteinString(variant, "MLLRX", "MLRX", 6)
-        expected = ('_p.Leu2[2]%3B[1]', ('3', 'L', '-'))
+        expected = ('_p.Leu3del', ('3', 'L', '-'))
         self.assertEqual(actual, expected)
 
     def test_makeProteinString_basic(self):

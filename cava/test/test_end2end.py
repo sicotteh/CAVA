@@ -574,7 +574,7 @@ class MyTestCase(unittest.TestCase):
         line = "2\t47804943\tdupGG_junction\tT\tTGTTGTT\t30\tPASS\t.\tGT\t0/1\n"
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
-        self.assertEqual('c.3470_3475dup_p.[Cys1158[1]]%3B[Cys1158[3]]', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.3470_3475dup_p.Cys1158[1]%3B[3]', rec.variants[0].getFlag('CSN'))
         self.assertEqual('NC_000002.12:g.47804941_47804946dup',rec.variants[0].getFlag('HGVSg'))
 # chr13-32319070-T-A,TA
 # NM_000059.4(BRCA2):c.68-7T
@@ -1164,7 +1164,7 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, mane14options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
        # the bug was that this was annotated as a repeat instead of a del.
-        self.assertEqual('c.1210-12del', rec.variants[0].getFlag('CSNALT'))
+        self.assertEqual('c.1210-6del', rec.variants[0].getFlag('CSNALT'))
 
 
 

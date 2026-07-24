@@ -141,6 +141,8 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
     dna_alt = ''
     dna_ins_alt = ''
     csn_alt = None
+    coord1_orig, intr1_orig, coord2_orig, intr2_orig = coord1, intr1, coord2, intr2
+    nout1_orig, nout2_orig = nout1, nout2
 
 
     # Transforming coordinates if the variant is a an insertion
@@ -201,11 +203,22 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                     # tools report it at the wrong location.
                     generate_csn_alt = True
                     try:
-                        dna_alt, dna_ins_alt = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,
-                                                         nout1, nout2, True)
+                        dna_alt, dna_ins_alt = makeDNAannotation(
+                            variant,
+                            transcript,
+                            reference,
+                            coord1_orig,
+                            intr1_orig,
+                            coord2_orig,
+                            intr2_orig,
+                            nout1_orig,
+                            nout2_orig,
+                            True,
+                        )
                     except TypeError:
                         dna_alt, dna_ins_alt = 'X', 'X'
-                    coord1alt, intr1alt, coord2alt, intr2alt, nout1alt, nout2alt = coord1, intr1, coord2, intr2, nout1, nout2
+                    coord1alt, intr1alt, coord2alt, intr2alt = coord1_orig, intr1_orig, coord2_orig, intr2_orig
+                    nout1alt, nout2alt = nout1_orig, nout2_orig
 
                 else:  # Repeat is not allowed, try next best thing.
                     try:
@@ -265,12 +278,23 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
                             n_repeat_alt) + ']'
 
                     try:
-                        dna_alt, dna_ins_alt = makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, intr2,
-                                                         nout1, nout2, True)
+                        dna_alt, dna_ins_alt = makeDNAannotation(
+                            variant,
+                            transcript,
+                            reference,
+                            coord1_orig,
+                            intr1_orig,
+                            coord2_orig,
+                            intr2_orig,
+                            nout1_orig,
+                            nout2_orig,
+                            True,
+                        )
                     except TypeError:
                         dna_alt, dna_ins_alt = 'X', 'X'
 
-                    coord1alt, intr1alt, coord2alt, intr2alt, nout1alt, nout2alt = coord1, intr1, coord2, intr2, nout1, nout2
+                    coord1alt, intr1alt, coord2alt, intr2alt = coord1_orig, intr1_orig, coord2_orig, intr2_orig
+                    nout1alt, nout2alt = nout1_orig, nout2_orig
 
                 else:  # Repeat is not allowed (because it is a del or dup or violates CDS rules), try next best thing.
                     try:
@@ -345,8 +369,8 @@ def getAnnotation(variant, transcript, reference, prot, mutprot):
             csn_alt = CSNAnnot(coord1alt, intr1alt, coord2alt, intr2alt, dna_alt, protein, coord1_ins, intr1_ins, coord2_ins, intr2_ins,
                            dna_ins_alt)
 
-        csn_alt.nout1 = nout1
-        csn_alt.nout2 = nout2
+        csn_alt.nout1 = nout1alt
+        csn_alt.nout2 = nout2alt
 
     return csn, protchange, csn_alt
 
@@ -939,6 +963,22 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
 # This (new) code should mostly work even if reference protein is incomplete (e.g. not start with Met1 or end with X/ter).. except that we cannot call an extension unless last base is Ter.
 #
 # This (new) code has a new behavior for frameshift, different than the original CAVA, namely: the AAREF and AAMUT return values have the protein sequence.
+
+
+def _detect_simple_repeat_deletion(protcopy, leftindex):
+    for unit_len in range(1, 4):
+        max_start = max(0, leftindex - unit_len - 2)
+        for start in range(max_start, min(len(protcopy) - unit_len, leftindex + 1)):
+            unit = protcopy[start:start + unit_len]
+            count = 0
+            pos = start
+            while pos + unit_len <= len(protcopy) and protcopy[pos:pos + unit_len] == unit:
+                count += 1
+                pos += unit_len
+            if count >= 2:
+                return unit, unit_len, count, start
+    return None
+
 # 5' Edge case: 
 #     Anything deleting/mutating the initiating Methionine will be called a '?'
 #     A deletion at the 5' end that leaves a Methionine will be called a deletion (choice between deleting first or second methionine
@@ -958,6 +998,47 @@ def makeDNAannotation(variant, transcript, reference, coord1, intr1, coord2, int
 # 
 # Coord1 is 1-based position in the CDS .. and is ONLY used to report Synonymous variants .. it is not used to locate deletions or frameshifts
 # 
+
+def _detect_repeat_protein_change(prot, mutprot, leftindex, rightindex):
+    # Handle simple repeat contractions/expansions like LL->L or LYLY->LY.
+    for unit_len in range(1, min(3, len(prot), len(mutprot)) + 1):
+        for start in range(0, len(prot) - unit_len + 1):
+            unit = prot[start:start + unit_len]
+            if not unit:
+                continue
+            count_ref = 0
+            idx = start
+            while idx + unit_len <= len(prot) and prot[idx:idx + unit_len] == unit:
+                count_ref += 1
+                idx += unit_len
+            if count_ref < 1:
+                continue
+            for alt_count in range(1, 4):
+                alt_seq = prot[:start] + unit * alt_count + prot[start + count_ref * unit_len:]
+                if alt_seq != mutprot:
+                    continue
+                first = changeTo3lettersTer(prot[start])
+                last = changeTo3lettersTer(prot[start + unit_len - 1])
+                if alt_count == count_ref:
+                    continue
+                if count_ref == 1 and alt_count == 2:
+                    notation = '_p.' + first + str(leftindex) + 'dup'
+                    aarange = str(leftindex) + '-' + str(leftindex + 1)
+                    return notation, (aarange, '-', unit)
+                notation = '_p.' + first + str(leftindex)
+                if unit_len > 1:
+                    notation += '_' + last + str(leftindex + unit_len - 1)
+                notation += '[' + str(count_ref) + ']%3B[' + str(alt_count) + ']'
+                if alt_count < count_ref:
+                    delta = unit * (count_ref - alt_count)
+                    aarange = str(leftindex) if unit_len == 1 else str(leftindex) + '-' + str(leftindex + unit_len - 1)
+                    return notation, (aarange, delta, '-')
+                delta = unit * (alt_count - count_ref)
+                aarange = str(leftindex) + '-' + str(leftindex + 1)
+                return notation, (aarange, '-', delta)
+
+    return None
+
 
 def makeProteinString(variant, prot, mutprot, coord1_str):
     """
@@ -1177,6 +1258,11 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
         else:
             return '_p.' + changeTo3lettersTer(trim_prot) + str(leftindex) + changeTo3lettersTer(trim_mutprot), (
             str(leftindex), trim_prot, trim_mutprot)
+
+    repeat_change = _detect_repeat_protein_change(trim_prot, trim_mutprot, leftindex, rightindex)
+    if repeat_change is not None:
+        return repeat_change
+
     #
     # For a Variant to be called a repeat change, the entire event must be describable as a repeat variation.. There is no repeat+1 base change
     #
@@ -1188,6 +1274,24 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
             return ('_p.' + changeTo3lettersTer(trim_prot[0]) + str(leftindex-len(trim_mutprot)) + "_" +changeTo3lettersTer(trim_prot[-1]) + str(leftindex-1) + "dup",
                     (str(leftindex), trim_prot, trim_mutprot))
 
+    repeat_change = _detect_repeat_protein_change(trim_prot, trim_mutprot, leftindex, rightindex)
+    if repeat_change is not None:
+        return repeat_change
+
+    if len(trim_prot) == 0 and len(trim_mutprot) > 0 and is_not_frameshift and 'X' not in trim_mutprot:
+        prefix = protcopy[:leftindex - 1]
+        for unit_len in range(1, min(2, len(trim_mutprot), len(prefix)) + 1):
+            unit = trim_mutprot[:unit_len]
+            if len(trim_mutprot) == unit_len and prefix.endswith(unit):
+                dup_seq = prefix[-unit_len:]
+                start_pos = len(prefix) - unit_len + 1
+                if unit_len == 1:
+                    return '_p.' + changeTo3lettersTer(dup_seq[0]) + str(start_pos) + 'dup', (
+                        str(leftindex - 1) + '-' + str(leftindex), '-', unit)
+                return '_p.' + changeTo3lettersTer(dup_seq[0]) + str(start_pos) + '_' + changeTo3lettersTer(
+                    dup_seq[-1]) + str(start_pos + unit_len - 1) + 'dup', (
+                    str(leftindex - 1) + '-' + str(leftindex), '-', unit)
+
     if rightindex < len(protcopy) and len(trim_mutprot) == 0 and is_not_frameshift: # Non-frameshift deletion.
         nDup = 0
         nMatch_del0 = 0  # Repeats in the mutated protein
@@ -1196,7 +1300,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
         for SSRlen in range(1, len(trim_prot) + 1):
             # Make sure repeat size is a full multiple of the deletion
             nDups = int(len(trim_prot) / SSRlen)
-            if nDups > 1 and len(trim_prot) % SSRlen == 0: # Deletion of whole range should not be annotated as a repeat (nDups>1)
+            if nDups >= 1 and len(trim_prot) % SSRlen == 0:
                 repeat_seq = trim_prot[0:SSRlen]
                 nMatch_del = 0 # Repeats in the mutated protein
                 nMatch_ref = 0 # Repeats in the original protein
@@ -1213,8 +1317,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
                         nMatch_ref = nMatch_ref + 1
                         lowerlim = lowerlim - SSRlen
                         upperlim = lowerlim + SSRlen
-                    if not ( nMatch_ref == 1 or
-                             (nMatch_del == 1 and nMatch_ref == 0) or (nMatch_ref + nMatch_del <= 1)):  # Deletion of a single lone copy is not repeat polymorphism
+                    if (nMatch_ref + nMatch_del) > 1:
                         nDup = nDups
                         lowerlim = leftindex - SSRlen * nMatch_ref - 1
                         upperlim = lowerlim + SSRlen
@@ -1227,7 +1330,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
                 return '_p.' + changeTo3lettersTer(trim_prot[0]) + str(leftindex) + "del", (
                     str(leftindex), trim_prot, '-')
             else:
-                return '_p.' + changeTo3lettersTer(trim_prot[0]) + str(leftindex+1) + "_" + changeTo3lettersTer(
+                return '_p.' + changeTo3lettersTer(trim_prot[0]) + str(leftindex) + "_" + changeTo3lettersTer(
                     trim_prot[len(trim_prot) - 1]) + str(rightindex) + "del", (
                     str(leftindex) + '-' + str(leftindex + len(trim_prot) - 1), trim_prot, '-')
         else: # Repeat Deletion
@@ -1238,7 +1341,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
                 AARANGE = str(lowerlim+1) + '-' + str(rightindex)
                 prange = (changeTo3lettersTer(protcopy[lowerlim]) + str(lowerlim + 1) + "_" +
                           changeTo3lettersTer(protcopy[rightindex-1]) + str(rightindex))
-            return '_p.[' + prange + "[" + str(nMatch_ref0)  + "]]%3B["+ prange + "["+str(nMatch_del0)+ "]]",(AARANGE, trim_prot, '-')
+            return '_p.' + prange + '[' + str(nMatch_ref0) + ']%3B[' + str(nMatch_del0) + ']', (AARANGE, trim_prot, '-')
 
     #
     # Pure insertion/Repeat/Dup .. not frameshift Extension
@@ -1307,13 +1410,13 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
         else:  # Single and Multi-base repeat insertion
             if nDup == 1 and nMatch_ref0 == 1:  # Duplications/insertion, special treatment
                 if len(trim_mutprot)==1:
-                    AARANGE = str(rightindex)
+                    AARANGE = str(leftindex) + '-' + str(rightindex)
                     prange = changeTo3lettersTer(protcopy[rightindex-1]) + str(rightindex)
                 else:
                     dupstartindex= rightindex-len(trim_mutprot)  # rightindex is AA position of last AA in Ref protein that is changed.
                     AARANGE = str(leftindex+1) + '-' + str(rightindex)
                     prange = changeTo3lettersTer(protcopy[dupstartindex]) + str(dupstartindex+1) + "_" + changeTo3lettersTer(protcopy[rightindex-1]) + str(rightindex)
-                return '_p.'+ prange+ "dup", (AARANGE , '-', trim_mutprot)
+                return '_p.' + prange + 'dup', (AARANGE, '-', trim_mutprot)
             else:
                 if lowerlim == rightindex-1:
                     AARANGE = str(lowerlim + 1)
@@ -1323,7 +1426,7 @@ def makeProteinString(variant, prot, mutprot, coord1_str):
                     prange = (changeTo3lettersTer(protcopy[lowerlim]) + str(lowerlim + 1) + "_" +
                               changeTo3lettersTer(protcopy[rightindex-1]) + str(rightindex))
 
-                return '_p.[' + prange + "[" + str(nMatch_ref0) + "]]%3B[" + prange +"["+str(nMatch_ref0 + nMatch_ins0) + "]]", (
+                return '_p.' + prange + '[' + str(nMatch_ref0) + ']%3B[' + str(nMatch_ref0 + nMatch_ins0) + ']', (
                         str(leftindex - 1) + '-' + str(rightindex + 1), '-', trim_mutprot)
 
     # Frameshift mutations (assume len(prot)>0 from now on)

@@ -16,9 +16,24 @@ import re
 
 
 # import time
-import pathlib
+PACKAGE_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
+if PACKAGE_ROOT not in sys.path:
+    sys.path.insert(0, PACKAGE_ROOT)
+
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + '/pysamdir')
 import pysam
+
+
+def _open_ensembldb_resource(filename):
+    for module_name in ("cava.ensembldb", "ensembldb"):
+        try:
+            package = importlib.resources.files(module_name)
+            resource = package / filename
+            if resource.is_file():
+                return resource.open("r", encoding="utf-8")
+        except (ModuleNotFoundError, FileNotFoundError, AttributeError):
+            continue
+    raise FileNotFoundError(f"Could not find ensembldb resource: {filename}")
 
 #######################################################################################################################
 class Seldata(object):
@@ -171,14 +186,12 @@ class Ensembl(object):
                 except IOError:
                     sys.stderr.write("ERROR: Error opening CESIS File="+selenofile+"\n")
             else:
-                sys.path.append(str(pathlib.Path().resolve().parents[0]))
                 try:
-                    fid = importlib.resources.open_text('ensembldb', selenofile)
-                except IOError:
+                    fid = _open_ensembldb_resource(selenofile)
+                except (FileNotFoundError, IOError):
                     sys.stderr.write("ERROR: Error opening CESIS File=ensembldb/" + selenofile + "\n")
         else:
-            sys.path.append(str(pathlib.Path().resolve().parents[0]))
-            fid = importlib.resources.open_text('ensembldb', "SECIS_in_refseq_pos.txt")
+            fid = _open_ensembldb_resource("SECIS_in_refseq_pos.txt")
 
         if fid is not None:
             secis_lines = fid.readlines()

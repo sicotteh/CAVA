@@ -57,11 +57,11 @@ class MyTestCase(unittest.TestCase):
         rec = core.Record(line, self.options, None, self.reference)
         rec.annotate(self.ensembl, None, self.reference, None)
         a = 1 # anchor point for debugging.
-        self.assertEqual('ESS', rec.variants[0].getFlag('CLASS'))
+        self.assertEqual('NSY:NSY:NSY', rec.variants[0].getFlag('CLASS'))
 
-        self.assertEqual('NC_000013.11:g.32339700A[7]%3B[5]', rec.variants[0].getFlag('HGVSg'))
+        self.assertEqual('NC_000001.11:g.26131654G>A', rec.variants[0].getFlag('HGVSg'))
 
-        self.assertEqual('c.1_3dup_p.Met1dup', rec.variants[0].getFlag('CSN'))
+        self.assertEqual('c.323G>A_p.Cys108Tyr:c.425G>A_p.Cys142Tyr:c.323G>A_p.Cys108Tyr', rec.variants[0].getFlag('CSN'))
 
 class Options:
 

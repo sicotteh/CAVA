@@ -4,40 +4,47 @@ version = "2.0.14"
 authors = [
     {name="Steven-N-Hart",email="hart.steven@mayo.edu"},
     {name="Hugues-Sicotte", email="hugues.sicotte@gmail.com"}
-] 
-description = "CAVA: Clininical Annotation of VAriants"
+]
+description = "CAVA: Clinical Annotation of Variants"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 classifiers = [
-"Programming Language :: Python 3",
-"Operating System :: OS Independent"]
-dependencies = [
-  'wget',
-  'pycurl >= 7.45.1',
-'numpy== 1.17.4',
-'Cython',
-'pybedtools',
-'pysam',
-'crossmap',
-'requests',
-'bx-python',
-'pyBigWig',
-'pybedtools',
-'certifi',
-'charset-normalizer',
-'idna',
-'six',
-'urllib3',
+    "Programming Language :: Python 3",
+    "Operating System :: OS Independent"
 ]
+dependencies = [
+    "Cython>=3",
+    "pybedtools",
+    "pysam",
+    "crossmap",
+    "wget",
+    "requests",
+    "bx-python",
+    "pyBigWig",
+    "numpy<2",
+    "certifi",
+    "charset-normalizer",
+    "idna",
+    "six",
+    "urllib3",
+    "pycurl>=7.45.1"
+]
+
+[project.optional-dependencies]
+tests = ["pytest"]
+
 [project.urls]
 "Homepage" = "https://github.com/sicotteh/CAVA"
 "Previous" = "https://github.com/Steven-N-Hart/CAVA"
+
 [build-system]
-requires = ["setuptools>=42", "wheel"]   # PEP 508 specifications.
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [tool.setuptools]
 include-package-data = true
-packages = ["cava","cava.utils","cava.ensembldb","cava.data","cava.ensembldb.data","cava.test"]
+packages = ["cava", "cava.utils", "cava.ensembldb", "cava.data", "cava.ensembldb.data", "cava.test"]
 
 #[tool.setuptools.packages.find]
 #namespaces = true
