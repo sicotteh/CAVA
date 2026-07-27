@@ -25,4 +25,5 @@ doc/sphinx/_build
 dist/
 build/
 CAVA.egg-info/
+venv/
 
