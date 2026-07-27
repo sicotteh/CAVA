@@ -681,7 +681,8 @@ class Record(object):
                         'CAVA_TYPE', 'CAVA_TRANSCRIPT', 'CAVA_GENE', 'CAVA_GENEID', 'CAVA_TRINFO',
                         'CAVA_LOC', 'CAVA_CSN',
                         'CAVA_PROTPOS', 'CAVA_PROTREF', 'CAVA_PROTALT', 'CAVA_CLASS', 'CAVA_SO', 'CAVA_ALTFLAG',
-                        'IMPACT','CAVA_IMPACT','ALTANN','CAVA_ALTANN','ALTCLASS','CAVA_ALTCLASS','ALTSO','CAVA_ALTSO']
+                        'IMPACT','CAVA_IMPACT','ALTANN','CAVA_ALTANN','ALTCLASS','CAVA_ALTCLASS','ALTSO','CAVA_ALTSO',
+                        'CAVA_ORIGHAPLOTYPE', 'CAVA_HAPLOTYPE']
             for item in infos:
                 items = item.split("=")
                 if not (items[0] in rmfields):
@@ -716,7 +717,9 @@ class Record(object):
                 value = ','.join(flagvalues[i])
                 if len(added) > 0:
                     added += ';'
-                if 'prefix' in options.args and options.args['prefix']:
+                if key.startswith('CAVA_'):
+                    added += key + '=' + value
+                elif 'prefix' in options.args and options.args['prefix']:
                     added += 'CAVA_' + key + '=' + value
                 else:
                     added += key + '=' + value
@@ -929,7 +932,7 @@ class Record(object):
                         if not variant.flags[j] in ['TRANSCRIPT', 'GENE', 'GENEID', 'TRINFO', 'LOC', 'CSN', 'CLASS',
                                                     'SO',
                                                     'IMPACT', 'ALTANN', 'ALTCLASS', 'ALTSO', 'ALTFLAG', 'PROTPOS',
-                                                    'PROTREF', 'PROTALT']:
+                                                    'PROTREF', 'PROTALT', 'CAVA_ORIGHAPLOTYPE', 'CAVA_HAPLOTYPE']:
                             value = variant.flagvalues[j]
                             if value == '':
                                 value = '.'
@@ -978,10 +981,12 @@ class Record(object):
                                         logging.info(
                                             "WARNING: transcript " + hgtranscript + " not in transcript2protein file\n")
                     # Writing record to the output file
+                    orig_haplotype = variant.getFlag('CAVA_ORIGHAPLOTYPE') if 'CAVA_ORIGHAPLOTYPE' in variant.flags else '.'
+                    haplotype = variant.getFlag('CAVA_HAPLOTYPE') if 'CAVA_HAPLOTYPE' in variant.flags else '.'
                     if stdout:
-                        print(record + rest + "\t" + HGVSC + "\t" + HGVSP)
+                        print(record + rest + "\t" + HGVSC + "\t" + HGVSP + "\t" + orig_haplotype + "\t" + haplotype)
                     else:
-                        outfile.write(record + rest + "\t" + HGVSC + "\t" + HGVSP + '\n')
+                        outfile.write(record + rest + "\t" + HGVSC + "\t" + HGVSP + "\t" + orig_haplotype + "\t" + haplotype + '\n')
 
                 c += 1
 
@@ -1874,6 +1879,9 @@ class Options(object):
         self.defs['prefix'] = ('boolean', False)
         self.defs['codon_usage'] = ('string', '1')
         self.defs['normalized_mitochondrial_chrom'] = ('string', 'not_normalized')
+        self.defs['parseHaplotype'] = ('boolean', False)
+        self.defs['splitBasedOnProtein'] = ('boolean', False)
+        self.defs['splitadjacentprotein'] = ('boolean', False)
 
         self.defs['transcript2protein'] = ('string', '.')
         self.defs['loadalltranscripts'] = ('boolean', True)
@@ -1888,15 +1896,16 @@ class Options(object):
 
     # Reading options from configuration file
     def read(self):
-        for line in open(self.configfn):
-            line = line.strip()
-            if line.startswith('@'):
-                key = line[1:line.index('=')].strip()
-                if key in list(self.defs.keys()):
-                    (typeofvar, default) = self.defs[key]
-                    if typeofvar == 'string': self.args[key] = line[line.find('=') + 1:].strip()
-                    if typeofvar == 'list': self.args[key] = line[line.find('=') + 1:].strip().split(',')
-                    if typeofvar == 'boolean': self.args[key] = (line[line.find('=') + 1:].strip().upper() == 'TRUE')
+        with open(self.configfn, encoding='utf-8') as confh:
+            for line in confh:
+                line = line.strip()
+                if line.startswith('@'):
+                    key = line[1:line.index('=')].strip()
+                    if key in list(self.defs.keys()):
+                        (typeofvar, default) = self.defs[key]
+                        if typeofvar == 'string': self.args[key] = line[line.find('=') + 1:].strip()
+                        if typeofvar == 'list': self.args[key] = line[line.find('=') + 1:].strip().split(',')
+                        if typeofvar == 'boolean': self.args[key] = (line[line.find('=') + 1:].strip().upper() == 'TRUE')
         for key, (typeofvar, default) in self.defs.items():
             if not key in list(self.args.keys()): self.args[key] = default
 
@@ -1964,11 +1973,12 @@ def convert_chrom(chrom, contigs):
 def readSet(options, tag):
     ret = set()
     if tag in list(options.args.keys()) and not (options.args[tag] == '' or options.args[tag] == '.'):
-        for line in open(options.args[tag]):
-            line = line.strip()
-            if line == '' or line == '.':
-                continue
-            ret.add(line)
+        with open(options.args[tag], encoding='utf-8') as listfh:
+            for line in listfh:
+                line = line.strip()
+                if line == '' or line == '.':
+                    continue
+                ret.add(line)
         if options.args['logfile']:
             txt = ''
             if tag == 'genelist':
@@ -2028,6 +2038,8 @@ def writeHeader(options, header, outfile, stdout, version):
     headerinfo += '##INFO=<ID=' + prefix + 'HGVSc,Number=.,Type=String,Description=\"HGVS Nomenclature for cDNA changes\",Source=\"CAVA\",Version=\"' + version + '\">\n'
     headerinfo += '##INFO=<ID=' + prefix + 'HGVSp,Number=.,Type=String,Description=\"HGVS Nomenclature for protein changes\",Source=\"CAVA\",Version=\"' + version + '\">\n'
     headerinfo += '##INFO=<ID=' + prefix + 'HGVSg,Number=.,Type=String,Description=\"HGVS Nomenclature for genomic changes, right-shifted\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=CAVA_ORIGHAPLOTYPE,Number=1,Type=String,Description=\"Semicolon-separated atomic IDs for original parsed haplotype (VCF-encoded)\",Source=\"CAVA\",Version=\"' + version + '\">\n'
+    headerinfo += '##INFO=<ID=CAVA_HAPLOTYPE,Number=1,Type=String,Description=\"Semicolon-separated atomic IDs used for this output record (VCF-encoded)\",Source=\"CAVA\",Version=\"' + version + '\">\n'
 
     dateline = '##fileDate=' + time.strftime("%Y-%m-%d")
 
@@ -2079,7 +2091,7 @@ def writeHeader(options, header, outfile, stdout, version):
         if (not options.args['dbsnp'] == '.') and (not options.args['dbsnp'] == ''):
             hstr += '\tDBSNP'
 
-        hstr += '\tHGVSG\tHGVSC\tHGVSP'
+        hstr += '\tHGVSG\tHGVSC\tHGVSP\tCAVA_ORIGHAPLOTYPE\tCAVA_HAPLOTYPE'
 
         if stdout:
             print(hstr)
@@ -2091,12 +2103,14 @@ def writeHeader(options, header, outfile, stdout, version):
 def countRecords(filename):
     ret = 0
     if filename.endswith('.gz') or filename.endswith('.bgz'):
-        inputf = gzip.open(filename, 'rt', encoding='utf-8')
+        open_fn = lambda: gzip.open(filename, 'rt', encoding='utf-8')
     else:
-        inputf = open(filename, encoding="utf-8")
-    for line in inputf:
-        line = line.strip()
-        if not (line.startswith("#") or line == ''): ret += 1
+        open_fn = lambda: open(filename, encoding='utf-8')
+
+    with open_fn() as inputf:
+        for line in inputf:
+            line = line.strip()
+            if not (line.startswith("#") or line == ''): ret += 1
     return ret
 
 

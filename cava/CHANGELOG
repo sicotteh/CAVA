@@ -1,3 +1,7 @@
+7/24/2026
+	Added explicit `CAVA_ORIGHAPLOTYPE` and `CAVA_HAPLOTYPE` columns to TSV output so haplotype provenance is visible outside VCF INFO fields.
+	Documented the phased haplotype CLI options and the TSV/VCF output behavior.
+
 8/22/2025 2.0.14 change. Now allow alt-contigs annotation by default (if no chromosomes if specified) and remove error message for the HGVSg is alt-contigs cannot be
 	remapped to 'NC_' nucleotide sequences. Must assume that the reference fasta contains those reference sequence.
 	

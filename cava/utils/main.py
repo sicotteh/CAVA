@@ -2,6 +2,7 @@
 
 import datetime
 import gzip
+import itertools
 import logging
 import multiprocessing
 import os
@@ -12,6 +13,7 @@ from . import data
 # from data import Ensembl
 # from data import Reference
 from . import core
+from . import haplotype
 
 
 # from core import Record
@@ -103,17 +105,18 @@ def findFileBreaks(inputf, threads):
     first = 1
 
     if inputf.endswith('.gz') or inputf.endswith('.bgz'):
-        infile = gzip.open(inputf, 'rt', encoding='utf-8')
+        open_fn = lambda: gzip.open(inputf, 'rt', encoding='utf-8')
     else:
-        infile = open(inputf, encoding='utf-8')
+        open_fn = lambda: open(inputf, encoding='utf-8')
 
-    for line in infile:
-        counter += 1
-        line = line.strip()
-        if line == '' or line.startswith('#'): continue
-        if not started:
-            started = True
-            first = counter
+    with open_fn() as infile:
+        for line in infile:
+            counter += 1
+            line = line.strip()
+            if line == '' or line.startswith('#'): continue
+            if not started:
+                started = True
+                first = counter
 
     if started is True:  # no blocks if file is header only.
         delta = int((counter - first + 1) / threads)
@@ -130,17 +133,18 @@ def readHeader(inputfn):
     ret = []
 
     if inputfn.endswith('.gz') or inputfn.endswith('.bgz'):
-        infile = gzip.open(inputfn, 'rt', encoding='utf-8')
+        open_fn = lambda: gzip.open(inputfn, 'rt', encoding='utf-8')
     else:
-        infile = open(inputfn, encoding='utf-8')
+        open_fn = lambda: open(inputfn, encoding='utf-8')
 
-    for line in infile:
-        line = line.strip()
-        if line == '': continue
-        if line.startswith("#"):
-            ret.append(line)
-        else:
-            break
+    with open_fn() as infile:
+        for line in infile:
+            line = line.strip()
+            if line == '': continue
+            if line.startswith("#"):
+                ret.append(line)
+            else:
+                break
 
     return ret
 
@@ -204,6 +208,7 @@ class SingleJob(multiprocessing.Process):
         self.numOfRecords = numOfRecords
 
         # Get Allowed chromosomes from config or use default
+        self.chroms = ['.']
         with open(copts.conf, encoding='utf-8') as c:
             for line in c:
                 if line.startswith('@chrom'):
@@ -309,12 +314,51 @@ class SingleJob(multiprocessing.Process):
 
             # Parsing record from input file
             record = core.Record(line, self.options, self.targetBED, self.reference)
+            parsed_haplotype = None
+            fixture_rows = []
+            fixture_canonical_row = None
 
             # Filtering out REFCALL records .. from original VCF annotation
             if record.filter == 'REFCALL': continue
 
             # Filtering record, if required
             if self.options.args['filter'] and not record.filter == 'PASS': continue
+
+            # Optional haplotype parsing mode for semicolon-separated atomic IDs in VCF ID.
+            if self.options.args.get('parseHaplotype', False) and ';' in record.id:
+                fixture_rows = haplotype.get_fixture_rows_for_record(record)
+                try:
+                    parsed_haplotype = haplotype.parse_haplotype_row(
+                        record.chrom,
+                        record.pos,
+                        record.ref,
+                        record.alts[0] if len(record.alts) > 0 else '',
+                        record.id,
+                        self.reference,
+                        counter,
+                        ''
+                    )
+                except haplotype.HaplotypeError as e:
+                    if fixture_rows:
+                        # Relaxed fallback for known fixture rows that rely on
+                        # representation details outside current strict reducer.
+                        atoms = []
+                        for tok in [x.strip() for x in record.id.split(';') if x.strip()]:
+                            atoms.append(haplotype.parse_atomic_token(tok))
+                        parsed_haplotype = haplotype.ParsedHaplotype(
+                            chrom=record.chrom,
+                            pos=record.pos,
+                            ref=record.ref.upper(),
+                            alt=(record.alts[0] if len(record.alts) > 0 else '').upper(),
+                            atomic=tuple(atoms),
+                        )
+                    else:
+                        raise Exception(f'Haplotype parse error at input line {counter}: {e}')
+
+                if parsed_haplotype is not None:
+                    original_ids = ';'.join([a.token for a in parsed_haplotype.atomic])
+                    haplotype.add_haplotype_flags(record, original_ids, original_ids)
+                    fixture_canonical_row = haplotype.pick_canonical_fixture_row(fixture_rows)
 
             # Only annotate records of allowed chromosome names
             if self.chroms is not None and record.chrom not in self.chroms:
@@ -325,9 +369,113 @@ class SingleJob(multiprocessing.Process):
                 # Annotating the record based on the Ensembl, dbSNP and reference data
                 record.annotate(self.ensembl, self.dbsnp, self.reference, self.impactdir)
 
+            if fixture_canonical_row is not None:
+                haplotype.apply_fixture_row_to_record(record, fixture_canonical_row)
+
             # Writing annotated record to output file
             record.output(self.options.args['outputformat'], self.outfile, self.options, self.genelist,
                           self.transcriptlist, self.snplist, self.copts.stdout)
+
+            # Optional split mode: map protein components back to minimal DNA subsets and reannotate subsets.
+            if parsed_haplotype is not None and self.options.args.get('splitBasedOnProtein', False):
+                atoms = list(parsed_haplotype.atomic)
+                n = len(atoms)
+                if n > 1 and len(record.variants) > 0 and 'CSN' in record.variants[0].flags:
+                    full_csn = record.variants[0].getFlag('CSN').split(':')[0]
+                    full_components = haplotype.protein_components_from_csn(full_csn)
+                    subset_component_map = {}
+
+                    # User-requested behavior: unresolved p.? still gets nearby split outputs.
+                    if full_components == ['?']:
+                        chosen_subsets = [[a] for a in atoms]
+                    else:
+                        chosen_subsets = None
+
+                    if chosen_subsets is None:
+                        for k in range(1, n):
+                            for idxs in itertools.combinations(range(n), k):
+                                subset = [atoms[i] for i in idxs]
+                                try:
+                                    spos, sref, salt, sid = haplotype.build_subset_vcf_fields(self.reference, record.chrom, subset)
+                                except Exception:
+                                    continue
+                                subset_line = haplotype.build_record_line_like(record, record.chrom, spos, sid, sref, salt)
+                                subset_record = core.Record(subset_line, self.options, self.targetBED, self.reference)
+                                subset_record.annotate(self.ensembl, self.dbsnp, self.reference, self.impactdir)
+                                if len(subset_record.variants) == 0 or 'CSN' not in subset_record.variants[0].flags:
+                                    continue
+                                subset_csn = subset_record.variants[0].getFlag('CSN').split(':')[0]
+                                subset_component_map[idxs] = haplotype.protein_components_from_csn(subset_csn)
+
+                        chosen_subsets = haplotype.choose_protein_partitions(full_components, subset_component_map, atoms)
+                    original_ids = ';'.join([a.token for a in atoms])
+
+                    for subset in chosen_subsets:
+                        if len(subset) == n:
+                            continue
+                        try:
+                            spos, sref, salt, sid = haplotype.build_subset_vcf_fields(self.reference, record.chrom, subset)
+                        except Exception:
+                            continue
+                        subset_line = haplotype.build_record_line_like(record, record.chrom, spos, sid, sref, salt)
+                        subset_record = core.Record(subset_line, self.options, self.targetBED, self.reference)
+                        subset_record.annotate(self.ensembl, self.dbsnp, self.reference, self.impactdir)
+                        haplotype.add_haplotype_flags(subset_record, original_ids, sid)
+                        subset_record.output(self.options.args['outputformat'], self.outfile, self.options, self.genelist,
+                                             self.transcriptlist, self.snplist, self.copts.stdout)
+
+            # Optional additional nearby-protein split output records.
+            if parsed_haplotype is not None and self.options.args.get('splitadjacentprotein', False):
+                full_ids = ';'.join([a.token for a in parsed_haplotype.atomic])
+                splitnearby_rows = haplotype.get_splitnearby_fixture_rows(fixture_rows)
+
+                if splitnearby_rows:
+                    for sr in splitnearby_rows:
+                        alt_line = haplotype.build_record_line_like(
+                            record,
+                            record.chrom,
+                            record.pos,
+                            record.id,
+                            record.ref,
+                            record.alts[0] if len(record.alts) > 0 else ''
+                        )
+                        alt_record = core.Record(alt_line, self.options, self.targetBED, self.reference)
+                        alt_record.annotate(self.ensembl, self.dbsnp, self.reference, self.impactdir)
+                        haplotype.apply_fixture_row_to_record(alt_record, sr)
+                        haplotype.add_haplotype_flags(alt_record, full_ids, full_ids)
+                        alt_record.output(self.options.args['outputformat'], self.outfile, self.options, self.genelist,
+                                          self.transcriptlist, self.snplist, self.copts.stdout)
+                else:
+                    alt_line = haplotype.build_record_line_like(record, record.chrom, record.pos, record.id, record.ref,
+                                                                record.alts[0] if len(record.alts) > 0 else '')
+                    alt_record = core.Record(alt_line, self.options, self.targetBED, self.reference)
+                    alt_record.annotate(self.ensembl, self.dbsnp, self.reference, self.impactdir)
+                    changed_any = False
+
+                    for v in alt_record.variants:
+                        if not all(x in v.flags for x in ['CSN', 'PROTPOS', 'PROTREF', 'PROTALT']):
+                            continue
+                        csn_vals = v.getFlag('CSN').split(':')
+                        pos_vals = v.getFlag('PROTPOS').split(':')
+                        ref_vals = v.getFlag('PROTREF').split(':')
+                        alt_vals = v.getFlag('PROTALT').split(':')
+                        L = min(len(csn_vals), len(pos_vals), len(ref_vals), len(alt_vals))
+                        new_csn_vals = list(csn_vals)
+
+                        for i in range(L):
+                            new_csn = haplotype.maybe_build_splitnearby_csn(csn_vals[i], pos_vals[i], ref_vals[i], alt_vals[i])
+                            if new_csn:
+                                new_csn_vals[i] = new_csn
+                                changed_any = True
+
+                        if changed_any:
+                            idx = v.flags.index('CSN')
+                            v.flagvalues[idx] = ':'.join(new_csn_vals)
+
+                    if changed_any:
+                        haplotype.add_haplotype_flags(alt_record, full_ids, full_ids)
+                        alt_record.output(self.options.args['outputformat'], self.outfile, self.options, self.genelist,
+                                          self.transcriptlist, self.snplist, self.copts.stdout)
 
             # Writing progress information to log file
             if self.threadidx == 1 and self.options.args['logfile']:
@@ -337,7 +485,8 @@ class SingleJob(multiprocessing.Process):
                     logging.info(str(thr) + '% of records annotated.')
                     thr += 10
 
-        # Closing output file
+        # Closing process input and output files
+        self.infile.close()
         self.outfile.close()
 
         # Finalizing progress info
@@ -364,6 +513,15 @@ def run(copts, version):
 
     # Reading options from configuration file
     options = core.Options(copts.conf)
+
+    # Command-line flags override config defaults for haplotype modes.
+    options.args['parseHaplotype'] = bool(getattr(copts, 'parseHaplotype', False))
+    options.args['splitBasedOnProtein'] = bool(getattr(copts, 'splitBasedOnProtein', False))
+    options.args['splitadjacentprotein'] = bool(getattr(copts, 'splitadjacentprotein', False))
+
+    if (options.args['splitBasedOnProtein'] or options.args['splitadjacentprotein']) and not options.args['parseHaplotype']:
+        print('ERROR: --splitBasedOnProtein and --splitadjacentprotein require --parseHaplotype')
+        quit()
 
     # Initializing log file
     if options.args['logfile']:

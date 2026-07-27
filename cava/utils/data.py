@@ -667,7 +667,10 @@ class Ensembl(object):
     # False, means to leave class as-is (either in intron or in SS)
     #
     def isRepOverlappingSSBoundary(self, cpart, ssrange=8):
-        [cpart, repeat_seq,n_ref,n_alt] = self.parseRep(cpart)
+        parsed = self.parseRep(cpart)
+        if parsed is None:
+            return False
+        [cpart, repeat_seq, n_ref, n_alt] = parsed
         if repeat_seq is None:
             return False
         repeat_len = len(repeat_seq)

@@ -1,6 +1,6 @@
 [project]
 name = "CAVA"
-version = "2.0.14"
+dynamic = ["version"]
 authors = [
     {name="Steven-N-Hart",email="hart.steven@mayo.edu"},
     {name="Hugues-Sicotte", email="hugues.sicotte@gmail.com"}
@@ -8,10 +8,18 @@ authors = [
 description = "CAVA: Clinical Annotation of Variants"
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT"}
+license = "MIT"
 classifiers = [
-    "Programming Language :: Python 3",
-    "Operating System :: OS Independent"
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Bio-Informatics"
 ]
 dependencies = [
     "Cython>=3",
@@ -39,13 +47,26 @@ tests = ["pytest"]
 "Previous" = "https://github.com/Steven-N-Hart/CAVA"
 
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["cava", "cava.utils", "cava.ensembldb", "cava.data", "cava.ensembldb.data", "cava.test"]
 
-#[tool.setuptools.packages.find]
-#namespaces = true
-#where = ["."]
+[tool.setuptools.dynamic]
+version = {file = "cava/VERSION"}
+
+[tool.setuptools.package-data]
+cava = ["*.txt", "*.config", "*.bed", "*.bgz", "*.csv", "*.tbi", "*.fa", "*.idx", "*.tab", "*.tsv", "*.gz", "*.fai", "VERSION", "CHANGELOG", "pyvenv.cfg"]
+"cava.ensembldb" = ["*.txt", "*.gtf.gz", "*.md"]
+"cava.ensembldb.data" = ["*.gtf.gz"]
+"cava.ensembldb.old" = ["*.txt"]
+"cava.data" = ["*.txt", "*.gz", "*.tbi", "*.fa", "*.fai"]
+"cava.test" = ["*.txt", "*.vcf", "*.sh", "*.config*", "*.csv"]
+defaultdb = ["*.tbi"]
+data = ["*.txt", "*.tbi"]
+ensembldb = ["*.py"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cava*", "defaultdb", "ensembldb", "data"]

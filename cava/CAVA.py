@@ -1,5 +1,6 @@
 #!/bin/env python3
 import os
+import sys
 from optparse import OptionParser
 
 from cava.utils  import main
@@ -22,6 +23,20 @@ parser.add_option('-s', "--stdout", default=False, dest='stdout', action='store_
                   help="Write output to standard output [default value: %default]")
 parser.add_option('-t', "--threads", default=1, dest='threads', action='store',
                   help="Number of threads [default value: %default]")
-(copts, args) = parser.parse_args()
+parser.add_option('--parseHaplotype', default=False, dest='parseHaplotype', action='store_true',
+                  help='Parse semicolon-separated atomic haplotypes encoded in VCF ID [default value: %default]')
+parser.add_option('--parseHaplotypee', default=False, dest='parseHaplotypee', action='store_true',
+                  help='Deprecated alias for --parseHaplotype [default value: %default]')
+parser.add_option('--splitBasedOnProtein', default=False, dest='splitBasedOnProtein', action='store_true',
+                  help='Split parsed haplotypes into subsets and reannotate [default value: %default]')
+parser.add_option('--splitadjacentprotein', default=False, dest='splitadjacentprotein', action='store_true',
+                  help='Emit optional adjacent protein split outputs for parsed haplotypes [default value: %default]')
+
+# Backward-compatible one-dash alias requested by haplotype spec.
+argv = [('--splitBasedOnProtein' if x == '-splitBasedOnProtein' else x) for x in sys.argv]
+(copts, args) = parser.parse_args(argv[1:])
+
+if copts.parseHaplotypee:
+    copts.parseHaplotype = True
 
 main.run(copts, version)

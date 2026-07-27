@@ -98,3 +98,17 @@
 @codon_usage = 1
 @selenogenes = DIO1,DIO2,DIO3,GPX1,GPX2,GPX3,GPX4,GPX6,SELENOF,SELENOH,SELENOI,SELENOK,SELENOM,SELENON,SELENOO,SELENOP,SELENOS,SELENOT,SELENOU,SELENOV,SELENOW,MSRB1,SEPHS2,TXNRD1,TXNRD2,TXNRD3
 
+# Parse semicolon-separated phased haplotype atomic IDs from VCF ID.
+# Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
+@parseHaplotype = FALSE
+
+# Split parsed haplotypes into deterministic subsets and reannotate each subset.
+# Requires @parseHaplotype=TRUE.
+# Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
+@splitBasedOnProtein = FALSE
+
+# Emit optional adjacent protein split outputs in addition to canonical output.
+# Requires @parseHaplotype=TRUE.
+# Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
+@splitadjacentprotein = FALSE
+

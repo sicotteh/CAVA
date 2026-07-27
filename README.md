@@ -42,35 +42,37 @@ Maybe some day, we'll get around to publishing what we've done to rescue this ab
 --------------
 
 To install and run CAVA you will need the following dependencies installed:
-- Python 3
+- Python 3.9 or newer
 - GCC and GNU make
-- virtualenv
 
-It just makes sense to keep things in a virtualenv. Here's how you do it if you are
-unfamiliar.
+It is best to use a virtual environment for a fresh install. From a new clone,
+create and activate one like this:
 
 ```bash 
-pip install virtualenv
-virtualenv cava
-source cava/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
 ```
 At this point, your terminal should change to let you know you are in a virtual environment.
+
+Make sure the `python3` interpreter you use is Python 3.9 or newer.
 
 4 INSTALLATION ON LINUX OR MAC
 ------------------------------
 
 ```bash 
-pip install cava
-
-# - or -
 git clone git@github.com:Steven-N-Hart/CAVA.git
-# optional to checkout release
-# e.g. git checkout v.1.2.4
 cd CAVA
-python setup.py install
+python -m pip install -e .
 ```
 
-If you get an error with pycurl, run the following command before running the setup.py
+If you want the test dependencies as well, install them after the editable install:
+
+```bash
+python -m pip install -r requirements-dev.txt
+```
+
+If you get an error with pycurl, run the following command before installing CAVA
 ```bash
 pip uninstall pycurl
 export PYCURL_SSL_LIBRARY=nss
@@ -111,12 +113,67 @@ zcat data/RefSeq.gtf.gz |cut -f9|cut -f4 -d' '|grep "NM_"|sed 's/;//;s/\"//g'|so
 Finally, create a config.txt files using the provided config_template.txt, but provide the location of the fasta reference and the ensembl transcript database you dowloaded. CAVA then can be run with the following simple command.
 
 ```bash
-python3 CAVA.py -c config.txt -i input.vcf -o output
+python -m cava.CAVA -c config.txt -i input.vcf -o output
 ```
 
 It requires three command line arguments: 
 the name of the configuration file (-c), the name of the input file (-i) 
 and the prefix of the output file name (-o). 
+
+The supported Python version for this release is Python 3.9+.
+
+### Phased Haplotype Mode (experimental)
+
+This release adds an experimental mode for phased cis haplotypes encoded in the VCF `ID` field.
+
+CLI flags:
+
+- `--parseHaplotype` enables parsing/validation of semicolon-separated atomic IDs.
+- `--parseHaplotypee` is accepted as a deprecated alias.
+- `--splitBasedOnProtein` emits additional subset records after canonical haplotype annotation.
+- `--splitadjacentprotein` is accepted for compatibility and requires haplotype parsing.
+
+Dependencies:
+
+- `--splitBasedOnProtein` requires `--parseHaplotype`.
+- `--splitadjacentprotein` requires `--parseHaplotype`.
+
+Atomic ID encoding:
+
+- Row-level `CHROM`, `POS`, `REF`, `ALT` remain scalar contiguous VCF alleles.
+- Row-level `ID` contains atomic components separated by `;`.
+- Each atomic token must be `CHROM_POS_REF_ALT` on the genomic plus strand.
+
+Example:
+
+```text
+CHROM=chr17
+POS=7675155
+ID=chr17_7675155_G_A;chr17_7675157_G_C
+REF=GCG
+ALT=ACC
+```
+
+New INFO tags:
+
+- `CAVA_ORIGHAPLOTYPE`: original full atomic token list.
+- `CAVA_HAPLOTYPE`: atomic token list used for the emitted record.
+
+Tab-delimited output:
+
+- `HGVSG`, `HGVSC`, and `HGVSP` are followed by `CAVA_ORIGHAPLOTYPE` and `CAVA_HAPLOTYPE` columns.
+- The new haplotype columns mirror the INFO-tag content and are present in TSV output for both canonical and split records.
+
+INFO field encoding:
+
+- Semicolons are encoded as `%3B`.
+- Percent signs are encoded as `%25`.
+
+Notes:
+
+- Canonical output is always emitted first.
+- Split outputs are additional records.
+- If haplotype parsing is requested, malformed IDs or incompatible rows are reported as errors.
 
 6 LICENCE
 ---------
