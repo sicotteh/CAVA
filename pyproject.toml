@@ -22,32 +22,28 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics"
 ]
 dependencies = [
-    "Cython>=3",
     "pybedtools",
     "pysam",
     "crossmap",
     "wget",
     "requests",
     "bx-python",
-    "pyBigWig",
-    "numpy<2",
-    "certifi",
-    "charset-normalizer",
-    "idna",
-    "six",
-    "urllib3",
-    "pycurl>=7.45.1"
+    "numpy<2"
 ]
 
 [project.optional-dependencies]
 tests = ["pytest"]
+release = ["build", "twine"]
+
+[project.scripts]
+cava = "cava.CAVA:main"
 
 [project.urls]
 "Homepage" = "https://github.com/sicotteh/CAVA"
 "Previous" = "https://github.com/Steven-N-Hart/CAVA"
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel", "Cython>=3"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -57,7 +53,7 @@ include-package-data = true
 version = {file = "cava/VERSION"}
 
 [tool.setuptools.package-data]
-cava = ["*.txt", "*.config", "*.bed", "*.bgz", "*.csv", "*.tbi", "*.fa", "*.idx", "*.tab", "*.tsv", "*.gz", "*.fai", "VERSION", "CHANGELOG", "pyvenv.cfg"]
+cava = ["*.txt", "*.config", "*.bed", "*.bgz", "*.csv", "*.tbi", "*.fa", "*.idx", "*.tab", "*.tsv", "*.gz", "*.fai", "VERSION", "CHANGELOG"]
 "cava.ensembldb" = ["*.txt", "*.gtf.gz", "*.md"]
 "cava.ensembldb.data" = ["*.gtf.gz"]
 "cava.ensembldb.old" = ["*.txt"]

@@ -41,45 +41,52 @@ Maybe some day, we'll get around to publishing what we've done to rescue this ab
 3 DEPENDENCIES
 --------------
 
-To install and run CAVA you will need the following dependencies installed:
+To install and run CAVA you need:
 - Python 3.9 or newer
 - GCC and GNU make
 
-It is best to use a virtual environment for a fresh install. From a new clone,
-create and activate one like this:
-
-```bash 
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-```
-At this point, your terminal should change to let you know you are in a virtual environment.
-
-Make sure the `python3` interpreter you use is Python 3.9 or newer.
+Use a virtual environment so CAVA and its Python dependencies stay isolated from your system Python.
 
 4 INSTALLATION ON LINUX OR MAC
 ------------------------------
 
-```bash 
-git clone git@github.com:Steven-N-Hart/CAVA.git
+### Install from PyPI
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install cava
+```
+
+In a new terminal session, reactivate the same environment with:
+
+```bash
+source .venv/bin/activate
+```
+
+Windows PowerShell activation:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+### Editable installation from source
+
+```bash
+git clone https://github.com/sicotteh/CAVA.git
 cd CAVA
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install -e .
 ```
 
-If you want the test dependencies as well, install them after the editable install:
+Install test dependencies when needed:
 
 ```bash
-python -m pip install -r requirements-dev.txt
+python -m pip install -e ".[tests]"
 ```
 
-If you get an error with pycurl, run the following command before installing CAVA
-```bash
-pip uninstall pycurl
-export PYCURL_SSL_LIBRARY=nss
-pip install --compile --install-option="--with-nss" --no-cache-dir pycurl
-#OR (depending on the python version)
-pip install --compile --global-option="--with-nss" --no-cache-dir pycurl  
-```
+If a source build of `pycurl` is required on your operating system, install the required libcurl development headers first, then rerun `python -m pip install -e .`.
 
 
 5 RUNNING CAVA

@@ -4,8 +4,8 @@ import cava.utils.core as core
 from cava.utils.csn import find_repeat_unit
 from cava.utils.csn import scan_for_repeat
 import os
-import pycurl
 import sys
+from urllib.request import urlopen
 
 def check_materials():
     base_dir = os.path.dirname(os.path.dirname(__file__)) # This file in cava/test .. this points to base_dir=cava
@@ -17,11 +17,9 @@ def check_materials():
 
     if not os.path.exists(os.path.join(base_dir, 'data', 'tmp.hg19.fa')):
         print('Downloading build 19 fasta')
-        c = pycurl.Curl()
-        c.setopt(c.URL, 'http://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz')
         with open(os.path.join(base_dir, 'data', 'tmp.hg19.fa.gz'), 'wb') as f:
-            c.setopt(c.WRITEDATA, f)
-            c.perform()
+            with urlopen('http://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz') as response:
+                f.write(response.read())
 
     if not os.path.exists(os.path.join(base_dir, 'data', 'tmp.hg19.fa')):
         try:

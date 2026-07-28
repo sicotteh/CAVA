@@ -1,3 +1,2 @@
 recursive-include cava *
 recursive-include test *
-include requirements.txt
