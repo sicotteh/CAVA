@@ -137,7 +137,7 @@ CLI flags:
 
 - `--parseHaplotype` enables parsing/validation of semicolon-separated atomic IDs.
 - `--splitBasedOnProtein` emits additional subset records after canonical haplotype annotation. If two variants are far enough apart at the DNA level that they affect amino acids that are separated by unchanged amino acids, split the DNA variant into 2 (or more) records.[ Keep the original as well]
-- `--splitAdjacentProtein` if --parseHaplotype is selected, is like --splitBasedOnProtein, but will split at the DNA level even if the two different amino acids are adjacent (as long as the variants do not cross the protein boundary.)
+- `--splitAdjacentProtein` if --parseHaplotype is selected, is like --splitBasedOnProtein, but will split at the DNA level even if the two different amino acids are adjacent (there can be a split even if the DNA crosses the codon boundary as long as the two AA changes remain the same after splitting the variant.)
 
 Dependencies:
 

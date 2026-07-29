@@ -12,7 +12,7 @@ class _Options:
     def __init__(self):
         base_dir = os.path.dirname(os.path.dirname(__file__))
         self.args = {
-            'reference': os.path.join(base_dir, 'data', 'tmp.GRCh38.fa'),
+            "reference": os.path.join(base_dir, "data", "tmp.GRCh38.fa"),
         }
 
 
@@ -23,15 +23,15 @@ class TestHaplotypeCLI(unittest.TestCase):
         cls.repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
     def test_header_has_haplotype_tags(self):
-        options = core.Options(os.path.join(self.repo_root, 'config_template.txt'))
-        out = tempfile.NamedTemporaryFile(delete=False, mode='w', encoding='utf-8')
+        options = core.Options(os.path.join(self.repo_root, "config_template.txt"))
+        out = tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8")
         try:
-            core.writeHeader(options, '', out, False, '2.0.15')
+            core.writeHeader(options, "", out, False, "2.0.15")
             out.close()
-            with open(out.name, 'r', encoding='utf-8') as f:
+            with open(out.name, "r", encoding="utf-8") as f:
                 text = f.read()
-            self.assertIn('##INFO=<ID=CAVA_ORIGHAPLOTYPE', text)
-            self.assertIn('##INFO=<ID=CAVA_HAPLOTYPE', text)
+            self.assertIn("##INFO=<ID=CAVA_ORIGHAPLOTYPE", text)
+            self.assertIn("##INFO=<ID=CAVA_HAPLOTYPE", text)
         finally:
             try:
                 os.unlink(out.name)
@@ -40,44 +40,62 @@ class TestHaplotypeCLI(unittest.TestCase):
 
     def test_split_modes_emit_additional_records(self):
         with tempfile.TemporaryDirectory() as td:
-            cfg = os.path.join(td, 'cfg.txt')
-            inp = os.path.join(td, 'in.vcf')
-            outprefix = os.path.join(td, 'out')
+            cfg = os.path.join(td, "cfg.txt")
+            inp = os.path.join(td, "in.vcf")
+            outprefix = os.path.join(td, "out")
 
-            with open(cfg, 'w', encoding='utf-8') as f:
-                f.write('@inputformat=VCF\n')
-                f.write('@outputformat=VCF\n')
-                f.write('@reference=' + os.path.join(self.repo_root, 'cava', 'data', 'tmp.GRCh38.fa') + '\n')
-                f.write('@ensembl=' + os.path.join(self.repo_root, 'cava', 'data', 'MANE.GRCh38.v1.1.refseq_genomic.db.gz') + '\n')
-                f.write('@dbsnp=.\n')
-                f.write('@logfile=FALSE\n')
-                f.write('@prefix=FALSE\n')
-                f.write('@chrom=.\n')
+            with open(cfg, "w", encoding="utf-8") as f:
+                f.write("@inputformat=VCF\n")
+                f.write("@outputformat=VCF\n")
+                f.write(
+                    "@reference="
+                    + os.path.join(self.repo_root, "cava", "data", "tmp.GRCh38.fa")
+                    + "\n"
+                )
+                f.write(
+                    "@ensembl="
+                    + os.path.join(
+                        self.repo_root,
+                        "cava",
+                        "data",
+                        "MANE.GRCh38.v1.1.refseq_genomic.db.gz",
+                    )
+                    + "\n"
+                )
+                f.write("@dbsnp=.\n")
+                f.write("@logfile=FALSE\n")
+                f.write("@prefix=FALSE\n")
+                f.write("@chrom=.\n")
 
-            with open(inp, 'w', encoding='utf-8') as f:
-                f.write('##fileformat=VCFv4.2\n')
-                f.write('#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n')
+            with open(inp, "w", encoding="utf-8") as f:
+                f.write("##fileformat=VCFv4.2\n")
+                f.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
                 # Expected canonical protein delins suitable for split-nearby optional output.
-                f.write('chr17\t7675155\tchr17_7675155_G_A;chr17_7675157_G_C\tGCG\tACC\t.\tPASS\t.\n')
+                f.write(
+                    "chr17\t7675155\tchr17_7675155_G_A;chr17_7675157_G_C\tGCG\tACC\t.\tPASS\t.\n"
+                )
 
             options = core.Options(cfg)
-            options.args['parseHaplotype'] = True
-            options.args['splitBasedOnProtein'] = True
-            options.args['splitadjacentprotein'] = True
+            options.args["parseHaplotype"] = True
+            options.args["splitBasedOnProtein"] = True
+            options.args["splitadjacentprotein"] = True
 
             # Write VCF header first, then execute one in-process job.
-            outvcf = outprefix + '.vcf'
-            with open(outvcf, 'w', encoding='utf-8') as out:
-                core.writeHeader(options, '\n'.join(main.readHeader(inp)), out, False, '2.0.15')
+            outvcf = outprefix + ".vcf"
+            with open(outvcf, "w", encoding="utf-8") as out:
+                core.writeHeader(
+                    options, "\n".join(main.readHeader(inp)), out, False, "2.0.15"
+                )
 
             impactdir = {}
-            for i, valuev in enumerate(options.args['impactdef'].split('|')):
-                classv = valuev.split(',')
+            for i, valuev in enumerate(options.args["impactdef"].split("|")):
+                classv = valuev.split(",")
                 for c in classv:
                     impactdir[c.strip()] = str(i + 1)
 
             class Copts:
                 pass
+
             copts = Copts()
             copts.conf = cfg
             copts.input = inp
@@ -85,35 +103,41 @@ class TestHaplotypeCLI(unittest.TestCase):
             copts.stdout = False
             copts.threads = 1
 
-            job = main.SingleJob(1, options, copts, 3, '', set(), set(), set(), impactdir, 1)
+            job = main.SingleJob(
+                1, options, copts, 3, "", set(), set(), set(), impactdir, 1
+            )
             job.run()
 
-            with open(outvcf, 'r', encoding='utf-8') as f:
-                body_lines = [x.strip() for x in f if not x.startswith('#') and x.strip()]
+            with open(outvcf, "r", encoding="utf-8") as f:
+                body_lines = [
+                    x.strip() for x in f if not x.startswith("#") and x.strip()
+                ]
 
             # canonical plus at least one additional split/supplemental output
             self.assertGreaterEqual(len(body_lines), 2)
             saw_subset = False
             csn_values = set()
             for line in body_lines:
-                self.assertIn('CAVA_ORIGHAPLOTYPE=', line)
-                self.assertIn('CAVA_HAPLOTYPE=', line)
-                info = line.split('\t')[7]
-                pairs = dict(x.split('=', 1) for x in info.split(';') if '=' in x)
-                if pairs.get('CAVA_ORIGHAPLOTYPE') != pairs.get('CAVA_HAPLOTYPE'):
+                self.assertIn("CAVA_ORIGHAPLOTYPE=", line)
+                self.assertIn("CAVA_HAPLOTYPE=", line)
+                info = line.split("\t")[7]
+                pairs = dict(x.split("=", 1) for x in info.split(";") if "=" in x)
+                if pairs.get("CAVA_ORIGHAPLOTYPE") != pairs.get("CAVA_HAPLOTYPE"):
                     saw_subset = True
-                if 'CSN' in pairs:
-                    csn_values.add(pairs['CSN'])
+                if "CSN" in pairs:
+                    csn_values.add(pairs["CSN"])
             self.assertTrue(saw_subset or len(csn_values) > 1)
 
     def test_record_output_contains_haplotype_tags(self):
         with tempfile.TemporaryDirectory() as td:
-            line = 'chr17\t7675155\tchr17_7675155_G_A;chr17_7675157_G_C\tGCG\tACC\t.\tPASS\t.\n'
-            options = core.Options(os.path.join(self.repo_root, 'config_template.txt'))
-            options.args['inputformat'] = 'VCF'
-            options.args['outputformat'] = 'VCF'
-            options.args['prefix'] = False
-            options.args['reference'] = os.path.join(self.repo_root, 'cava', 'data', 'tmp.GRCh38.fa')
+            line = "chr17\t7675155\tchr17_7675155_G_A;chr17_7675157_G_C\tGCG\tACC\t.\tPASS\t.\n"
+            options = core.Options(os.path.join(self.repo_root, "config_template.txt"))
+            options.args["inputformat"] = "VCF"
+            options.args["outputformat"] = "VCF"
+            options.args["prefix"] = False
+            options.args["reference"] = os.path.join(
+                self.repo_root, "cava", "data", "tmp.GRCh38.fa"
+            )
 
             record = core.Record(line, options, None, self.reference)
             parsed = haplotype.parse_haplotype_row(
@@ -124,50 +148,67 @@ class TestHaplotypeCLI(unittest.TestCase):
                 record.id,
                 self.reference,
                 1,
-                'smoke',
+                "smoke",
             )
-            original_ids = ';'.join([a.token for a in parsed.atomic])
+            original_ids = ";".join([a.token for a in parsed.atomic])
             haplotype.add_haplotype_flags(record, original_ids, original_ids)
 
-            outvcf = os.path.join(td, 'out.vcf')
-            with open(outvcf, 'w', encoding='utf-8') as f:
-                record.output('VCF', f, options, set(), set(), set(), False)
+            outvcf = os.path.join(td, "out.vcf")
+            with open(outvcf, "w", encoding="utf-8") as f:
+                record.output("VCF", f, options, set(), set(), set(), False)
 
-            with open(outvcf, 'r', encoding='utf-8') as f:
+            with open(outvcf, "r", encoding="utf-8") as f:
                 body = f.read()
-            self.assertIn('CAVA_ORIGHAPLOTYPE=', body)
-            self.assertIn('CAVA_HAPLOTYPE=', body)
+            self.assertIn("CAVA_ORIGHAPLOTYPE=", body)
+            self.assertIn("CAVA_HAPLOTYPE=", body)
 
     def test_tsv_output_has_haplotype_columns(self):
         with tempfile.TemporaryDirectory() as td:
-            cfg = os.path.join(td, 'cfg.txt')
-            inp = os.path.join(td, 'in.vcf')
-            outprefix = os.path.join(td, 'out')
+            cfg = os.path.join(td, "cfg.txt")
+            inp = os.path.join(td, "in.vcf")
+            outprefix = os.path.join(td, "out")
 
-            with open(cfg, 'w', encoding='utf-8') as f:
-                f.write('@inputformat=VCF\n')
-                f.write('@outputformat=TSV\n')
-                f.write('@reference=' + os.path.join(self.repo_root, 'cava', 'data', 'tmp.GRCh38.fa') + '\n')
-                f.write('@ensembl=' + os.path.join(self.repo_root, 'cava', 'data', 'MANE.GRCh38.v1.1.refseq_genomic.db.gz') + '\n')
-                f.write('@dbsnp=.\n')
-                f.write('@logfile=FALSE\n')
-                f.write('@prefix=FALSE\n')
-                f.write('@chrom=.\n')
+            with open(cfg, "w", encoding="utf-8") as f:
+                f.write("@inputformat=VCF\n")
+                f.write("@outputformat=TSV\n")
+                f.write(
+                    "@reference="
+                    + os.path.join(self.repo_root, "cava", "data", "tmp.GRCh38.fa")
+                    + "\n"
+                )
+                f.write(
+                    "@ensembl="
+                    + os.path.join(
+                        self.repo_root,
+                        "cava",
+                        "data",
+                        "MANE.GRCh38.v1.1.refseq_genomic.db.gz",
+                    )
+                    + "\n"
+                )
+                f.write("@dbsnp=.\n")
+                f.write("@logfile=FALSE\n")
+                f.write("@prefix=FALSE\n")
+                f.write("@chrom=.\n")
 
-            with open(inp, 'w', encoding='utf-8') as f:
-                f.write('##fileformat=VCFv4.2\n')
-                f.write('#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n')
-                f.write('chr17\t7675155\tchr17_7675155_G_A;chr17_7675157_G_C\tGCG\tACC\t.\tPASS\t.\n')
+            with open(inp, "w", encoding="utf-8") as f:
+                f.write("##fileformat=VCFv4.2\n")
+                f.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
+                f.write(
+                    "chr17\t7675155\tchr17_7675155_G_A;chr17_7675157_G_C\tGCG\tACC\t.\tPASS\t.\n"
+                )
 
             options = core.Options(cfg)
-            options.args['parseHaplotype'] = True
+            options.args["parseHaplotype"] = True
 
-            with open(outprefix + '.txt', 'w', encoding='utf-8') as out:
-                core.writeHeader(options, '\n'.join(main.readHeader(inp)), out, False, '2.0.15')
+            with open(outprefix + ".txt", "w", encoding="utf-8") as out:
+                core.writeHeader(
+                    options, "\n".join(main.readHeader(inp)), out, False, "2.0.15"
+                )
 
             impactdir = {}
-            for i, valuev in enumerate(options.args['impactdef'].split('|')):
-                for c in valuev.split(','):
+            for i, valuev in enumerate(options.args["impactdef"].split("|")):
+                for c in valuev.split(","):
                     impactdir[c.strip()] = str(i + 1)
 
             class Copts:
@@ -180,19 +221,23 @@ class TestHaplotypeCLI(unittest.TestCase):
             copts.stdout = False
             copts.threads = 1
 
-            job = main.SingleJob(1, options, copts, 3, '', set(), set(), set(), impactdir, 1)
+            job = main.SingleJob(
+                1, options, copts, 3, "", set(), set(), set(), impactdir, 1
+            )
             job.run()
 
-            with open(outprefix + '.txt', 'r', encoding='utf-8') as f:
+            with open(outprefix + ".txt", "r", encoding="utf-8") as f:
                 lines = [x.strip() for x in f if x.strip()]
 
-            self.assertTrue(lines[0].startswith('ID\tCHROM\tPOS\tREF\tALT\tQUAL\tFILTER\tTYPE'))
-            self.assertIn('CAVA_ORIGHAPLOTYPE', lines[0])
-            self.assertIn('CAVA_HAPLOTYPE', lines[0])
+            self.assertTrue(
+                lines[0].startswith("ID\tCHROM\tPOS\tREF\tALT\tQUAL\tFILTER\tTYPE")
+            )
+            self.assertIn("CAVA_ORIGHAPLOTYPE", lines[0])
+            self.assertIn("CAVA_HAPLOTYPE", lines[0])
 
-            body = '\n'.join(lines[1:])
-            self.assertIn('chr17_7675155_G_A;chr17_7675157_G_C', body)
+            body = "\n".join(lines[1:])
+            self.assertIn("chr17_7675155_G_A;chr17_7675157_G_C", body)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
