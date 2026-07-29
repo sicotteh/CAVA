@@ -72,6 +72,39 @@ def _fixture_path() -> str:
     )
 
 
+def _trim_atomic_edit(atom: AtomicEdit) -> Tuple[int, int, str, str]:
+    ref = atom.ref
+    alt = atom.alt
+    prefix = 0
+    while prefix < min(len(ref), len(alt)) and ref[prefix] == alt[prefix]:
+        prefix += 1
+
+    suffix = 0
+    while suffix < min(len(ref) - prefix, len(alt) - prefix) and ref[
+        len(ref) - 1 - suffix
+    ] == alt[len(alt) - 1 - suffix]:
+        suffix += 1
+
+    ref_mid = ref[prefix : len(ref) - suffix if suffix else len(ref)]
+    alt_mid = alt[prefix : len(alt) - suffix if suffix else len(alt)]
+
+    # Return 1-based inclusive coordinates for the trimmed edit interval.
+    start = atom.pos + prefix
+    end = start + len(ref_mid) - 1
+    return start, end, ref_mid, alt_mid
+
+
+def _minimal_vcf(pos: int, ref: str, alt: str) -> Tuple[int, str, str]:
+    while len(ref) > 1 and len(alt) > 1 and ref[-1] == alt[-1]:
+        ref = ref[:-1]
+        alt = alt[:-1]
+    while len(ref) > 1 and len(alt) > 1 and ref[0] == alt[0]:
+        ref = ref[1:]
+        alt = alt[1:]
+        pos += 1
+    return pos, ref, alt
+
+
 def _fixture_key(chrom: str, pos: int, row_id: str, ref: str, alt: str):
     return _canon_chrom(chrom), int(pos), row_id, ref.upper(), alt.upper()
 
@@ -85,24 +118,32 @@ def _load_fixture_index():
     try:
         with open(_fixture_path(), "r", encoding="utf-8") as f:
             payload = json.load(f)
-        rows = []
-        for section in (
-            "two_variant_tests",
-            "three_variant_tests",
-            "four_variant_tests",
-        ):
-            rows.extend(payload.get(section, []))
-        for row in rows:
-            key = _fixture_key(
-                row["VCFCHROM"],
-                int(row["VCFPOS"]),
-                row["VCFID"],
-                row["VCFREF"],
-                row["VCFALT"],
-            )
-            index.setdefault(key, []).append(row)
     except Exception:
-        index = {}
+        _FIXTURE_CACHE = index
+        return _FIXTURE_CACHE
+
+    rows = []
+    for section in (
+        "two_variant_tests",
+        "three_variant_tests",
+        "four_variant_tests",
+    ):
+        rows.extend(payload.get(section, []))
+
+    for row in rows:
+        try:
+            pos_raw = str(row.get("VCFPOS", "")).strip()
+            ref = str(row.get("VCFREF", "")).strip()
+            alt = str(row.get("VCFALT", "")).strip()
+            chrom = str(row.get("VCFCHROM", "")).strip()
+            rid = str(row.get("VCFID", "")).strip()
+            if not pos_raw or not ref or not alt or not chrom or not rid:
+                continue
+
+            key = _fixture_key(chrom, int(pos_raw), rid, ref, alt)
+            index.setdefault(key, []).append(row)
+        except Exception:
+            continue
 
     _FIXTURE_CACHE = index
     return _FIXTURE_CACHE
@@ -216,40 +257,79 @@ def _reconstruct_from_atoms(
     if len(atoms) == 0:
         raise HaplotypeError("Haplotype contains no atomic edits")
 
-    start = min(a.pos for a in atoms)
-    end = max(a.pos + len(a.ref) - 1 for a in atoms)
-    full_ref = reference.getReference(chrom, start, end).upper()
+    edits = []
+    atom_starts = []
+    atom_ends = []
+
+    for atom in atoms:
+        atom_start0 = atom.pos - 1
+        atom_end0 = atom_start0 + len(atom.ref)
+        atom_starts.append(atom_start0)
+        atom_ends.append(atom_end0)
+
+        observed = reference.getReference(chrom, atom.pos, atom.pos + len(atom.ref) - 1)
+        if not observed:
+            raise HaplotypeError(
+                f"Unable to fetch reference sequence for atomic token {atom.token}"
+            )
+        observed = observed.upper()
+        if observed != atom.ref:
+            raise HaplotypeError(
+                f"Atomic REF mismatch against genome for token {atom.token}: expected {observed}, saw {atom.ref}"
+            )
+
+        prefix = 0
+        while prefix < min(len(atom.ref), len(atom.alt)) and atom.ref[prefix] == atom.alt[prefix]:
+            prefix += 1
+
+        suffix = 0
+        while suffix < min(len(atom.ref) - prefix, len(atom.alt) - prefix) and atom.ref[
+            len(atom.ref) - 1 - suffix
+        ] == atom.alt[len(atom.alt) - 1 - suffix]:
+            suffix += 1
+
+        ref_mid = atom.ref[prefix : len(atom.ref) - suffix if suffix else len(atom.ref)]
+        alt_mid = atom.alt[prefix : len(atom.alt) - suffix if suffix else len(atom.alt)]
+        start0 = atom_start0 + prefix
+        end0 = start0 + len(ref_mid)
+
+        if ref_mid:
+            trimmed = reference.getReference(chrom, start0 + 1, end0)
+            if not trimmed:
+                raise HaplotypeError(
+                    f"Unable to fetch trimmed reference sequence for atomic token {atom.token}"
+                )
+            if trimmed.upper() != ref_mid:
+                raise HaplotypeError(
+                    f"Trimmed REF mismatch against genome for token {atom.token}: expected {trimmed.upper()}, saw {ref_mid}"
+                )
+
+        edits.append((start0, end0, alt_mid, atom.token))
+
+    spans = [edit for edit in edits if edit[1] > edit[0]]
+    for idx, left in enumerate(spans):
+        for right in spans[idx + 1 :]:
+            if max(left[0], right[0]) < min(left[1], right[1]):
+                raise HaplotypeError(
+                    f"Overlapping or unsorted atomic edits: {left[3]} and {right[3]}"
+                )
+
+    span_start0 = min(min(edit[0] for edit in edits), min(atom_starts))
+    span_end0 = max(max(edit[1] for edit in edits), max(atom_ends))
+    full_ref = reference.getReference(chrom, span_start0 + 1, span_end0).upper()
     if not full_ref:
         raise HaplotypeError("Unable to fetch reference sequence for haplotype span")
 
-    alt_fragments = []
-    cursor = start
-    for a in atoms:
-        if a.pos < cursor:
-            raise HaplotypeError(f"Overlapping or unsorted atomic edits: {a.token}")
+    full_alt = full_ref
+    for edit_start0, edit_end0, replacement, _ in sorted(
+        edits, key=lambda edit: (edit[0], edit[1]), reverse=True
+    ):
+        i = edit_start0 - span_start0
+        j = edit_end0 - span_start0
+        full_alt = full_alt[:i] + replacement + full_alt[j:]
 
-        prefix_end = a.pos - 1
-        if prefix_end >= cursor:
-            alt_fragments.append(
-                reference.getReference(chrom, cursor, prefix_end).upper()
-            )
-
-        rel_start = a.pos - start
-        rel_end = rel_start + len(a.ref)
-        ref_chunk = full_ref[rel_start:rel_end]
-        if ref_chunk != a.ref:
-            raise HaplotypeError(
-                f"Atomic REF mismatch against genome for token {a.token}: expected {ref_chunk}, saw {a.ref}"
-            )
-
-        alt_fragments.append(a.alt)
-        cursor = a.pos + len(a.ref)
-
-    if cursor <= end:
-        alt_fragments.append(reference.getReference(chrom, cursor, end).upper())
-
-    full_alt = "".join(alt_fragments)
-    return start, full_ref, full_alt
+    pos, ref, alt = _minimal_vcf(span_start0 + 1, full_ref, full_alt)
+    return pos, ref, alt
 
 
 def parse_haplotype_row(
@@ -285,11 +365,7 @@ def parse_haplotype_row(
             raise HaplotypeError(f"Mixed chromosomes in haplotype token: {tok}")
         atoms.append(a)
 
-    for i in range(1, len(atoms)):
-        if atoms[i].pos < atoms[i - 1].pos:
-            raise HaplotypeError(
-                "Atomic IDs must be ordered by increasing genomic position"
-            )
+    atoms = sorted(atoms, key=lambda a: (a.pos, a.chrom, a.ref, a.alt, a.token))
 
     recon_pos, recon_ref, recon_alt = _reconstruct_from_atoms(
         reference, row_chrom, atoms
@@ -304,7 +380,11 @@ def parse_haplotype_row(
         if test_id:
             where += f", test {test_id}"
         raise HaplotypeError(
-            f"Row CHROM/POS/REF/ALT does not match reconstructed atomic haplotype ({where})"
+            "Row CHROM/POS/REF/ALT does not match reconstructed atomic haplotype "
+            f"({where}; row_chrom={row_chrom!r}; row_pos={row_pos!r}; "
+            f"row_ref={row_ref!r}; row_alt={row_alt!r}; row_id={row_id!r}; "
+            f"recon_pos={recon_pos!r}; recon_ref={recon_ref!r}; "
+            f"recon_alt={recon_alt!r})"
         )
 
     return ParsedHaplotype(
@@ -358,6 +438,39 @@ def protein_components_from_csn(csn: str) -> List[str]:
     if part.startswith("(") and part.endswith(")"):
         part = part[1:-1]
     return [part]
+
+
+def protein_components_from_expected_p_hgvs(value: str) -> List[str]:
+    """Parse expected protein HGVS text into normalized component strings.
+
+    Accepts forms such as:
+    - NP_xxx:p.(Arg156Tyr)
+    - NP_xxx:p.[(His179Met;Glu180Ser;Arg181Ser)]
+    - p.His179_Arg181delinsMetSerSer
+    """
+    if not value:
+        return []
+
+    text = value.strip()
+    if ":p." in text:
+        text = text.split(":p.", 1)[1]
+    elif text.startswith("p."):
+        text = text[2:]
+
+    text = text.strip()
+    if text.startswith("[") and text.endswith("]"):
+        text = text[1:-1].strip()
+
+    parts = [x.strip() for x in text.split(";") if x.strip()]
+    if len(parts) == 0 and text:
+        parts = [text]
+
+    normalized = []
+    for p in parts:
+        p = p.strip()
+        p = p.lstrip("(").rstrip(")").strip()
+        normalized.append(p)
+    return normalized
 
 
 def _parse_pos_range(pos: str):

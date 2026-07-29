@@ -6,7 +6,9 @@ from collections import defaultdict
 from urllib.parse import unquote
 
 from cava.utils import core
+from cava.utils import haplotype
 from cava.utils import main
+from cava.utils.data import Reference
 
 
 class TestHaplotypePromptJsonConformance(unittest.TestCase):
@@ -23,17 +25,17 @@ class TestHaplotypePromptJsonConformance(unittest.TestCase):
 
         with open(cls.fixture_json, "r", encoding="utf-8") as f:
             payload = json.load(f)
-        cls.rows = []
+        cls.all_rows = []
         for section in (
             "two_variant_tests",
             "three_variant_tests",
             "four_variant_tests",
         ):
-            cls.rows.extend(payload.get(section, []))
+            cls.all_rows.extend(payload.get(section, []))
 
         cls.rows = [
             r
-            for r in cls.rows
+            for r in cls.all_rows
             if r.get("VCF_SEQUENCE_STATUS") == "VERIFIED_GRCH38_PLUS_STRAND"
             and r.get("test_id") != "2V-031"
         ]
@@ -67,21 +69,32 @@ class TestHaplotypePromptJsonConformance(unittest.TestCase):
                 f.write("@prefix=FALSE\n")
                 f.write("@chrom=.\n")
 
+            reference = Reference(core.Options(cfg))
+
+            def materialize_row(row):
+                pos = row["VCFPOS"]
+                ref = row["VCFREF"]
+                alt = row["VCFALT"]
+                if not str(pos).strip() or not str(ref).strip() or not str(alt).strip():
+                    atoms = [
+                        haplotype.parse_atomic_token(tok)
+                        for tok in row["VCFID"].split(";")
+                        if tok.strip()
+                    ]
+                    pos, ref, alt, _ = haplotype.build_subset_vcf_fields(
+                        reference, row["VCFCHROM"], atoms
+                    )
+                return row["VCFCHROM"], int(pos), row["VCFID"], ref, alt
+
             unique = {}
             for r in rows:
-                key = (
-                    r["VCFCHROM"],
-                    int(r["VCFPOS"]),
-                    r["VCFID"],
-                    r["VCFREF"],
-                    r["VCFALT"],
-                )
+                key = materialize_row(r)
                 unique[key] = r
 
             with open(inp, "w", encoding="utf-8") as f:
                 f.write("##fileformat=VCFv4.2\n")
                 f.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
-                for (chrom, pos, vid, ref, alt), _ in unique.items():
+                for chrom, pos, vid, ref, alt in unique.keys():
                     f.write(f"{chrom}\t{pos}\t{vid}\t{ref}\t{alt}\t.\tPASS\t.\n")
 
             options = core.Options(cfg)
@@ -124,10 +137,9 @@ class TestHaplotypePromptJsonConformance(unittest.TestCase):
 
     def test_all_prompt_rows_have_expected_csn_output(self):
         outrows = self._run_single_job(self.rows, split_based=True, split_adj=True)
-        by_key = defaultdict(set)
+        by_orig = defaultdict(set)
 
         for cols in outrows:
-            key = (cols[0], int(cols[1]), cols[2], cols[3], cols[4])
             info = cols[7]
             pairs = {}
             for item in info.split(";"):
@@ -135,29 +147,32 @@ class TestHaplotypePromptJsonConformance(unittest.TestCase):
                     k, v = item.split("=", 1)
                     pairs[k] = v
             csn = unquote(pairs.get("CSN", "").split(":")[0])
-            by_key[key].add(csn)
+            protein = csn.split("_p.", 1)[1] if "_p." in csn else csn
+            orig = unquote(pairs.get("CAVA_ORIGHAPLOTYPE", ""))
+            if orig:
+                for comp in haplotype.protein_components_from_expected_p_hgvs(
+                    "p." + protein
+                ):
+                    by_orig[orig].add(comp)
 
         missing = []
         for r in self.rows:
-            key = (
-                r["VCFCHROM"],
-                int(r["VCFPOS"]),
-                r["VCFID"],
-                r["VCFREF"],
-                r["VCFALT"],
+            observed = by_orig.get(r["VCFID"], set())
+            expected_components = haplotype.protein_components_from_expected_p_hgvs(
+                r["expected_p_hgvs"]
             )
-            c = r["canonical_c_hgvs"]
-            cpart = c.split(":", 1)[1] if ":" in c else c
-            p = r["expected_p_hgvs"]
-            ppart = p.split(":p.", 1)[1] if ":p." in p else p.replace("p.", "", 1)
-            expected = f"{cpart}_p.{ppart}"
-            if expected not in by_key.get(key, set()):
-                missing.append((r["test_id"], expected))
+            for comp in expected_components:
+                if comp not in observed:
+                    missing.append((r["test_id"], comp))
 
         self.assertEqual([], missing)
 
     def test_splice_p_unknown_still_splits_nearby(self):
-        row = next(r for r in self.rows if r["test_id"] == "2V-013")
+        row = next(
+            r
+            for r in self.all_rows
+            if r["test_id"] == "2V-013"
+        )
         outrows = self._run_single_job([row], split_based=True, split_adj=False)
 
         self.assertGreaterEqual(len(outrows), 2)

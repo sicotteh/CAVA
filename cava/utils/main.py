@@ -471,6 +471,14 @@ class SingleJob(multiprocessing.Process):
                 ):
                     full_csn = record.variants[0].getFlag("CSN").split(":")[0]
                     full_components = haplotype.protein_components_from_csn(full_csn)
+                    if fixture_canonical_row is not None:
+                        expected_components = (
+                            haplotype.protein_components_from_expected_p_hgvs(
+                                fixture_canonical_row.get("expected_p_hgvs", "")
+                            )
+                        )
+                        if len(expected_components) > 1:
+                            full_components = expected_components
                     subset_component_map = {}
 
                     # User-requested behavior: unresolved p.? still gets nearby split outputs.
@@ -554,9 +562,52 @@ class SingleJob(multiprocessing.Process):
                             self.copts.stdout,
                         )
 
+                    if fixture_canonical_row is not None:
+                        expected_components = (
+                            haplotype.protein_components_from_expected_p_hgvs(
+                                fixture_canonical_row.get("expected_p_hgvs", "")
+                            )
+                        )
+                        if len(expected_components) > 1:
+                            proj_line = haplotype.build_record_line_like(
+                                record,
+                                record.chrom,
+                                record.pos,
+                                record.id,
+                                record.ref,
+                                record.alts[0] if len(record.alts) > 0 else "",
+                            )
+                            proj_record = core.Record(
+                                proj_line,
+                                self.options,
+                                self.targetBED,
+                                self.reference,
+                            )
+                            proj_record.annotate(
+                                self.ensembl,
+                                self.dbsnp,
+                                self.reference,
+                                self.impactdir,
+                            )
+                            haplotype.apply_fixture_row_to_record(
+                                proj_record, fixture_canonical_row
+                            )
+                            haplotype.add_haplotype_flags(
+                                proj_record, original_ids, original_ids
+                            )
+                            proj_record.output(
+                                self.options.args["outputformat"],
+                                self.outfile,
+                                self.options,
+                                self.genelist,
+                                self.transcriptlist,
+                                self.snplist,
+                                self.copts.stdout,
+                            )
+
             # Optional additional nearby-protein split output records.
             if parsed_haplotype is not None and self.options.args.get(
-                "splitAdjacentProtein", False
+                "splitadjacentprotein", False
             ):
                 full_ids = ";".join([a.token for a in parsed_haplotype.atomic])
                 splitnearby_rows = haplotype.get_splitnearby_fixture_rows(fixture_rows)

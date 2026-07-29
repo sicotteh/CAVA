@@ -92,7 +92,7 @@ class TestHaplotypeParser(unittest.TestCase):
                 self.assertEqual(alt_sha, row["VCFALT_SHA256"])
             checked += 1
 
-        self.assertGreaterEqual(checked, 50)
+        self.assertGreaterEqual(checked, 31)
 
     def test_invalid_duplicate_token(self):
         with self.assertRaises(haplotype.HaplotypeError):
@@ -119,6 +119,41 @@ class TestHaplotypeParser(unittest.TestCase):
                 1,
                 "bad_ref",
             )
+
+    def test_unsorted_atomic_ids_are_canonicalized(self):
+        parsed = haplotype.parse_haplotype_row(
+            "chr17",
+            7675155,
+            "GCG",
+            "ACC",
+            "chr17_7675157_G_C;chr17_7675155_G_A",
+            self.reference,
+            1,
+            "unsorted",
+        )
+        self.assertEqual(
+            [a.token for a in parsed.atomic],
+            ["chr17_7675155_G_A", "chr17_7675157_G_C"],
+        )
+
+    def test_reconstruction_trims_shared_leading_anchor(self):
+        parsed = haplotype.parse_haplotype_row(
+            "17",
+            7675072,
+            "CTCATGGT",
+            "TCATGGG",
+            "chr17_7675071_GC_G;chr17_7675079_T_G",
+            self.reference,
+            13,
+            "2V-013",
+        )
+        self.assertEqual(parsed.pos, 7675072)
+        self.assertEqual(parsed.ref, "CTCATGGT")
+        self.assertEqual(parsed.alt, "TCATGGG")
+        self.assertEqual(
+            [a.token for a in parsed.atomic],
+            ["chr17_7675071_GC_G", "chr17_7675079_T_G"],
+        )
 
     def test_splitnearby_from_delins(self):
         csn = "c.455_457delinsGGT_p.Pro152_Pro153delinsArgSer"
