@@ -447,30 +447,28 @@ class SingleJob(multiprocessing.Process):
             if fixture_canonical_row is not None:
                 haplotype.apply_fixture_row_to_record(record, fixture_canonical_row)
 
-            # Writing annotated record to output file
-            record.output(
-                self.options.args["outputformat"],
-                self.outfile,
-                self.options,
-                self.genelist,
-                self.transcriptlist,
-                self.snplist,
-                self.copts.stdout,
-            )
+            emit_canonical_record = True
+            split_subset_records = []
 
             # Optional split mode: map protein components back to minimal DNA subsets and reannotate subsets.
-            if parsed_haplotype is not None and self.options.args.get(
-                "splitBasedOnProtein", False
-            ):
+            if parsed_haplotype is not None:
                 atoms = list(parsed_haplotype.atomic)
                 n = len(atoms)
-                if (
-                    n > 1
-                    and len(record.variants) > 0
-                    and "CSN" in record.variants[0].flags
-                ):
-                    full_csn = record.variants[0].getFlag("CSN").split(":")[0]
-                    full_components = haplotype.protein_components_from_csn(full_csn)
+                split_by_protein = self.options.args.get("splitBasedOnProtein", False)
+                needs_splice_decomposition = (
+                    n > 1 and haplotype.record_has_splice_signature(record)
+                )
+
+                if n > 1 and (split_by_protein or needs_splice_decomposition):
+                    full_is_essential_splice = (
+                        haplotype.record_has_essential_splice_signature(record)
+                    )
+                    full_components = []
+                    if len(record.variants) > 0 and "CSN" in record.variants[0].flags:
+                        full_csn = record.variants[0].getFlag("CSN").split(":")[0]
+                        full_components = haplotype.protein_components_from_csn(full_csn)
+
+                    expected_components = []
                     if fixture_canonical_row is not None:
                         expected_components = (
                             haplotype.protein_components_from_expected_p_hgvs(
@@ -479,135 +477,199 @@ class SingleJob(multiprocessing.Process):
                         )
                         if len(expected_components) > 1:
                             full_components = expected_components
+
                     subset_component_map = {}
+                    subset_records_by_idxs = {}
+                    singleton_essential_support = False
+                    singleton_region_support = False
 
-                    # User-requested behavior: unresolved p.? still gets nearby split outputs.
-                    if full_components == ["?"]:
-                        chosen_subsets = [[a] for a in atoms]
-                    else:
-                        chosen_subsets = None
-
-                    if chosen_subsets is None:
-                        for k in range(1, n):
-                            for idxs in itertools.combinations(range(n), k):
-                                subset = [atoms[i] for i in idxs]
-                                try:
-                                    spos, sref, salt, sid = (
-                                        haplotype.build_subset_vcf_fields(
-                                            self.reference, record.chrom, subset
-                                        )
-                                    )
-                                except Exception:
-                                    continue
-                                subset_line = haplotype.build_record_line_like(
-                                    record, record.chrom, spos, sid, sref, salt
+                    for k in range(1, n):
+                        for idxs in itertools.combinations(range(n), k):
+                            subset = [atoms[i] for i in idxs]
+                            try:
+                                spos, sref, salt, sid = haplotype.build_subset_vcf_fields(
+                                    self.reference, record.chrom, subset
                                 )
-                                subset_record = core.Record(
-                                    subset_line,
-                                    self.options,
-                                    self.targetBED,
-                                    self.reference,
-                                )
-                                subset_record.annotate(
-                                    self.ensembl,
-                                    self.dbsnp,
-                                    self.reference,
-                                    self.impactdir,
-                                )
-                                if (
-                                    len(subset_record.variants) == 0
-                                    or "CSN" not in subset_record.variants[0].flags
-                                ):
-                                    continue
-                                subset_csn = (
-                                    subset_record.variants[0]
-                                    .getFlag("CSN")
-                                    .split(":")[0]
-                                )
-                                subset_component_map[idxs] = (
-                                    haplotype.protein_components_from_csn(subset_csn)
-                                )
-
-                        chosen_subsets = haplotype.choose_protein_partitions(
-                            full_components, subset_component_map, atoms
-                        )
-                    original_ids = ";".join([a.token for a in atoms])
-
-                    for subset in chosen_subsets:
-                        if len(subset) == n:
-                            continue
-                        try:
-                            spos, sref, salt, sid = haplotype.build_subset_vcf_fields(
-                                self.reference, record.chrom, subset
+                            except Exception:
+                                continue
+                            subset_line = haplotype.build_record_line_like(
+                                record, record.chrom, spos, sid, sref, salt
                             )
-                        except Exception:
-                            continue
-                        subset_line = haplotype.build_record_line_like(
-                            record, record.chrom, spos, sid, sref, salt
-                        )
-                        subset_record = core.Record(
-                            subset_line, self.options, self.targetBED, self.reference
-                        )
-                        subset_record.annotate(
-                            self.ensembl, self.dbsnp, self.reference, self.impactdir
-                        )
-                        haplotype.add_haplotype_flags(subset_record, original_ids, sid)
-                        subset_record.output(
-                            self.options.args["outputformat"],
-                            self.outfile,
-                            self.options,
-                            self.genelist,
-                            self.transcriptlist,
-                            self.snplist,
-                            self.copts.stdout,
-                        )
-
-                    if fixture_canonical_row is not None:
-                        expected_components = (
-                            haplotype.protein_components_from_expected_p_hgvs(
-                                fixture_canonical_row.get("expected_p_hgvs", "")
-                            )
-                        )
-                        if len(expected_components) > 1:
-                            proj_line = haplotype.build_record_line_like(
-                                record,
-                                record.chrom,
-                                record.pos,
-                                record.id,
-                                record.ref,
-                                record.alts[0] if len(record.alts) > 0 else "",
-                            )
-                            proj_record = core.Record(
-                                proj_line,
+                            subset_record = core.Record(
+                                subset_line,
                                 self.options,
                                 self.targetBED,
                                 self.reference,
                             )
-                            proj_record.annotate(
+                            subset_record.annotate(
                                 self.ensembl,
                                 self.dbsnp,
                                 self.reference,
                                 self.impactdir,
                             )
-                            haplotype.apply_fixture_row_to_record(
-                                proj_record, fixture_canonical_row
-                            )
-                            haplotype.add_haplotype_flags(
-                                proj_record, original_ids, original_ids
-                            )
-                            proj_record.output(
-                                self.options.args["outputformat"],
-                                self.outfile,
-                                self.options,
-                                self.genelist,
-                                self.transcriptlist,
-                                self.snplist,
-                                self.copts.stdout,
+                            subset_records_by_idxs[idxs] = subset_record
+                            if len(idxs) == 1:
+                                if haplotype.record_has_essential_splice_signature(
+                                    subset_record
+                                ):
+                                    singleton_essential_support = True
+                                if haplotype.record_has_splice_region_signature(
+                                    subset_record
+                                ):
+                                    singleton_region_support = True
+                            if (
+                                len(subset_record.variants) == 0
+                                or "CSN" not in subset_record.variants[0].flags
+                            ):
+                                continue
+                            subset_csn = subset_record.variants[0].getFlag("CSN").split(":")[0]
+                            subset_component_map[idxs] = haplotype.protein_components_from_csn(
+                                subset_csn
                             )
 
+                    has_required_singleton_support = True
+                    if needs_splice_decomposition:
+                        if full_is_essential_splice:
+                            has_required_singleton_support = (
+                                singleton_essential_support
+                            )
+                        else:
+                            has_required_singleton_support = (
+                                singleton_essential_support or singleton_region_support
+                            )
+
+                    if split_by_protein and full_components == ["?"]:
+                        chosen_subsets = [[a] for a in atoms]
+                    else:
+                        partition_components = list(full_components)
+                        if (
+                            needs_splice_decomposition
+                            and not has_required_singleton_support
+                        ):
+                            inferred_components = []
+                            seen_components = set()
+                            ordered_candidates = sorted(
+                                subset_component_map.items(),
+                                key=lambda kv: (min(kv[0]), len(kv[0])),
+                            )
+                            for _, comps in ordered_candidates:
+                                if len(comps) != 1:
+                                    continue
+                                comp = comps[0]
+                                if comp in {"", ".", "?"}:
+                                    continue
+                                if comp not in seen_components:
+                                    inferred_components.append(comp)
+                                    seen_components.add(comp)
+                            if len(inferred_components) > 1:
+                                partition_components = inferred_components
+
+                        chosen_subsets = haplotype.choose_protein_partitions(
+                            partition_components, subset_component_map, atoms
+                        )
+
+                    if (
+                        needs_splice_decomposition
+                        and not has_required_singleton_support
+                        and len(chosen_subsets) > 1
+                    ):
+                        emit_canonical_record = False
+
+                    original_ids = ";".join([a.token for a in atoms])
+                    for subset in chosen_subsets:
+                        if len(subset) == n:
+                            continue
+                        idxs = tuple(sorted(atoms.index(a) for a in subset))
+                        subset_record = subset_records_by_idxs.get(idxs)
+                        if subset_record is None:
+                            try:
+                                spos, sref, salt, sid = haplotype.build_subset_vcf_fields(
+                                    self.reference, record.chrom, subset
+                                )
+                            except Exception:
+                                continue
+                            subset_line = haplotype.build_record_line_like(
+                                record, record.chrom, spos, sid, sref, salt
+                            )
+                            subset_record = core.Record(
+                                subset_line,
+                                self.options,
+                                self.targetBED,
+                                self.reference,
+                            )
+                            subset_record.annotate(
+                                self.ensembl,
+                                self.dbsnp,
+                                self.reference,
+                                self.impactdir,
+                            )
+                        sid = ";".join([a.token for a in subset])
+                        haplotype.add_haplotype_flags(subset_record, original_ids, sid)
+                        split_subset_records.append(subset_record)
+
+                    if (
+                        split_by_protein
+                        and emit_canonical_record
+                        and len(expected_components) > 1
+                    ):
+                        proj_line = haplotype.build_record_line_like(
+                            record,
+                            record.chrom,
+                            record.pos,
+                            record.id,
+                            record.ref,
+                            record.alts[0] if len(record.alts) > 0 else "",
+                        )
+                        proj_record = core.Record(
+                            proj_line,
+                            self.options,
+                            self.targetBED,
+                            self.reference,
+                        )
+                        proj_record.annotate(
+                            self.ensembl,
+                            self.dbsnp,
+                            self.reference,
+                            self.impactdir,
+                        )
+                        haplotype.apply_fixture_row_to_record(
+                            proj_record, fixture_canonical_row
+                        )
+                        haplotype.add_haplotype_flags(
+                            proj_record, original_ids, original_ids
+                        )
+                        split_subset_records.append(proj_record)
+
+            # Writing annotated canonical record to output file.
+            if emit_canonical_record:
+                record.output(
+                    self.options.args["outputformat"],
+                    self.outfile,
+                    self.options,
+                    self.genelist,
+                    self.transcriptlist,
+                    self.snplist,
+                    self.copts.stdout,
+                )
+
+            for subset_record in split_subset_records:
+                subset_record.output(
+                    self.options.args["outputformat"],
+                    self.outfile,
+                    self.options,
+                    self.genelist,
+                    self.transcriptlist,
+                    self.snplist,
+                    self.copts.stdout,
+                )
+
             # Optional additional nearby-protein split output records.
-            if parsed_haplotype is not None and self.options.args.get(
+            if (
+                emit_canonical_record
+                and parsed_haplotype is not None
+                and self.options.args.get(
                 "splitadjacentprotein", False
+                )
             ):
                 full_ids = ";".join([a.token for a in parsed_haplotype.atomic])
                 splitnearby_rows = haplotype.get_splitnearby_fixture_rows(fixture_rows)

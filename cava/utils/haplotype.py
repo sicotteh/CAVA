@@ -598,3 +598,112 @@ def add_haplotype_flags(record, original_ids: str, subset_ids: str):
     for v in record.variants:
         v.addFlag("CAVA_ORIGHAPLOTYPE", enc_orig)
         v.addFlag("CAVA_HAPLOTYPE", enc_subset)
+
+
+def _iter_flag_components(value: str):
+    if value is None:
+        return []
+    return [x.strip() for x in str(value).split(":") if x.strip()]
+
+
+def variant_has_splice_signature(variant) -> bool:
+    """True when annotation includes a splice-impact signal.
+
+    ESS/SS classes and splice-related SO terms are treated as splice signals.
+    """
+    class_vals = []
+    so_vals = []
+
+    if "CLASS" in variant.flags:
+        class_vals.extend(_iter_flag_components(variant.getFlag("CLASS")))
+    if "CAVA_CLASS" in variant.flags:
+        class_vals.extend(_iter_flag_components(variant.getFlag("CAVA_CLASS")))
+
+    if "SO" in variant.flags:
+        so_vals.extend(_iter_flag_components(variant.getFlag("SO")))
+    if "CAVA_SO" in variant.flags:
+        so_vals.extend(_iter_flag_components(variant.getFlag("CAVA_SO")))
+
+    for c in class_vals:
+        if c in {"ESS", "SS", "SS5"}:
+            return True
+
+    for so in so_vals:
+        if "splice_region_variant" in so:
+            return True
+        if "splice_acceptor_variant" in so:
+            return True
+        if "splice_donor_variant" in so:
+            return True
+        if "splice_donor_5th_base_variant" in so:
+            return True
+
+    return False
+
+
+def variant_has_essential_splice_signature(variant) -> bool:
+    class_vals = []
+    so_vals = []
+
+    if "CLASS" in variant.flags:
+        class_vals.extend(_iter_flag_components(variant.getFlag("CLASS")))
+    if "CAVA_CLASS" in variant.flags:
+        class_vals.extend(_iter_flag_components(variant.getFlag("CAVA_CLASS")))
+
+    if "SO" in variant.flags:
+        so_vals.extend(_iter_flag_components(variant.getFlag("SO")))
+    if "CAVA_SO" in variant.flags:
+        so_vals.extend(_iter_flag_components(variant.getFlag("CAVA_SO")))
+
+    if "ESS" in class_vals:
+        return True
+
+    for so in so_vals:
+        if "splice_acceptor_variant" in so:
+            return True
+        if "splice_donor_variant" in so:
+            return True
+        if "splice_donor_5th_base_variant" in so:
+            return True
+    return False
+
+
+def variant_has_splice_region_signature(variant) -> bool:
+    class_vals = []
+    so_vals = []
+
+    if "CLASS" in variant.flags:
+        class_vals.extend(_iter_flag_components(variant.getFlag("CLASS")))
+    if "CAVA_CLASS" in variant.flags:
+        class_vals.extend(_iter_flag_components(variant.getFlag("CAVA_CLASS")))
+
+    if "SO" in variant.flags:
+        so_vals.extend(_iter_flag_components(variant.getFlag("SO")))
+    if "CAVA_SO" in variant.flags:
+        so_vals.extend(_iter_flag_components(variant.getFlag("CAVA_SO")))
+
+    if "SS" in class_vals or "SS5" in class_vals:
+        return True
+
+    return any("splice_region_variant" in so for so in so_vals)
+
+
+def record_has_splice_signature(record) -> bool:
+    for v in record.variants:
+        if variant_has_splice_signature(v):
+            return True
+    return False
+
+
+def record_has_essential_splice_signature(record) -> bool:
+    for v in record.variants:
+        if variant_has_essential_splice_signature(v):
+            return True
+    return False
+
+
+def record_has_splice_region_signature(record) -> bool:
+    for v in record.variants:
+        if variant_has_splice_region_signature(v):
+            return True
+    return False

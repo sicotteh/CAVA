@@ -5,7 +5,9 @@ from collections import defaultdict
 from urllib.parse import unquote
 
 from cava.utils import core
+from cava.utils import haplotype
 from cava.utils import main
+from cava.utils.data import Reference
 
 START_CODON_MULTI_CASES = [
     {
@@ -67,8 +69,41 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
         cls.ens_path = os.path.join(
             cls.repo_root, "cava", "data", "MANE.GRCh38.v1.1.refseq_genomic.db.gz"
         )
+        cls.reference = Reference(type("Opt", (), {"args": {"reference": cls.ref_path}})())
 
-    def _run_rows(self, rows):
+    @staticmethod
+    def _splice_severity(class_value, so_value):
+        classes = [x.strip() for x in str(class_value).split(":") if x.strip()]
+        sos = [x.strip() for x in str(so_value).split(":") if x.strip()]
+
+        for c in classes:
+            if c == "ESS":
+                return 2
+        for s in sos:
+            if (
+                "splice_acceptor_variant" in s
+                or "splice_donor_variant" in s
+                or "splice_donor_5th_base_variant" in s
+            ):
+                return 2
+
+        for c in classes:
+            if c in {"SS", "SS5", "EE"}:
+                return 1
+        for s in sos:
+            if "splice_region_variant" in s:
+                return 1
+
+        return 0
+
+    def _build_row_from_tokens(self, tokens):
+        atoms = [haplotype.parse_atomic_token(tok) for tok in tokens]
+        pos, ref, alt, row_id = haplotype.build_subset_vcf_fields(
+            self.reference, atoms[0].chrom, atoms
+        )
+        return (atoms[0].chrom, pos, row_id, ref, alt)
+
+    def _run_rows(self, rows, split_based=True, split_adj=False):
         with tempfile.TemporaryDirectory() as td:
             cfg = os.path.join(td, "cfg.txt")
             inp = os.path.join(td, "in.vcf")
@@ -92,8 +127,8 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
 
             options = core.Options(cfg)
             options.args["parseHaplotype"] = True
-            options.args["splitBasedOnProtein"] = True
-            options.args["splitadjacentprotein"] = False
+            options.args["splitBasedOnProtein"] = bool(split_based)
+            options.args["splitadjacentprotein"] = bool(split_adj)
 
             with open(outprefix + ".vcf", "w", encoding="utf-8") as out:
                 core.writeHeader(
@@ -139,11 +174,165 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
                             "ref": cols[3],
                             "alt": cols[4],
                             "csn": unquote(pairs.get("CSN", "").split(":")[0]),
+                            "class": unquote(
+                                pairs.get("CAVA_CLASS", pairs.get("CLASS", ""))
+                            ),
+                            "so": unquote(pairs.get("CAVA_SO", pairs.get("SO", ""))),
+                            "impact": unquote(
+                                pairs.get("CAVA_IMPACT", pairs.get("IMPACT", ""))
+                            ),
                             "orig": unquote(pairs.get("CAVA_ORIGHAPLOTYPE", "")),
                             "hap": unquote(pairs.get("CAVA_HAPLOTYPE", "")),
                         }
                     )
             return outrows
+
+    def test_four_variant_splice_impact_is_not_worse_than_components(self):
+        donor_side_tokens = [
+            "13_32316525_C_A",
+            "13_32316526_A_C",
+            "13_32316529_T_A",
+            "13_32316533_G_A",
+        ]
+        acceptor_side_tokens = [
+            "13_98463673_A_G",
+            "13_98463692_C_A",
+            "13_98463693_G_A",
+            "13_98463696_G_A",
+        ]
+
+        rows = [
+            self._build_row_from_tokens(donor_side_tokens),
+            self._build_row_from_tokens(acceptor_side_tokens),
+        ]
+        outrows = self._run_rows(rows, split_based=False, split_adj=False)
+        by_orig = defaultdict(list)
+        for r in outrows:
+            if r["orig"]:
+                by_orig[r["orig"]].append(r)
+
+        for tokens in (donor_side_tokens, acceptor_side_tokens):
+            orig = ";".join(tokens)
+            emitted = by_orig.get(orig, [])
+            self.assertGreaterEqual(len(emitted), 2, msg=orig)
+
+            singleton_rows = [
+                (tok.split("_", 3)[0], int(tok.split("_", 3)[1]), tok, tok.split("_", 3)[2], tok.split("_", 3)[3])
+                for tok in tokens
+            ]
+            singleton_out = self._run_rows(
+                singleton_rows, split_based=False, split_adj=False
+            )
+            singleton_severity = [
+                self._splice_severity(r["class"], r["so"]) for r in singleton_out
+            ]
+            max_singleton_severity = max(singleton_severity)
+
+            singleton_splice_impacts = []
+            for r, sev in zip(singleton_out, singleton_severity):
+                if sev > 0 and r["impact"].isdigit():
+                    singleton_splice_impacts.append(int(r["impact"]))
+            min_singleton_splice_impact = (
+                min(singleton_splice_impacts) if singleton_splice_impacts else None
+            )
+
+            for rec in emitted:
+                rec_sev = self._splice_severity(rec["class"], rec["so"])
+                self.assertLessEqual(rec_sev, max_singleton_severity, msg=orig)
+                if (
+                    rec_sev > 0
+                    and min_singleton_splice_impact is not None
+                    and rec["impact"].isdigit()
+                ):
+                    self.assertGreaterEqual(
+                        int(rec["impact"]), min_singleton_splice_impact, msg=orig
+                    )
+
+        acceptor_orig = ";".join(acceptor_side_tokens)
+        self.assertFalse(
+            any(r["hap"] == acceptor_orig for r in by_orig[acceptor_orig]),
+            msg=acceptor_orig,
+        )
+
+    def test_four_variant_first_coding_base_combination_splits(self):
+        tokens = [
+            "13_32316461_A_C",
+            "13_32316462_T_C",
+            "13_32316463_G_C",
+            "13_32316467_A_C",
+        ]
+        row = self._build_row_from_tokens(tokens)
+        outrows = self._run_rows([row], split_based=True, split_adj=False)
+
+        emitted = [r for r in outrows if r["orig"] == row[2]]
+        self.assertGreaterEqual(len(emitted), 2)
+
+        split_csns = [r["csn"] for r in emitted if r["hap"] != row[2]]
+        self.assertIn("c.1A>C_p.Met1?", split_csns)
+        self.assertIn("c.2T>C_p.Met1?", split_csns)
+        self.assertIn("c.3G>C_p.Met1?", split_csns)
+
+    def test_four_variant_mixed_proximity_can_partition_into_near_and_far_blocks(self):
+        row = (
+            "chr17",
+            7675065,
+            "chr17_7675065_A_G;chr17_7675070_C_CT;chr17_7675074_C_T;chr17_7675076_TG_T",
+            "AGCAGCGCTCATG",
+            "GGCAGCTGCTTAT",
+        )
+        outrows = self._run_rows([row], split_based=True, split_adj=False)
+
+        emitted = [r for r in outrows if r["orig"] == row[2] and r["hap"] != row[2]]
+        self.assertGreaterEqual(len(emitted), 2)
+
+        subset_sizes = [len([x for x in r["hap"].split(";") if x]) for r in emitted]
+        self.assertIn(1, subset_sizes)
+        self.assertIn(3, subset_sizes)
+
+    def test_parse_mode_splits_splice_spanning_haplotypes_without_atomic_splice_support(
+        self,
+    ):
+        rows = [
+            (
+                "13",
+                98463673,
+                "chr13_98463673_A_G;chr13_98463693_G_A",
+                "ACTCAGGGGCCGACTTACGCG",
+                "GCTCAGGGGCCGACTTACGCA",
+            ),
+            (
+                "13",
+                98463673,
+                "chr13_98463673_A_G;chr13_98463696_G_A",
+                "ACTCAGGGGCCGACTTACGCGTCG",
+                "GCTCAGGGGCCGACTTACGCGTCA",
+            ),
+            (
+                "13",
+                98463673,
+                "chr13_98463673_A_G;chr13_98463693_G_A;chr13_98463696_G_A",
+                "ACTCAGGGGCCGACTTACGCGTCG",
+                "GCTCAGGGGCCGACTTACGCATCA",
+            ),
+        ]
+
+        outrows = self._run_rows(rows, split_based=False, split_adj=False)
+        by_orig = defaultdict(list)
+        for r in outrows:
+            if r["orig"]:
+                by_orig[r["orig"]].append(r)
+
+        for _, _, row_id, _, _ in rows:
+            emitted = by_orig.get(row_id, [])
+            self.assertGreaterEqual(len(emitted), 2, msg=row_id)
+            self.assertFalse(any(r["hap"] == row_id for r in emitted), msg=row_id)
+
+            orig_n = len([x for x in row_id.split(";") if x])
+            for rec in emitted:
+                split_n = len([x for x in rec["hap"].split(";") if x])
+                self.assertLess(split_n, orig_n, msg=row_id)
+                self.assertNotIn("ESS", rec["class"], msg=row_id)
+                self.assertNotIn("splice_acceptor_variant", rec["so"], msg=row_id)
 
     def test_adjacent_and_slightly_separated_start_codon_haplotypes_split_to_singletons(
         self,

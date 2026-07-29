@@ -181,6 +181,27 @@ class TestHaplotypeParser(unittest.TestCase):
             [p[0].token for p in parts], ["chr17_1_A_G", "chr17_2_A_G", "chr17_3_A_G"]
         )
 
+    def test_choose_protein_partitions_three_variant_mixed_near_and_far(self):
+        atoms = [
+            haplotype.parse_atomic_token("chr17_100_A_G"),
+            haplotype.parse_atomic_token("chr17_101_A_C"),
+            haplotype.parse_atomic_token("chr17_140_A_T"),
+        ]
+        full_components = ["His179Asp", "Arg250Cys"]
+        subset_component_map = {
+            (0,): ["."],
+            (1,): ["."],
+            (2,): ["Arg250Cys"],
+            (0, 1): ["His179Asp"],
+            (1, 2): ["."],
+        }
+        parts = haplotype.choose_protein_partitions(
+            full_components, subset_component_map, atoms
+        )
+        self.assertEqual(len(parts), 2)
+        self.assertEqual([a.token for a in parts[0]], ["chr17_100_A_G", "chr17_101_A_C"])
+        self.assertEqual([a.token for a in parts[1]], ["chr17_140_A_T"])
+
 
 if __name__ == "__main__":
     unittest.main()
