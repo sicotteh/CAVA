@@ -268,9 +268,9 @@ class Variant(object):
             extra_prebase = 0
         seq12_0 = reference.getReference(self.chrom, self.pos - extra_prebase, maxpos)
         seq1_0 = seq12_0[extra_prebase:]
-        seq_ref = seq1_0[0 : len(self.ref)]
-        if len(self.ref) > 0:
-            seq_ref = seq1_0[0 : len(self.ref)]
+        ref_len = len(self.ref)
+        if ref_len > 0:
+            seq_ref = seq1_0[0 : ref_len]
             if seq_ref != self.ref:
                 raise Exception(
                     "ERROR: Variant reference allele does not match genome : id="
@@ -423,15 +423,22 @@ class Variant(object):
 
     # Trimming common ending subsequence of two sequences
     def trimCommonEnd(self, s1, s2):
-        counter = 1
-        if len(s1) == 0 or len(s2) == 0 or (s1[-1] != s2[-1]):
+        s1_len = len(s1)
+        s2_len = len(s2)
+        if s1_len == 0 or s2_len == 0 or (s1[-1] != s2[-1]):
             return 0, s1, s2
-        while True:
-            if counter > len(s1) or counter > len(s2):  # implicitely counter != 1
-                return counter - 1, s1[: -(counter - 1)], s2[: -(counter - 1)]
+        counter = 1
+        while counter <= s1_len and counter <= s2_len:
             if s1[-counter] != s2[-counter]:
-                return counter - 1, s1[: -(counter - 1)], s2[: -(counter - 1)]
+                trim_len = counter - 1
+                if trim_len == 0:
+                    return 0, s1, s2
+                return trim_len, s1[:-trim_len], s2[:-trim_len]
             counter += 1
+        trim_len = counter - 1
+        if trim_len == 0:
+            return 0, s1, s2
+        return trim_len, s1[:-trim_len], s2[:-trim_len]
 
 
 #######################################################################################################################
@@ -3339,10 +3346,12 @@ def checkOptions(options):
 
 
 def trim_prot_after_stop(seq):
-    if "X" in seq:
-        seq = seq[0 : (seq.index("X") + 1)]
-    elif "x" in seq:
-        seq = seq[0 : (seq.index("x") + 1)]
+    x_idx = seq.find("X")
+    if x_idx != -1:
+        return seq[0 : (x_idx + 1)]
+    x_lower_idx = seq.find("x")
+    if x_lower_idx != -1:
+        return seq[0 : (x_lower_idx + 1)]
     return seq
 
 

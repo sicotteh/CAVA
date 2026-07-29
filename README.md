@@ -188,7 +188,7 @@ CAVA is released under MIT licence (see the LICENCE file).
 
 7 CHANGES HISTORY
 ---------
-Version 2.0.15 fixes a few bugs, upgrages packages to newer packages (oroginal versions were circa 2018), many unit test, and adds a new functionality to annotate multi-variant haplotype and potentially split them based on wether they can be represented as independent variants. While the HGVS says to not split adjacent variants at the AA level, another option supports that.
+Version 2.0.15 fixes a few bugs, upgrages packages to newer packages (previous versions were circa 2018), many unit test, and adds a new functionality to annotate multi-variant haplotype and potentially split them based on wether they can be represented as independent variants. While the HGVS says to not split adjacent variants at the AA level, another option supports that.
 This version of CAVA includes the following changes (aside from bug fixes, especially for edge cases where multiple interpretations could apply)
 - support refseq transcripts in addition to ensembl
 - include new tags: CAVA_HGVSG, CAVA_HGVSC, CAVA_HGVSP to represent the current full HGVS nomenclature (G=Genomics, C=CDNA,P=Protein) for the HGVSC and HGVSP. We do not support the genomic tandem repeats for HGVSG nor imperfect repeats. These fields must be URL-decode (uudecode) because they include ';' encoded as %3B (';' is not a legal character in the VCF INFO field).

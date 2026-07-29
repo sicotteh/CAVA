@@ -459,10 +459,8 @@ class Ensembl(object):
 
             self.transcript_cache[transcriptid] = transcript
             if len(self.transcript_cache) > self.CACHESIZE:
-                vals = list(self.transcript_nvar.values())
-                minval = min(vals)
-                which_minval = vals.index(minval)
-                rm_tr = "" + list(self.transcript_nvar.keys())[which_minval]
+                # Evict least recently used transcript using min with key
+                rm_tr = min(self.transcript_nvar.items(), key=lambda x: x[1])[0]
                 self.transcript_cache.pop(rm_tr)
                 self.transcript_nvar.pop(rm_tr)
 
@@ -545,9 +543,7 @@ class Ensembl(object):
                     and transcript.TRANSCRIPT not in self.transcriptlist
                 ):
                     continue
-                if key in list(
-                    hitdict2.keys()
-                ):  # e.g. both ends of the variant are in transcript.
+                if key in hitdict2:  # e.g. both ends of the variant are in transcript.
                     ret[key] = transcript
                 else:  # either paartial overlap or insertion flush with transcript (right end)
                     #                    if variant.is_insertion: # insertions at the edges are TRULY outside, not even partially overlapping
@@ -568,7 +564,7 @@ class Ensembl(object):
                     and transcript.TRANSCRIPT not in self.transcriptlist
                 ):
                     continue
-                if not key in list(hitdict1.keys()):
+                if key not in hitdict1:
                     retOUT[key] = transcript
 
         else:  # Variant is single base Substitution
@@ -1271,7 +1267,7 @@ class Ensembl(object):
             ):
                 self.cache_num += 1
                 self.exoncache_hit[transcript.TRANSCRIPT] = self.cache_num
-                if not transcript.TRANSCRIPT in list(self.proteinSeqs.keys()):
+                if transcript.TRANSCRIPT not in self.proteinSeqs:
                     protein, exonseqs, cds_ref, utr5_ref = (
                         transcript.getProteinSequence(
                             reference, None, None, self.codon_usage
@@ -1285,10 +1281,8 @@ class Ensembl(object):
                     if (
                         len(self.proteinSeqs) > self.CACHESIZE
                     ):  # Cache of proteins and exons data
-                        vals = list(self.exoncache_hit.values())
-                        minval = min(vals)
-                        which_minval = vals.index(minval)
-                        rm_tr = "" + list(self.exoncache_hit.keys())[which_minval]
+                        # Evict least recently used protein sequence using min with key
+                        rm_tr = min(self.exoncache_hit.items(), key=lambda x: x[1])[0]
                         self.exonSeqs.pop(rm_tr)
                         self.exoncache_hit.pop(rm_tr)
                         self.proteinSeqs.pop(rm_tr)
