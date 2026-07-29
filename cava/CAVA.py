@@ -23,11 +23,9 @@ def _build_parser(version):
                       help="Number of threads [default value: %default]")
     parser.add_option('--parseHaplotype', default=False, dest='parseHaplotype', action='store_true',
                       help='Parse semicolon-separated atomic haplotypes encoded in VCF ID [default value: %default]')
-    parser.add_option('--parseHaplotypee', default=False, dest='parseHaplotypee', action='store_true',
-                      help='Deprecated alias for --parseHaplotype [default value: %default]')
     parser.add_option('--splitBasedOnProtein', default=False, dest='splitBasedOnProtein', action='store_true',
                       help='Split parsed haplotypes into subsets and reannotate [default value: %default]')
-    parser.add_option('--splitadjacentprotein', default=False, dest='splitadjacentprotein', action='store_true',
+    parser.add_option('--splitAdjacentProtein', default=False, dest='splitAdjacentProtein', action='store_true',
                       help='Emit optional adjacent protein split outputs for parsed haplotypes [default value: %default]')
     return parser
 
@@ -37,11 +35,7 @@ def main():
     parser = _build_parser(version)
 
     # Backward-compatible one-dash alias requested by haplotype spec.
-    argv = [('--splitBasedOnProtein' if x == '-splitBasedOnProtein' else x) for x in sys.argv]
     (copts, args) = parser.parse_args(argv[1:])
-
-    if copts.parseHaplotypee:
-        copts.parseHaplotype = True
 
     cava_main.run(copts, version)
 

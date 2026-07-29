@@ -131,14 +131,13 @@ The supported Python version for this release is Python 3.9+.
 
 ### Phased Haplotype Mode (experimental)
 
-This release adds an experimental mode for phased cis haplotypes encoded in the VCF `ID` field.
+This release adds an experimental mode for phased cis haplotypes encoded in the VCF `ID` field. For example if the ID field is chr17_7675155_G_A;chr17_7675157_G_C, then the variant will be chr17_7675155_GCG_->ACC. 
 
 CLI flags:
 
 - `--parseHaplotype` enables parsing/validation of semicolon-separated atomic IDs.
-- `--parseHaplotypee` is accepted as a deprecated alias.
-- `--splitBasedOnProtein` emits additional subset records after canonical haplotype annotation.
-- `--splitadjacentprotein` is accepted for compatibility and requires haplotype parsing.
+- `--splitBasedOnProtein` emits additional subset records after canonical haplotype annotation. If two variants are far enough apart at the DNA level that they affect amino acids that are separated by unchanged amino acids, split the DNA variant into 2 (or more) records.[ Keep the original as well]
+- `--splitAdjacentProtein` if --parseHaplotype is selected, is like --splitBasedOnProtein, but will split at the DNA level even if the two different amino acids are adjacent (as long as the variants do not cross the protein boundary.)
 
 Dependencies:
 

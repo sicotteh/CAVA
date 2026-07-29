@@ -425,7 +425,7 @@ class SingleJob(multiprocessing.Process):
                                              self.transcriptlist, self.snplist, self.copts.stdout)
 
             # Optional additional nearby-protein split output records.
-            if parsed_haplotype is not None and self.options.args.get('splitadjacentprotein', False):
+            if parsed_haplotype is not None and self.options.args.get('splitAdjacentProtein', False):
                 full_ids = ';'.join([a.token for a in parsed_haplotype.atomic])
                 splitnearby_rows = haplotype.get_splitnearby_fixture_rows(fixture_rows)
 
@@ -517,10 +517,9 @@ def run(copts, version):
     # Command-line flags override config defaults for haplotype modes.
     options.args['parseHaplotype'] = bool(getattr(copts, 'parseHaplotype', False))
     options.args['splitBasedOnProtein'] = bool(getattr(copts, 'splitBasedOnProtein', False))
-    options.args['splitadjacentprotein'] = bool(getattr(copts, 'splitadjacentprotein', False))
-
-    if (options.args['splitBasedOnProtein'] or options.args['splitadjacentprotein']) and not options.args['parseHaplotype']:
-        print('ERROR: --splitBasedOnProtein and --splitadjacentprotein require --parseHaplotype')
+    
+    if (options.args['splitBasedOnProtein'] or options.args['splitAdjacentProtein']) and not options.args['parseHaplotype']:
+        print('ERROR: --splitBasedOnProtein and --splitAdjacentProtein require --parseHaplotype')
         quit()
 
     # Initializing log file
