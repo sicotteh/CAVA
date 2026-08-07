@@ -202,6 +202,56 @@ class TestHaplotypeParser(unittest.TestCase):
         self.assertEqual([a.token for a in parts[0]], ["chr17_100_A_G", "chr17_101_A_C"])
         self.assertEqual([a.token for a in parts[1]], ["chr17_140_A_T"])
 
+    def test_force_split_when_utr_variants_have_intervening_base(self):
+        class _Variant:
+            def __init__(self, loc):
+                self.flags = ["LOC"]
+                self.flagvalues = [loc]
+
+            def getFlag(self, key):
+                return self.flagvalues[self.flags.index(key)]
+
+        class _Record:
+            def __init__(self, loc):
+                self.variants = [_Variant(loc)]
+
+        atoms_non_adj = [
+            haplotype.parse_atomic_token("chr1_10_A_G"),
+            haplotype.parse_atomic_token("chr1_12_C_T"),
+        ]
+        atoms_adj = [
+            haplotype.parse_atomic_token("chr1_10_A_G"),
+            haplotype.parse_atomic_token("chr1_11_C_T"),
+        ]
+        singleton_records = [_Record("5UTR"), _Record("5UTR")]
+
+        self.assertTrue(
+            haplotype.should_force_split_for_regions(atoms_non_adj, singleton_records)
+        )
+        self.assertFalse(
+            haplotype.should_force_split_for_regions(atoms_adj, singleton_records)
+        )
+
+    def test_force_split_when_singletons_span_distinct_regions(self):
+        class _Variant:
+            def __init__(self, loc):
+                self.flags = ["LOC"]
+                self.flagvalues = [loc]
+
+            def getFlag(self, key):
+                return self.flagvalues[self.flags.index(key)]
+
+        class _Record:
+            def __init__(self, loc):
+                self.variants = [_Variant(loc)]
+
+        atoms = [
+            haplotype.parse_atomic_token("chr1_20_A_G"),
+            haplotype.parse_atomic_token("chr1_21_C_T"),
+        ]
+        singleton_records = [_Record("Ex2"), _Record("In2/3")]
+        self.assertTrue(haplotype.should_force_split_for_regions(atoms, singleton_records))
+
 
 if __name__ == "__main__":
     unittest.main()

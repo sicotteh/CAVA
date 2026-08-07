@@ -438,6 +438,52 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
 
         self.assertGreater(synonymous_seen, 0)
 
+    def test_mixed_splice_region_and_coding_haplotype_suppresses_canonical(self):
+        row = (
+            "chr17",
+            7675056,
+            "chr17_7675054_A_AT;chr17_7675061_TC_T;chr17_7675070_C_CT;chr17_7675076_TG_T",
+            "CGCTATCTGAGCAGCGCTCATG",
+            "TCGCTATTGAGCAGCTGCTCAT",
+        )
+        outrows = self._run_rows([row], split_based=True, split_adj=True)
+
+        emitted = [r for r in outrows if r["orig"] == row[2]]
+        self.assertGreaterEqual(len(emitted), 2)
+        self.assertFalse(any(r["hap"] == row[2] for r in emitted))
+        self.assertTrue(any("splice_region_variant" in r["so"] for r in emitted))
+        self.assertTrue(any("frameshift_variant" in r["so"] for r in emitted))
+
+    def test_utr_variants_one_bp_apart_force_split(self):
+        row = (
+            "17",
+            43044315,
+            "17_43044315_T_A;17_43044317_T_C",
+            "TTT",
+            "ATC",
+        )
+        outrows = self._run_rows([row], split_based=False, split_adj=False)
+
+        emitted = [r for r in outrows if r["orig"] == row[2]]
+        self.assertGreaterEqual(len(emitted), 2)
+        self.assertFalse(any(r["hap"] == row[2] for r in emitted))
+        self.assertTrue(all(r["class"] == "3PU" for r in emitted))
+
+    def test_adjacent_utr_variants_do_not_force_split(self):
+        row = (
+            "17",
+            43044315,
+            "17_43044315_T_A;17_43044316_T_C",
+            "TT",
+            "AC",
+        )
+        outrows = self._run_rows([row], split_based=False, split_adj=False)
+
+        emitted = [r for r in outrows if r["orig"] == row[2]]
+        self.assertEqual(1, len(emitted))
+        self.assertEqual(row[2], emitted[0]["hap"])
+        self.assertEqual("3PU", emitted[0]["class"])
+
 
 if __name__ == "__main__":
     unittest.main()

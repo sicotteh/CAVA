@@ -238,6 +238,110 @@ class TestHaplotypeCLI(unittest.TestCase):
             body = "\n".join(lines[1:])
             self.assertIn("chr17_7675155_G_A;chr17_7675157_G_C", body)
 
+    def test_parse_haplotype_hgvsc_uses_delins_for_adjacent_and_cis_for_separated(self):
+        with tempfile.TemporaryDirectory() as td:
+            cfg = os.path.join(td, "cfg.txt")
+            inp = os.path.join(td, "in.vcf")
+            outprefix = os.path.join(td, "out")
+
+            with open(cfg, "w", encoding="utf-8") as f:
+                f.write("@inputformat=VCF\n")
+                f.write("@outputformat=VCF\n")
+                f.write(
+                    "@reference="
+                    + os.path.join(self.repo_root, "cava", "data", "tmp.GRCh38.fa")
+                    + "\n"
+                )
+                f.write(
+                    "@ensembl="
+                    + os.path.join(
+                        self.repo_root,
+                        "cava",
+                        "data",
+                        "MANE.GRCh38.v1.1.refseq_genomic.db.gz",
+                    )
+                    + "\n"
+                )
+                f.write("@dbsnp=.\n")
+                f.write("@logfile=FALSE\n")
+                f.write("@prefix=FALSE\n")
+                f.write("@chrom=.\n")
+
+            with open(inp, "w", encoding="utf-8") as f:
+                f.write("##fileformat=VCFv4.2\n")
+                f.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
+                # Adjacent atoms in start codon context.
+                f.write(
+                    "13\t32316461\t13_32316461_A_C;13_32316462_T_C\tAT\tCC\t.\tPASS\t.\n"
+                )
+                # Separated atoms (1 bp gap) in start codon context.
+                f.write(
+                    "13\t32316461\t13_32316461_A_C;13_32316463_G_C\tATG\tCTC\t.\tPASS\t.\n"
+                )
+
+            options = core.Options(cfg)
+            options.args["parseHaplotype"] = True
+            options.args["splitBasedOnProtein"] = False
+            options.args["splitadjacentprotein"] = False
+
+            outvcf = outprefix + ".vcf"
+            with open(outvcf, "w", encoding="utf-8") as out:
+                core.writeHeader(
+                    options, "\n".join(main.readHeader(inp)), out, False, "2.0.15"
+                )
+
+            impactdir = {}
+            for i, valuev in enumerate(options.args["impactdef"].split("|")):
+                classv = valuev.split(",")
+                for c in classv:
+                    impactdir[c.strip()] = str(i + 1)
+
+            class Copts:
+                pass
+
+            copts = Copts()
+            copts.conf = cfg
+            copts.input = inp
+            copts.output = outprefix
+            copts.stdout = False
+            copts.threads = 1
+
+            job = main.SingleJob(
+                1, options, copts, 3, "", set(), set(), set(), impactdir, 2
+            )
+            job.run()
+
+            seen = {}
+            with open(outvcf, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("#"):
+                        continue
+                    cols = line.strip().split("\t")
+                    if ";" not in cols[2]:
+                        continue
+                    info = cols[7]
+                    pairs = dict(x.split("=", 1) for x in info.split(";") if "=" in x)
+                    seen[cols[2]] = {
+                        "hgvsc": pairs.get("HGVSc", ""),
+                        "hgvsg": pairs.get("HGVSg", ""),
+                        "csn": pairs.get("CSN", ""),
+                    }
+
+            adj_id = "13_32316461_A_C;13_32316462_T_C"
+            sep_id = "13_32316461_A_C;13_32316463_G_C"
+            self.assertIn(adj_id, seen)
+            self.assertIn(sep_id, seen)
+            self.assertNotIn("c.[", seen[adj_id]["hgvsc"])
+            self.assertIn("delins", seen[adj_id]["hgvsc"])
+            self.assertNotIn("g.[", seen[adj_id]["hgvsg"])
+            self.assertIn("delins", seen[adj_id]["hgvsg"])
+
+            self.assertIn("c.[", seen[sep_id]["hgvsc"])
+            self.assertIn("%3B", seen[sep_id]["hgvsc"])
+            self.assertIn("g.[", seen[sep_id]["hgvsg"])
+            self.assertIn("%3B", seen[sep_id]["hgvsg"])
+            self.assertNotIn("c.[", seen[sep_id]["csn"])
+
 
 if __name__ == "__main__":
     unittest.main()

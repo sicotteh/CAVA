@@ -131,13 +131,13 @@ The supported Python version for this release is Python 3.9+.
 
 ### Phased Haplotype Mode (experimental)
 
-This release adds an experimental mode for phased cis haplotypes encoded in the VCF `ID` field. For example if the ID field is chr17_7675155_G_A;chr17_7675157_G_C, then the variant will be chr17_7675155_GCG_->ACC. 
+This release adds an experimental mode for phased cis haplotypes encoded in the VCF `ID` field. For example if the ID field is `chr17_7675155_G_A;chr17_7675157_G_C`, then the row-level VCF allele is treated as the contiguous haplotype produced by those atomic edits.
 
 CLI flags:
 
 - `--parseHaplotype` enables parsing/validation of semicolon-separated atomic IDs.
-- `--splitBasedOnProtein` emits additional subset records after canonical haplotype annotation. If two variants are far enough apart at the DNA level that they affect amino acids that are separated by unchanged amino acids, split the DNA variant into 2 (or more) records.[ Keep the original as well]
-- `--splitAdjacentProtein` if --parseHaplotype is selected, is like --splitBasedOnProtein, but will split at the DNA level even if the two different amino acids are adjacent (there can be a split even if the DNA crosses the codon boundary as long as the two AA changes remain the same after splitting the variant.)
+- `--splitBasedOnProtein` emits additional subset records after haplotype annotation when the protein consequence can be partitioned into independent components.
+- `--splitAdjacentProtein` emits optional additional records even when the full protein consequence is an adjacent multi-residue replacement, as long as the split records still reproduce the same residue changes after reannotation.
 
 Dependencies:
 
@@ -160,6 +160,28 @@ REF=GCG
 ALT=ACC
 ```
 
+HGVS behavior:
+
+- Adjacent in-phase variants are reported as a merged `delins` at genomic and cDNA HGVS levels.
+- Non-adjacent in-phase variants are reported in HGVS allele cis-notation in `HGVSg` and `HGVSc`, with the sequence identifier outside the brackets and the component variants inside the brackets separated by semicolons.
+- The `CSN` field remains a single merged cDNA consequence even when `HGVSg` and `HGVSc` use cis-allele notation.
+- `HGVSp` continues to reflect the fully reannotated merged protein consequence unless extra split records are emitted.
+
+Split behavior:
+
+- Canonical parsed-haplotype output is emitted when the merged consequence is valid and does not need forced decomposition.
+- Split records are identified by the existing provenance tags: `CAVA_ORIGHAPLOTYPE` is the full atomic list and `CAVA_HAPLOTYPE` is the atomic subset used for that emitted line.
+- Canonical records have `CAVA_ORIGHAPLOTYPE == CAVA_HAPLOTYPE`.
+- Split records have `CAVA_ORIGHAPLOTYPE != CAVA_HAPLOTYPE`.
+- Variants may be forcibly split, even without `--splitBasedOnProtein`, when the merged haplotype spans distinct functional regions that should not be represented as one DNA event for downstream interpretation.
+
+Forced-split edge cases:
+
+- If the region between phased variants crosses different functional contexts such as coding sequence, splice region, or non-splice intron, CAVA emits split records instead of a single canonical merged record.
+- Variants entirely in UTR sequence that are 1 bp apart are split.
+- Adjacent variants entirely in UTR sequence are not forced to split by that rule.
+- Existing splice-driven decomposition still applies when the merged splice annotation is not supported by singleton components.
+
 New INFO tags:
 
 - `CAVA_ORIGHAPLOTYPE`: original full atomic token list.
@@ -177,8 +199,8 @@ INFO field encoding:
 
 Notes:
 
-- Canonical output is always emitted first.
-- Split outputs are additional records.
+- Canonical output is usually emitted first, but may be suppressed when forced decomposition is required by splice or mixed-region rules.
+- Split outputs are additional records unless canonical output is suppressed.
 - If haplotype parsing is requested, malformed IDs or incompatible rows are reported as errors.
 
 6 LICENCE
@@ -188,14 +210,19 @@ CAVA is released under MIT licence (see the LICENCE file).
 
 7 CHANGES HISTORY
 ---------
-Version 2.0.15 fixes a few bugs, upgrages packages to newer packages (previous versions were circa 2018), many unit test, and adds a new functionality to annotate multi-variant haplotype and potentially split them based on wether they can be represented as independent variants. While the HGVS says to not split adjacent variants at the AA level, another option supports that.
+Version 2.0.15 fixes a few bugs, upgrades packages to newer packages (previous versions were circa 2018), expands unit test coverage, and adds multi-variant haplotype annotation with optional split output when a haplotype can be represented as independent consequences.
 This version of CAVA includes the following changes (aside from bug fixes, especially for edge cases where multiple interpretations could apply)
 - support refseq transcripts in addition to ensembl
 - include new tags: CAVA_HGVSG, CAVA_HGVSC, CAVA_HGVSP to represent the current full HGVS nomenclature (G=Genomics, C=CDNA,P=Protein) for the HGVSC and HGVSP. We do not support the genomic tandem repeats for HGVSG nor imperfect repeats. These fields must be URL-decode (uudecode) because they include ';' encoded as %3B (';' is not a legal character in the VCF INFO field).
    -- This requires the addition of a files to support the protein information. Catalogs prior to version 2.03 will not be compatible because of that additional file.
+- parsed haplotypes now follow HGVS more closely:
+   -- adjacent phased variants use merged `delins` at genomic and cDNA HGVS levels
+   -- non-adjacent phased variants use allele cis-notation in `HGVSg` and `HGVSc`
+   -- `CSN` remains a merged cDNA consequence for parsed haplotypes
+- parsed haplotypes now decompose automatically when singleton components fall into different functional regions, including coding versus splice/intron and UTR variants separated by 1 bp
 - Include support for selenocysteine genes and alternate stop codon. Usually this is a conservative interpretation, often resulting in p.? when a novel stop codon might be discovered.
 - Support for MANE transcripts (including transcripts with UTR's of length 0  which are part of MANE 1.0)
-- Includes a lot of unit test for edge cases.
+- Includes expanded unit test coverage for haplotype HGVS formatting, split provenance, splice/coding mixed decomposition, and UTR spacing edge cases.
 - Known Limitations: 
       -- large variants with coordinates outside transcript(we have partial support for those). 
       -- Novel Start Gain in 5'UTR are not reported (the impact of those putative changes is hard to predict.

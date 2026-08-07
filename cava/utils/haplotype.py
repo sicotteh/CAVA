@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import List, Tuple
 
 from . import core
+from . import csn
 
 
 class HaplotypeError(Exception):
@@ -707,3 +708,169 @@ def record_has_splice_region_signature(record) -> bool:
         if variant_has_splice_region_signature(v):
             return True
     return False
+
+
+def _atom_span_for_distance(atom: AtomicEdit) -> Tuple[int, int]:
+    """Return a normalized 1-based inclusive span for adjacency checks."""
+    start, end, _, _ = _trim_atomic_edit(atom)
+    if end < start:
+        # Insertions trim to an empty interval; treat as a point at start.
+        end = start
+    return start, end
+
+
+def haplotype_has_intervening_bases(atoms: List[AtomicEdit]) -> bool:
+    if len(atoms) <= 1:
+        return False
+
+    spans = sorted([_atom_span_for_distance(a) for a in atoms], key=lambda x: x[0])
+    prev_end = spans[0][1]
+    for start, end in spans[1:]:
+        if start > prev_end + 1:
+            return True
+        if end > prev_end:
+            prev_end = end
+    return False
+
+
+def _variant_region_bucket(variant) -> str:
+    if variant_has_essential_splice_signature(variant):
+        return "splice"
+    if variant_has_splice_region_signature(variant):
+        return "splice"
+
+    loc = ""
+    if "LOC" in variant.flags:
+        loc = variant.getFlag("LOC").split(":")[0]
+
+    if "5UTR" in loc:
+        return "utr5"
+    if "3UTR" in loc:
+        return "utr3"
+    if "Ex" in loc and "In" in loc:
+        return "boundary"
+    if "In" in loc:
+        return "intron"
+    if "Ex" in loc:
+        return "coding"
+    return "other"
+
+
+def should_force_split_for_regions(
+    atoms: List[AtomicEdit], singleton_records: List
+) -> bool:
+    """Return True when regional context requires splitting parsed haplotypes."""
+    if len(atoms) <= 1:
+        return False
+
+    buckets = []
+    for rec in singleton_records:
+        if rec is None or len(rec.variants) == 0:
+            continue
+        buckets.append(_variant_region_bucket(rec.variants[0]))
+
+    if len(buckets) == 0:
+        return False
+
+    # UTR variants separated by at least one base are always split.
+    if haplotype_has_intervening_bases(atoms) and all(
+        b in {"utr5", "utr3"} for b in buckets
+    ):
+        return True
+
+    # Crossing functional regions should always split.
+    if "boundary" in buckets:
+        return True
+
+    functional = {b for b in buckets if b in {"splice", "intron", "coding", "utr5", "utr3", "boundary"}}
+    return len(functional) > 1
+
+
+def _cdna_from_csn_value(csn_value: str) -> str:
+    if "_p." in csn_value:
+        cdna = csn_value.split("_p.", 1)[0]
+    else:
+        cdna = csn_value
+    # HGVS does not allow nucleotides after pure "del" in HGVSc.
+    del_nuc = re.match(r"^(.*del[ACGTacgtnN]+)$", cdna)
+    if del_nuc:
+        cdna = del_nuc.group(1)
+    if cdna.startswith("c."):
+        cdna = cdna[2:]
+    return cdna
+
+
+def build_cis_haplotype_hgvs_overrides(record, singleton_records: List):
+    """Build HGVSc/HGVSg cis-notation override strings for merged non-adjacent haplotypes.
+
+    Returns (hgvsc_override, hgvsg_override), each already VCF INFO-encoded.
+    """
+    if len(record.variants) == 0 or len(singleton_records) <= 1:
+        return "", ""
+
+    contig = csn.get_contig_from_build(record.chrom, getattr(record, "build", "GRCh38"))
+
+    # Build HGVSg allele terms from singleton HGVSg values.
+    g_terms = []
+    g_contig = ""
+    for rec in singleton_records:
+        if rec is None or len(rec.variants) == 0:
+            return "", ""
+        v = rec.variants[0]
+        if "HGVSg" not in v.flags:
+            return "", ""
+        gval = v.getFlag("HGVSg")
+        if ":g." not in gval:
+            return "", ""
+        this_contig, term = gval.split(":g.", 1)
+        if not g_contig:
+            g_contig = this_contig
+        g_terms.append(term)
+
+    if g_contig:
+        contig = g_contig
+    hgvsg = vcf_info_encode(contig + ":g.[" + ";".join(g_terms) + "]")
+
+    # Build HGVSc per transcript using singleton transcript/cDNA mappings.
+    v0 = record.variants[0]
+    if "TRANSCRIPT" not in v0.flags:
+        return "", hgvsg
+
+    canonical_transcripts = v0.getFlag("TRANSCRIPT").split(":")
+    singleton_maps = []
+    for rec in singleton_records:
+        if rec is None or len(rec.variants) == 0:
+            return "", hgvsg
+        sv = rec.variants[0]
+        if "TRANSCRIPT" not in sv.flags or "CSN" not in sv.flags:
+            return "", hgvsg
+        trs = sv.getFlag("TRANSCRIPT").split(":")
+        csn_vals = sv.getFlag("CSN").split(":")
+        if len(trs) != len(csn_vals):
+            return "", hgvsg
+        smap = {}
+        for tr, csn_val in zip(trs, csn_vals):
+            smap[tr] = _cdna_from_csn_value(csn_val)
+        singleton_maps.append(smap)
+
+    tr_hgvsc = []
+    for tr in canonical_transcripts:
+        if tr in {"", "."}:
+            tr_hgvsc.append(".")
+            continue
+        terms = []
+        for smap in singleton_maps:
+            if tr not in smap:
+                return "", hgvsg
+            terms.append(smap[tr])
+        tr_hgvsc.append(contig + "(" + tr + "):c.[" + ";".join(terms) + "]")
+
+    return vcf_info_encode(":".join(tr_hgvsc)), hgvsg
+
+
+def apply_haplotype_hgvs_overrides(record, hgvsc_override: str, hgvsg_override: str):
+    if hgvsc_override:
+        record.haplotype_hgvsc_override = hgvsc_override
+    if hgvsg_override:
+        for v in record.variants:
+            _replace_or_add_flag(v, "HGVSg", hgvsg_override)

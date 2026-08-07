@@ -455,11 +455,65 @@ class SingleJob(multiprocessing.Process):
                 atoms = list(parsed_haplotype.atomic)
                 n = len(atoms)
                 split_by_protein = self.options.args.get("splitBasedOnProtein", False)
+                original_ids = ";".join([a.token for a in atoms])
+
+                singleton_records_by_idxs = {}
+                singleton_records_ordered = []
+                if n > 1:
+                    for i in range(n):
+                        subset = [atoms[i]]
+                        try:
+                            spos, sref, salt, sid = haplotype.build_subset_vcf_fields(
+                                self.reference, record.chrom, subset
+                            )
+                        except Exception:
+                            singleton_records_ordered.append(None)
+                            continue
+
+                        subset_line = haplotype.build_record_line_like(
+                            record, record.chrom, spos, sid, sref, salt
+                        )
+                        subset_record = core.Record(
+                            subset_line,
+                            self.options,
+                            self.targetBED,
+                            self.reference,
+                        )
+                        subset_record.annotate(
+                            self.ensembl,
+                            self.dbsnp,
+                            self.reference,
+                            self.impactdir,
+                        )
+                        singleton_records_by_idxs[(i,)] = subset_record
+                        singleton_records_ordered.append(subset_record)
+
+                force_split_by_region = haplotype.should_force_split_for_regions(
+                    atoms, singleton_records_ordered
+                )
+                non_adjacent_haplotype = haplotype.haplotype_has_intervening_bases(
+                    atoms
+                )
+
+                if n > 1 and non_adjacent_haplotype:
+                    hgvsc_override, hgvsg_override = (
+                        haplotype.build_cis_haplotype_hgvs_overrides(
+                            record, singleton_records_ordered
+                        )
+                    )
+                    haplotype.apply_haplotype_hgvs_overrides(
+                        record, hgvsc_override, hgvsg_override
+                    )
+
                 needs_splice_decomposition = (
                     n > 1 and haplotype.record_has_splice_signature(record)
                 )
 
-                if n > 1 and (split_by_protein or needs_splice_decomposition):
+                if n > 1 and (
+                    split_by_protein
+                    or needs_splice_decomposition
+                    or force_split_by_region
+                ):
                     full_is_essential_splice = (
                         haplotype.record_has_essential_splice_signature(record)
                     )
@@ -479,34 +533,36 @@ class SingleJob(multiprocessing.Process):
                             full_components = expected_components
 
                     subset_component_map = {}
-                    subset_records_by_idxs = {}
+                    subset_records_by_idxs = dict(singleton_records_by_idxs)
                     singleton_essential_support = False
                     singleton_region_support = False
 
                     for k in range(1, n):
                         for idxs in itertools.combinations(range(n), k):
                             subset = [atoms[i] for i in idxs]
-                            try:
-                                spos, sref, salt, sid = haplotype.build_subset_vcf_fields(
-                                    self.reference, record.chrom, subset
+                            subset_record = subset_records_by_idxs.get(idxs)
+                            if subset_record is None:
+                                try:
+                                    spos, sref, salt, sid = haplotype.build_subset_vcf_fields(
+                                        self.reference, record.chrom, subset
+                                    )
+                                except Exception:
+                                    continue
+                                subset_line = haplotype.build_record_line_like(
+                                    record, record.chrom, spos, sid, sref, salt
                                 )
-                            except Exception:
-                                continue
-                            subset_line = haplotype.build_record_line_like(
-                                record, record.chrom, spos, sid, sref, salt
-                            )
-                            subset_record = core.Record(
-                                subset_line,
-                                self.options,
-                                self.targetBED,
-                                self.reference,
-                            )
-                            subset_record.annotate(
-                                self.ensembl,
-                                self.dbsnp,
-                                self.reference,
-                                self.impactdir,
-                            )
+                                subset_record = core.Record(
+                                    subset_line,
+                                    self.options,
+                                    self.targetBED,
+                                    self.reference,
+                                )
+                                subset_record.annotate(
+                                    self.ensembl,
+                                    self.dbsnp,
+                                    self.reference,
+                                    self.impactdir,
+                                )
                             subset_records_by_idxs[idxs] = subset_record
                             if len(idxs) == 1:
                                 if haplotype.record_has_essential_splice_signature(
@@ -538,7 +594,10 @@ class SingleJob(multiprocessing.Process):
                                 singleton_essential_support or singleton_region_support
                             )
 
-                    if split_by_protein and full_components == ["?"]:
+                    if force_split_by_region:
+                        chosen_subsets = [[a] for a in atoms]
+                        emit_canonical_record = False
+                    elif split_by_protein and full_components == ["?"]:
                         chosen_subsets = [[a] for a in atoms]
                     else:
                         partition_components = list(full_components)
@@ -575,7 +634,6 @@ class SingleJob(multiprocessing.Process):
                     ):
                         emit_canonical_record = False
 
-                    original_ids = ";".join([a.token for a in atoms])
                     for subset in chosen_subsets:
                         if len(subset) == n:
                             continue

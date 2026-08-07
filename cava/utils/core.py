@@ -1030,6 +1030,9 @@ class Record(object):
                 HGVSC = HGVSC_key + HGVSC
                 HGVSP = HGVSP_key + HGVSP
 
+            if hasattr(self, "haplotype_hgvsc_override") and self.haplotype_hgvsc_override:
+                HGVSC = HGVSC_key + self.haplotype_hgvsc_override
+
             # Add multi-transcripts/multi-allele HGVS to output record
             if added == "":
                 added = HGVSC + ";" + HGVSP

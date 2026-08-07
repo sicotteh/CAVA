@@ -138,6 +138,7 @@ class TestHaplotypePromptJsonConformance(unittest.TestCase):
     def test_all_prompt_rows_have_expected_csn_output(self):
         outrows = self._run_single_job(self.rows, split_based=True, split_adj=True)
         by_orig = defaultdict(set)
+        emitted_haplotypes = defaultdict(list)
 
         for cols in outrows:
             info = cols[7]
@@ -149,7 +150,9 @@ class TestHaplotypePromptJsonConformance(unittest.TestCase):
             csn = unquote(pairs.get("CSN", "").split(":")[0])
             protein = csn.split("_p.", 1)[1] if "_p." in csn else csn
             orig = unquote(pairs.get("CAVA_ORIGHAPLOTYPE", ""))
+            hap = unquote(pairs.get("CAVA_HAPLOTYPE", ""))
             if orig:
+                emitted_haplotypes[orig].append(hap)
                 for comp in haplotype.protein_components_from_expected_p_hgvs(
                     "p." + protein
                 ):
@@ -158,6 +161,12 @@ class TestHaplotypePromptJsonConformance(unittest.TestCase):
         missing = []
         for r in self.rows:
             observed = by_orig.get(r["VCFID"], set())
+            emitted = emitted_haplotypes.get(r["VCFID"], [])
+            canonical_suppressed = bool(emitted) and all(
+                hap and hap != r["VCFID"] for hap in emitted
+            )
+            if canonical_suppressed:
+                continue
             expected_components = haplotype.protein_components_from_expected_p_hgvs(
                 r["expected_p_hgvs"]
             )
@@ -166,6 +175,31 @@ class TestHaplotypePromptJsonConformance(unittest.TestCase):
                     missing.append((r["test_id"], comp))
 
         self.assertEqual([], missing)
+
+    def test_mixed_splice_and_coding_row_can_suppress_canonical_record(self):
+        row = next(r for r in self.all_rows if r["test_id"] == "4V-003")
+        outrows = self._run_single_job([row], split_based=True, split_adj=True)
+
+        self.assertGreaterEqual(len(outrows), 2)
+        saw_canonical = False
+        saw_split = False
+        for cols in outrows:
+            info = cols[7]
+            pairs = {}
+            for item in info.split(";"):
+                if "=" in item:
+                    k, v = item.split("=", 1)
+                    pairs[k] = v
+            orig = unquote(pairs.get("CAVA_ORIGHAPLOTYPE", ""))
+            hap = unquote(pairs.get("CAVA_HAPLOTYPE", ""))
+            self.assertEqual(orig, row["VCFID"])
+            if hap == row["VCFID"]:
+                saw_canonical = True
+            else:
+                saw_split = True
+
+        self.assertFalse(saw_canonical)
+        self.assertTrue(saw_split)
 
     def test_splice_p_unknown_still_splits_nearby(self):
         row = next(
