@@ -36,6 +36,7 @@ tests = ["pytest"]
 release = ["build", "twine"]
 
 [project.scripts]
+cava_data = "cava.cava_data:main"
 cava = "cava.CAVA:main"
 
 [project.urls]
@@ -66,3 +67,6 @@ ensembldb = ["*.py"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["cava*", "defaultdb", "ensembldb", "data"]
+
+[tool.setuptools.data-files]
+"share/cava" = ["config_template.txt", "cava_catalogs.tsv"]
