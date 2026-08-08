@@ -92,7 +92,13 @@ cp config_template.txt config.gencode.txt
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install cava
+python -m pip install "CAVA>=2.0.15"
+```
+
+If your package index does not yet provide a `CAVA` release with `cava_data`, install directly from GitHub with pip:
+
+```bash
+python -m pip install "CAVA @ git+https://github.com/sicotteh/CAVA.git@master"
 ```
 
 List published catalogs:

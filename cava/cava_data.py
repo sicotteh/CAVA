@@ -555,7 +555,7 @@ def _find_template(explicit: str | None) -> Path:
 
 def _render_config(template: str, database: Path) -> str:
     pattern = re.compile(
-        r"^(?P<prefix>\s*@ensembl\s*=\s*)(?P<value>.*?)(?P<eol>\r?\n)?$",
+        r"^(?P<prefix>[ \t]*@ensembl[ \t]*=[ \t]*)(?P<value>[^\r\n]*)(?P<eol>\r?\n)?$",
         re.IGNORECASE,
     )
     output: list[str] = []
