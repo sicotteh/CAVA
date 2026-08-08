@@ -971,6 +971,7 @@ def indexFile(f, options):
         seq_col=4,
         start_col=6,
         end_col=7,
+        zerobased=True,
         meta_char="#",
         force=True,
     )

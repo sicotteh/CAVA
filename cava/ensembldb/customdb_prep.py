@@ -16,7 +16,13 @@ def indexFile(input_file):
     sys.stdout.write("Indexing output file... ")
     sys.stdout.flush()
     pysam.tabix_index(
-        input_file + ".gz", seq_col=4, start_col=6, end_col=7, meta_char="#", force=True
+        input_file + ".gz",
+        seq_col=4,
+        start_col=6,
+        end_col=7,
+        zerobased=True,
+        meta_char="#",
+        force=True,
     )
     sys.stdout.write("OK\n")
 

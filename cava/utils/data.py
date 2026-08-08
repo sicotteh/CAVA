@@ -349,7 +349,17 @@ class Ensembl(object):
                         "ERROR: Error opening CESIS File=ensembldb/" + selenofile + "\n"
                     )
         else:
-            fid = _open_ensembldb_resource("SECIS_in_refseq_pos.txt")
+            # For catalogs installed via cava_data, prefer the sidecar that shares
+            # the catalog basename (CATALOG.gz -> CATALOG.cesis).
+            catalog_file = str(options.args.get("ensembl", ""))
+            adjacent_selenofile = re.sub(r"\.gz$", ".cesis", catalog_file)
+            if (
+                adjacent_selenofile != catalog_file
+                and os.path.isfile(adjacent_selenofile)
+            ):
+                fid = open(adjacent_selenofile, "r")
+            else:
+                fid = _open_ensembldb_resource("SECIS_in_refseq_pos.txt")
 
         if fid is not None:
             secis_lines = fid.readlines()

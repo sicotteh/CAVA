@@ -501,8 +501,11 @@ def parse_GTF(filename="", options=None, genesdata=None, transIDs=None):
                 for x in tags:
                     x = x.strip()
                     if x.startswith("exon_number"):
-                        s = x[x.find('"') + 1 :]
-                        idx = int(s[: s.find('"')]) - 1
+                        # Accept both quoted and unquoted GTF styles:
+                        # exon_number "3";  and exon_number 3;
+                        match = re.search(r"exon_number\s+\"?(\d+)\"?", x)
+                        if match:
+                            idx = int(match.group(1)) - 1
                         break
                 start = int(cols[3]) - 1
                 end = int(cols[4])
@@ -587,25 +590,23 @@ def sort_tmpfile(f):
 
 # Retrieve tag value
 def getValue(tags, tag):
-    ret = None
+    pattern = re.compile(r"^" + re.escape(tag) + r"\s+\"?([^\";]+)\"?$")
     for x in tags:
         x = x.strip()
-        if x.startswith(tag):
-            s = x[x.find('"') + 1 :]
-            ret = s[: s.find('"')]
-            break
-    return ret
+        match = pattern.match(x)
+        if match:
+            return match.group(1).strip()
+    return None
 
 
 # Retrieve boolean tag value
 def getBooleanValue(tags, tag):
+    pattern = re.compile(r"^tag\s+\"?([^\";]+)\"?$")
     for x in tags:
         x = x.strip()
-        if x.startswith("tag"):
-            s = x[x.find('"') + 1 :]
-            value = s[: s.find('"')]
-            if value == tag:
-                return True
+        match = pattern.match(x)
+        if match and match.group(1).strip() == tag:
+            return True
     return False
 
 
@@ -933,6 +934,7 @@ def indexFile(f, options):
         seq_col=4,
         start_col=6,
         end_col=7,
+        zerobased=True,
         meta_char="#",
         force=True,
     )

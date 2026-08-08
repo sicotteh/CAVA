@@ -1285,6 +1285,15 @@ class Tr_store:
 class Transcript(object):
     # Constructor
     def __init__(self, line):
+        def _safe_int(value, default=-1):
+            try:
+                text = str(value).strip()
+                if text in {"", ".", "NA", "N/A", "None", "null"}:
+                    return default
+                return int(text)
+            except Exception:
+                return default
+
         self.exons = []
         cols = line.split("\t")
         self.TRANSCRIPT = cols[0]
@@ -1295,11 +1304,23 @@ class Transcript(object):
         self.strand = int(cols[5])
         self.transcriptStart = int(cols[6])  # 0-based, lowest coordinate if first exon
         self.transcriptEnd = int(cols[7])  # 1-bases upper coordinate
-        self.codingStart = int(cols[8])  # in cDNA coordinated (1st base is 1)
-        self.codingStartGenomic = int(cols[9])  # coding start genomic 1-based
-        self.codingEndGenomic = int(
+        self.codingStart = _safe_int(cols[8])  # in cDNA coordinated (1st base is 1)
+        self.codingStartGenomic = _safe_int(cols[9])  # coding start genomic 1-based
+        self.codingEndGenomic = _safe_int(
             cols[10]
         )  # coding end genomic 1-based (includes stop codon)
+        self.has_valid_cds = (
+            self.codingStart > 0
+            and self.codingStartGenomic > 0
+            and self.codingEndGenomic > 0
+            and (
+                (self.strand == 1 and self.codingEndGenomic >= self.codingStartGenomic)
+                or (
+                    self.strand == -1
+                    and self.codingStartGenomic >= self.codingEndGenomic
+                )
+            )
+        )
         self.is_selenocysteine = False
         self.SECIS_data = None
         # Initializing and adding exons
@@ -1312,6 +1333,8 @@ class Transcript(object):
         self.cds_len = 0
         foundStart = False
         self.intron_length = []
+        if not self.has_valid_cds:
+            return
         for ex in self.exons:
             if self.strand == 1:
                 if (
@@ -1830,6 +1853,9 @@ class Transcript(object):
     # Ideally, call this function first with variant = None to get exonseq .. to use in 2nd call of this function.
 
     def getProteinSequence(self, reference, variant, exonseqs, codon_usage):
+        if not self.has_valid_cds:
+            return "", exonseqs, "", ""
+
         # Translating coding sequence
         codon_usage = codon_usage
         # returns exonsseq of the alternate allele unless variant is None

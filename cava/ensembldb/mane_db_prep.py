@@ -3,6 +3,7 @@
 import datetime
 import gzip
 import os
+import re
 import sys
 from operator import itemgetter
 
@@ -21,6 +22,80 @@ failed_conversions["GENE"] = set()
 failed_conversions["GENETYPE"] = set()
 failed_conversions["TRANSTYPE"] = set()
 failed_conversions["ENST"] = set()
+
+PRIMARY_MANE_CONTIGS = {
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "MT",
+    "X",
+    "Y",
+}
+reported_alt_mane_records = set()
+
+
+def _mane_transcript_base(identifier):
+    return re.sub(r"_[0-9]+$", "", identifier or "")
+
+
+def _mane_record_is_selected(contig, tags, options):
+    if contig in PRIMARY_MANE_CONTIGS:
+        return True
+
+    transcript = getValue(tags, "transcript_id") or ""
+    gene_values = {
+        value.upper()
+        for value in (
+            getValue(tags, "gene_name"),
+            getValue(tags, "gene"),
+            getValue(tags, "gene_id"),
+        )
+        if value
+    }
+    requested_genes = {
+        value.upper() for value in getattr(options, "include_alt_genes", set())
+    }
+    requested_transcripts = set(
+        getattr(options, "include_alt_transcripts", set())
+    )
+
+    selected = bool(gene_values & requested_genes)
+    selected = selected or transcript in requested_transcripts
+    selected = selected or _mane_transcript_base(transcript) in requested_transcripts
+
+    if selected:
+        key = (contig, transcript, tuple(sorted(gene_values)))
+        if key not in reported_alt_mane_records:
+            reported_alt_mane_records.add(key)
+            print(
+                "Including requested MANE alt-contig transcript: "
+                + contig
+                + "\t"
+                + ",".join(sorted(gene_values))
+                + "\t"
+                + transcript
+            )
+    return selected
 
 
 def warn(transcript):
@@ -366,7 +441,7 @@ def build_tx_to_prot_dict(opener, filename):
     return tx_to_prot_dict
 
 
-def parse_GTF(filename="", genesdata=None):
+def parse_GTF(filename="", genesdata=None, options=None):
     first = True
     prevenst = ""
     transcript = None
@@ -393,43 +468,15 @@ def parse_GTF(filename="", genesdata=None):
 
         cols = line.split("\t")
 
-        # Only consider transcripts on the following chromosomes
-        if cols[0] not in [
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-            "10",
-            "11",
-            "12",
-            "13",
-            "14",
-            "15",
-            "16",
-            "17",
-            "18",
-            "19",
-            "20",
-            "21",
-            "22",
-            "23",
-            "MT",
-            "X",
-            "Y",
-        ]:
-            continue
-
-        # Consider only certain types of lines
+        # Consider only records used to build a CAVA transcript.
         if cols[2] not in ["exon", "transcript", "start_codon", "stop_codon"]:
             continue
 
-        # Annotation tags
+        # Parse attributes before filtering contigs. This preserves historical
+        # primary-contig behavior while allowing explicit opt-in alternate loci.
         tags = cols[8].split(";")
+        if not _mane_record_is_selected(cols[0], tags, options):
+            continue
         # Retrieve transcript ID
         enst = getValue(tags, "transcript_id")
 
@@ -781,7 +828,13 @@ def indexFile(f):
     sys.stdout.write(f"Indexing output file {f}.gz... ")
     sys.stdout.flush()
     pysam.tabix_index(
-        f + ".gz", seq_col=4, start_col=6, end_col=7, meta_char="#", force=True
+        f + ".gz",
+        seq_col=4,
+        start_col=6,
+        end_col=7,
+        zerobased=True,
+        meta_char="#",
+        force=True,
     )
     sys.stdout.write("OK\n")
 
@@ -943,7 +996,9 @@ def write_out(source_compressed_gtf, options, transIDs, genesdata):
 
 def parse_gtf_loop(source_compressed_gtf, options, genesdata, transIDs):
     transcript, prevenst, first, genesdata = parse_GTF(
-        filename=source_compressed_gtf, genesdata=genesdata
+        filename=source_compressed_gtf,
+        genesdata=genesdata,
+        options=options,
     )
     sys.stdout.write("Done\n")
     sys.stdout.flush()

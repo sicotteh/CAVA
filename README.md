@@ -50,12 +50,68 @@ Use a virtual environment so CAVA and its Python dependencies stay isolated from
 4 INSTALLATION ON LINUX OR MAC
 ------------------------------
 
-### Install from PyPI
+### Prerequisites
+
+- Python 3.9+
+- `git`
+- `git-lfs` (required for downloading published catalog payloads)
+
+Install and initialize Git LFS once per machine:
+
+```bash
+git lfs install
+```
+
+### Option A: Pull source from GitHub directly (with LFS catalogs)
+
+```bash
+git clone https://github.com/sicotteh/CAVA.git
+cd CAVA
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
+
+Download only the catalog payload you want from Git LFS (example: GENCODE 50 GRCh38):
+
+```bash
+git lfs pull --include="catalogs/files/CAVA_GENCODE_50_GRCh38.gz,catalogs/files/CAVA_GENCODE_50_GRCh38.gz.tbi,catalogs/files/CAVA_GENCODE_50_GRCh38.txt,catalogs/files/CAVA_GENCODE_50_GRCh38.cesis"
+```
+
+Create a config from the template and set paths:
+
+```bash
+cp config_template.txt config.gencode.txt
+# Edit config.gencode.txt:
+#   @reference = /absolute/path/to/your/reference.fa
+#   @ensembl = /absolute/path/to/CAVA/catalogs/files/CAVA_GENCODE_50_GRCh38.gz
+```
+
+### Option B: Install from pip/PyPI and fetch catalogs with `cava_data`
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install cava
+```
+
+List published catalogs:
+
+```bash
+cava_data list
+```
+
+Install one catalog payload set into a local data directory:
+
+```bash
+cava_data install gencode-50-grch38 ./cava_data --force
+```
+
+Create a config file that points `@ensembl` to the installed catalog:
+
+```bash
+cava_data config gencode-50-grch38 ./cava_data --output config.gencode.txt --force
+# Then edit @reference in config.gencode.txt to your local FASTA path.
 ```
 
 In a new terminal session, reactivate the same environment with:
@@ -92,35 +148,25 @@ If a source build of `pycurl` is required on your operating system, install the 
 5 RUNNING CAVA
 --------------
 
-Before using CAVA, you will need to create a config file. You have to provide two main components.
-1) A fasta reference file and matching index file .fai
-   If you do not have a file in your space.
-   cd CAVA/cava/data
-   wget http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz 
-   gunzip -c hg38.fa.gz > tmp.GRCh38.fa
-   samtools faidx  tmp.GRCh38.fa
+Before using CAVA, create a config file that provides:
 
-2) Create a database of transcripts for which to base your annotations from.
-Details can be found in [this README](cava/ensembldb/README.md). In short, we recomend using MANE transcripts, 
-so to get started, you would simply:
+1) A reference FASTA (`@reference`) and matching `.fai`.
+2) A transcript catalog (`@ensembl`) from either:
+   - GitHub + Git LFS payloads in `catalogs/files`, or
+   - `cava_data install ...` output directory.
+
+If you need a quick reference FASTA example:
+
 ```bash
-# Download GTF files for either RefSeq or ENSEMB
-# Option 1: Use our script (after you install CAVA)
-python3 MANE.py --no_hg19 -e 1.1 --outdir data
-
-
-# Option 2: Download Manually (adjust version numbers to latest)
-wget -O data/ENST.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.1/MANE.GRCh38.v1.1.ensembl_genomic.gtf.gz and
-wget -O data/RefSeq.gtf.gz ftp://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.1/MANE.GRCh38.v1.1.refseq_genomic.gtf.gz
-
-# Separate into ENST and NM Transcripts
-zcat data/ENST.gtf.gz |cut -f9|cut -f4 -d' '|grep ENST|sed 's/;//;s/\"//g'|sort -u > data/ENST.txt
-zcat data/RefSeq.gtf.gz |cut -f9|cut -f4 -d' '|grep "NM_"|sed 's/;//;s/\"//g'|sort -u > data/RefSeq.txt
+wget http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz
+gunzip -c hg38.fa.gz > hg38.fa
+samtools faidx hg38.fa
 ```
-Finally, create a config.txt files using the provided config_template.txt, but provide the location of the fasta reference and the ensembl transcript database you dowloaded. CAVA then can be run with the following simple command.
+
+Run CAVA with:
 
 ```bash
-python -m cava.CAVA -c config.txt -i input.vcf -o output
+python -m cava.CAVA -c config.gencode.txt -i input.vcf -o output
 ```
 
 It requires three command line arguments: 
