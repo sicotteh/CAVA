@@ -2,3 +2,5 @@ catalogs/files/*.gz filter=lfs diff=lfs merge=lfs -text
 catalogs/files/*.gz.tbi filter=lfs diff=lfs merge=lfs -text
 catalogs/files/*.txt filter=lfs diff=lfs merge=lfs -text
 catalogs/files/*.cesis filter=lfs diff=lfs merge=lfs -text
+.fa filter=lfs diff=lfs merge=lfs -text
+*.fa filter=lfs diff=lfs merge=lfs -text
