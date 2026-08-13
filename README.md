@@ -194,7 +194,7 @@ CLI flags:
 Dependencies:
 
 - `--splitBasedOnProtein` requires `--parseHaplotype`.
-- `--splitadjacentprotein` requires `--parseHaplotype`.
+- `--splitAdjacentProtein` requires `--parseHaplotype`.
 
 Atomic ID encoding:
 

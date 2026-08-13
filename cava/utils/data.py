@@ -1419,7 +1419,7 @@ class Ensembl(object):
                     csn_plus_alt_str = "."
 
             else:
-                csn_plus_str, protchange_plus, csn_plus_alt_atr = (
+                csn_plus_str, protchange_plus, csn_plus_alt_str = (
                     ".",
                     (".", ".", "."),
                     ".",
