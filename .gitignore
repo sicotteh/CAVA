@@ -28,3 +28,17 @@ CAVA.egg-info/
 /.venv/
 venv/
 
+# Virtual environments (recursive)
+**/.venv/
+**/.venv*/
+**/venv/
+**/venv*/
+**/virtualenv/
+**/.virtualenv/
+
+# Build virtualenv directories (recursive)
+**/build/venv/
+**/build/venv*/
+**/build/.venv/
+**/build/.venv*/
+
