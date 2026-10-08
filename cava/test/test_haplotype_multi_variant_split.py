@@ -1,7 +1,11 @@
+import io
 import os
 import tempfile
 import unittest
 from collections import defaultdict
+from contextlib import redirect_stdout
+from itertools import product
+from unittest.mock import patch
 from urllib.parse import unquote
 
 from cava.utils import core
@@ -103,7 +107,7 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
         )
         return (atoms[0].chrom, pos, row_id, ref, alt)
 
-    def _run_rows(self, rows, split_based=True, split_adj=False):
+    def _run_rows(self, rows, split_based=True, split_adj=False, return_raw=False):
         with tempfile.TemporaryDirectory() as td:
             cfg = os.path.join(td, "cfg.txt")
             inp = os.path.join(td, "in.vcf")
@@ -157,6 +161,8 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
 
             outrows = []
             with open(outprefix + ".vcf", "r", encoding="utf-8") as f:
+                if return_raw:
+                    return f.read()
                 for line in f:
                     if line.startswith("#"):
                         continue
@@ -186,6 +192,83 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
                         }
                     )
             return outrows
+
+    def test_subset_sizes_preserve_exhaustive_cases(self):
+        components = ([], ["?"], ["."], ["Ala2Val"], ["Ala2Val", "Gly3Arg"])
+        for count, full, split, force, splice in product(
+            range(2, 9), components, (False, True), (False, True), (False, True)
+        ):
+            with self.subTest(count=count, full=full, split=split, force=force, splice=splice):
+                sizes = list(haplotype.protein_partition_subset_sizes(count, full, split, force, splice))
+                if force or (split and full == ["?"]):
+                    self.assertEqual(sizes, [1])
+                elif splice or len(full) > 1:
+                    self.assertEqual(sizes, list(range(1, count)))
+                else:
+                    self.assertEqual(sizes, [1])
+        for count in (0, 1):
+            self.assertEqual(
+                list(haplotype.protein_partition_subset_sizes(count, [], True, True, True)),
+                [],
+            )
+
+    def test_subset_shortcuts_preserve_complete_vcf_output(self):
+        tokens = []
+        for position in range(7675155, 7675161):
+            ref = self.reference.getReference("17", position, position).upper()
+            alt = "A" if ref != "A" else "C"
+            tokens.append(f"17_{position}_{ref}_{alt}")
+        rows = [self._build_row_from_tokens(tokens[:count]) for count in (2, 3, 4, 6)]
+        rows += [
+            self._build_row_from_tokens([
+                "13_32316461_A_C", "13_32316462_T_C", "13_32316463_G_C", "13_32316467_A_C",
+            ]),
+            self._build_row_from_tokens([
+                "13_98463673_A_G", "13_98463692_C_A", "13_98463693_G_A", "13_98463696_G_A",
+            ]),
+            (
+                "chr17", 7675056,
+                "chr17_7675054_A_AT;chr17_7675061_TC_T;chr17_7675070_C_CT;chr17_7675076_TG_T",
+                "CGCTATCTGAGCAGCGCTCATG", "TCGCTATTGAGCAGCTGCTCAT",
+            ),
+            (
+                "chr17", 7675065,
+                "chr17_7675065_A_G;chr17_7675070_C_CT;chr17_7675074_C_T;chr17_7675076_TG_T",
+                "AGCAGCGCTCATG", "GGCAGCTGCTTAT",
+            ),
+        ]
+        for split_based, split_adj in product((False, True), repeat=2):
+            with self.subTest(split_based=split_based, split_adj=split_adj):
+                with redirect_stdout(io.StringIO()):
+                    optimized = self._run_rows(rows, split_based, split_adj, return_raw=True)
+                    with patch.object(
+                        haplotype, "protein_partition_subset_sizes",
+                        side_effect=lambda count, *args: range(1, count),
+                    ):
+                        exhaustive = self._run_rows(rows, split_based, split_adj, return_raw=True)
+                self.assertEqual(optimized, exhaustive)
+
+    def test_single_component_shortcut_reduces_annotation_calls(self):
+        tokens = []
+        for position in range(7675155, 7675161):
+            ref = self.reference.getReference("17", position, position).upper()
+            alt = "A" if ref != "A" else "C"
+            tokens.append(f"17_{position}_{ref}_{alt}")
+        row = self._build_row_from_tokens(tokens)
+        original_annotate = core.Record.annotate
+        with redirect_stdout(io.StringIO()):
+            with patch.object(core.Record, "annotate", autospec=True, side_effect=original_annotate) as annotate:
+                optimized = self._run_rows([row], return_raw=True)
+                optimized_count = annotate.call_count
+            with patch.object(
+                haplotype, "protein_partition_subset_sizes",
+                side_effect=lambda count, *args: range(1, count),
+            ), patch.object(core.Record, "annotate", autospec=True, side_effect=original_annotate) as annotate:
+                exhaustive = self._run_rows([row], return_raw=True)
+                exhaustive_count = annotate.call_count
+        self.assertEqual(optimized, exhaustive)
+        self.assertEqual(optimized_count, 7)
+        self.assertEqual(exhaustive_count, 63)
 
     def test_four_variant_splice_impact_is_not_worse_than_components(self):
         donor_side_tokens = [

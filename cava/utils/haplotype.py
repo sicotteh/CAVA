@@ -96,14 +96,19 @@ def _trim_atomic_edit(atom: AtomicEdit) -> Tuple[int, int, str, str]:
 
 
 def _minimal_vcf(pos: int, ref: str, alt: str) -> Tuple[int, str, str]:
-    while len(ref) > 1 and len(alt) > 1 and ref[-1] == alt[-1]:
-        ref = ref[:-1]
-        alt = alt[:-1]
-    while len(ref) > 1 and len(alt) > 1 and ref[0] == alt[0]:
-        ref = ref[1:]
-        alt = alt[1:]
-        pos += 1
-    return pos, ref, alt
+    ref_end = len(ref)
+    alt_end = len(alt)
+    suffix = 0
+    suffix_limit = min(ref_end, alt_end) - 1
+    while suffix < suffix_limit and ref[ref_end - suffix - 1] == alt[alt_end - suffix - 1]:
+        suffix += 1
+    ref_end -= suffix
+    alt_end -= suffix
+    prefix = 0
+    prefix_limit = min(ref_end, alt_end) - 1
+    while prefix < prefix_limit and ref[prefix] == alt[prefix]:
+        prefix += 1
+    return pos + prefix, ref[prefix:ref_end], alt[prefix:alt_end]
 
 
 def _fixture_key(chrom: str, pos: int, row_id: str, ref: str, alt: str):
@@ -279,41 +284,20 @@ def _reconstruct_from_atoms(
                 f"Atomic REF mismatch against genome for token {atom.token}: expected {observed}, saw {atom.ref}"
             )
 
-        prefix = 0
-        while prefix < min(len(atom.ref), len(atom.alt)) and atom.ref[prefix] == atom.alt[prefix]:
-            prefix += 1
-
-        suffix = 0
-        while suffix < min(len(atom.ref) - prefix, len(atom.alt) - prefix) and atom.ref[
-            len(atom.ref) - 1 - suffix
-        ] == atom.alt[len(atom.alt) - 1 - suffix]:
-            suffix += 1
-
-        ref_mid = atom.ref[prefix : len(atom.ref) - suffix if suffix else len(atom.ref)]
-        alt_mid = atom.alt[prefix : len(atom.alt) - suffix if suffix else len(atom.alt)]
-        start0 = atom_start0 + prefix
-        end0 = start0 + len(ref_mid)
-
-        if ref_mid:
-            trimmed = reference.getReference(chrom, start0 + 1, end0)
-            if not trimmed:
-                raise HaplotypeError(
-                    f"Unable to fetch trimmed reference sequence for atomic token {atom.token}"
-                )
-            if trimmed.upper() != ref_mid:
-                raise HaplotypeError(
-                    f"Trimmed REF mismatch against genome for token {atom.token}: expected {trimmed.upper()}, saw {ref_mid}"
-                )
-
+        start, end0, _, alt_mid = _trim_atomic_edit(atom)
+        start0 = start - 1
         edits.append((start0, end0, alt_mid, atom.token))
 
     spans = [edit for edit in edits if edit[1] > edit[0]]
-    for idx, left in enumerate(spans):
-        for right in spans[idx + 1 :]:
-            if max(left[0], right[0]) < min(left[1], right[1]):
-                raise HaplotypeError(
-                    f"Overlapping or unsorted atomic edits: {left[3]} and {right[3]}"
-                )
+    ordered_edits = sorted(edits, key=lambda edit: (edit[0], edit[1]), reverse=True)
+    ordered_spans = [edit for edit in reversed(ordered_edits) if edit[1] > edit[0]]
+    if any(left[1] > right[0] for left, right in zip(ordered_spans, ordered_spans[1:])):
+        for idx, left in enumerate(spans):
+            for right in spans[idx + 1 :]:
+                if max(left[0], right[0]) < min(left[1], right[1]):
+                    raise HaplotypeError(
+                        f"Overlapping or unsorted atomic edits: {left[3]} and {right[3]}"
+                    )
 
     span_start0 = min(min(edit[0] for edit in edits), min(atom_starts))
     span_end0 = max(max(edit[1] for edit in edits), max(atom_ends))
@@ -321,13 +305,21 @@ def _reconstruct_from_atoms(
     if not full_ref:
         raise HaplotypeError("Unable to fetch reference sequence for haplotype span")
 
-    full_alt = full_ref
-    for edit_start0, edit_end0, replacement, _ in sorted(
-        edits, key=lambda edit: (edit[0], edit[1]), reverse=True
-    ):
-        i = edit_start0 - span_start0
-        j = edit_end0 - span_start0
-        full_alt = full_alt[:i] + replacement + full_alt[j:]
+    if all(left[0] >= right[1] for left, right in zip(ordered_edits, ordered_edits[1:])):
+        chunks = []
+        cursor = span_end0 - span_start0
+        for edit_start0, edit_end0, replacement, _ in ordered_edits:
+            chunks.append(full_ref[edit_end0 - span_start0:cursor])
+            chunks.append(replacement)
+            cursor = edit_start0 - span_start0
+        chunks.append(full_ref[:cursor])
+        full_alt = "".join(reversed(chunks))
+    else:
+        full_alt = full_ref
+        for edit_start0, edit_end0, replacement, _ in ordered_edits:
+            start = edit_start0 - span_start0
+            end = edit_end0 - span_start0
+            full_alt = full_alt[:start] + replacement + full_alt[end:]
 
     pos, ref, alt = _minimal_vcf(span_start0 + 1, full_ref, full_alt)
     return pos, ref, alt
@@ -526,6 +518,24 @@ def maybe_build_splitnearby_csn(
 
     newp = _protein_string_from_component_list(comps)
     return csn.split("_p.", 1)[0] + "_p." + newp
+
+
+def protein_partition_subset_sizes(
+    atom_count: int,
+    full_components: List[str],
+    split_by_protein: bool,
+    force_split_by_region: bool,
+    needs_splice_decomposition: bool,
+) -> range:
+    if atom_count <= 1:
+        return range(1, atom_count)
+    if (
+        force_split_by_region
+        or (split_by_protein and full_components == ["?"])
+        or (len(full_components) <= 1 and not needs_splice_decomposition)
+    ):
+        return range(1, 2)
+    return range(1, atom_count)
 
 
 def choose_protein_partitions(

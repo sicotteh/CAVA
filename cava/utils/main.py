@@ -537,7 +537,13 @@ class SingleJob(multiprocessing.Process):
                     singleton_essential_support = False
                     singleton_region_support = False
 
-                    for k in range(1, n):
+                    for k in haplotype.protein_partition_subset_sizes(
+                        n,
+                        full_components,
+                        split_by_protein,
+                        force_split_by_region,
+                        needs_splice_decomposition,
+                    ):
                         for idxs in itertools.combinations(range(n), k):
                             subset = [atoms[i] for i in idxs]
                             subset_record = subset_records_by_idxs.get(idxs)
