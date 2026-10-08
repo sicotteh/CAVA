@@ -804,6 +804,7 @@ class Record(object):
                 "TRINFO",
                 "LOC",
                 "CSN",
+                "CSNALT",
                 "PROTPOS",
                 "PROTREF",
                 "PROTALT",
@@ -817,6 +818,7 @@ class Record(object):
                 "CAVA_TRINFO",
                 "CAVA_LOC",
                 "CAVA_CSN",
+                "CAVA_CSNALT",
                 "CAVA_PROTPOS",
                 "CAVA_PROTREF",
                 "CAVA_PROTALT",
@@ -873,7 +875,7 @@ class Record(object):
             added = ""
             for i in range(len(flags)):
                 key = flags[i]
-                value = ",".join(flagvalues[i])
+                value = ",".join(flagvalues[i]).replace(";", "%3B")
                 if len(added) > 0:
                     added += ";"
                 if key.startswith("CAVA_"):
@@ -1032,6 +1034,9 @@ class Record(object):
 
             if hasattr(self, "haplotype_hgvsc_override") and self.haplotype_hgvsc_override:
                 HGVSC = HGVSC_key + self.haplotype_hgvsc_override
+
+            HGVSC = HGVSC.replace(";", "%3B")
+            HGVSP = HGVSP.replace(";", "%3B")
 
             # Add multi-transcripts/multi-allele HGVS to output record
             if added == "":
@@ -2930,6 +2935,13 @@ def writeHeader(options, header, outfile, stdout, version):
         "##INFO=<ID="
         + prefix
         + 'CSN,Number=.,Type=String,Description="CSN annotation",Source="CAVA",Version="'
+        + version
+        + '">\n'
+    )
+    headerinfo += (
+        "##INFO=<ID="
+        + prefix
+        + 'CSNALT,Number=1,Type=String,Description="Alternate CSN annotation",Source="CAVA",Version="'
         + version
         + '">\n'
     )

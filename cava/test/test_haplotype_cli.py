@@ -1,3 +1,4 @@
+import io
 import os
 import tempfile
 import unittest
@@ -37,6 +38,70 @@ class TestHaplotypeCLI(unittest.TestCase):
                 os.unlink(out.name)
             except OSError:
                 pass
+
+    def test_header_defines_csnalt_as_single_string(self):
+        options = core.Options(os.path.join(self.repo_root, "config_template.txt"))
+        for prefix in (False, True):
+            with self.subTest(prefix=prefix):
+                options.args["prefix"] = prefix
+                out = io.StringIO()
+                core.writeHeader(options, "", out, False, "2.0.15")
+                key = "CAVA_CSNALT" if prefix else "CSNALT"
+                self.assertIn(
+                    "##INFO=<ID=" + key + ",Number=1,Type=String,",
+                    out.getvalue(),
+                )
+
+    def test_record_output_encodes_annotation_semicolons(self):
+        options = core.Options(os.path.join(self.repo_root, "config_template.txt"))
+        annotation = "c.477_486delinsACGT_p.[(Met159Met;Ala160Ala;Val161Val;Thr162Ala)]"
+        for prefix in (False, True):
+            with self.subTest(prefix=prefix):
+                options.args["prefix"] = prefix
+                record = core.Record(
+                    "chr17\t7675155\t.\tG\tA\t.\tPASS\tCSNALT=old;CAVA_CSNALT=old;DP=7\n",
+                    options, None, self.reference,
+                )
+                for key in ("CSN", "CSNALT", "ALTANN"):
+                    record.variants[0].addFlag(key, annotation)
+                record.variants[0].addFlag("TRANSCRIPT", "NM_TEST")
+                record.variants[0].addFlag("GENE", "TEST")
+                options.transcript2protein = {"NM_TEST": "NP_TEST"}
+                record.haplotype_hgvsc_override = "c.[477G>A;486T>C]"
+                record.variants[0].addFlag("CUSTOM", "already%3Bencoded;raw")
+                out = io.StringIO()
+                record.output("VCF", out, options, set(), set(), set(), False)
+                fields = out.getvalue().strip().split("\t")[7].split(";")
+                self.assertTrue(all("=" in field for field in fields))
+                pairs = dict(field.split("=", 1) for field in fields)
+                tag_prefix = "CAVA_" if prefix else ""
+                for key in ("CSN", "CSNALT", "ALTANN"):
+                    self.assertEqual(
+                        pairs[tag_prefix + key], annotation.replace(";", "%3B")
+                    )
+                self.assertEqual(pairs[tag_prefix + "CUSTOM"], "already%3Bencoded%3Braw")
+                self.assertEqual(
+                    pairs[tag_prefix + "HGVSc"], "c.[477G>A%3B486T>C]"
+                )
+                self.assertEqual(
+                    pairs[tag_prefix + "HGVSp"],
+                    "NP_TEST:p.([(Met159Met%3BAla160Ala%3BVal161Val%3BThr162Ala)])",
+                )
+                self.assertNotIn("old", out.getvalue())
+                self.assertEqual(pairs["DP"], "7")
+                self.assertEqual(record.variants[0].getFlag("CSNALT"), annotation)
+
+    def test_split_adjacent_protein_has_balanced_delimiters(self):
+        annotation = haplotype.maybe_build_splitnearby_csn(
+            "c.477_486delinsACGT_p.Met159_Thr162delinsMetAlaValAla",
+            "159-162", "MAVT", "MAVA",
+        )
+        self.assertEqual(
+            annotation,
+            "c.477_486delinsACGT_p.[(Met159Met;Ala160Ala;Val161Val;Thr162Ala)]",
+        )
+        self.assertEqual(annotation.count("("), annotation.count(")"))
+        self.assertEqual(annotation.count("["), annotation.count("]"))
 
     def test_split_modes_emit_additional_records(self):
         with tempfile.TemporaryDirectory() as td:
@@ -121,7 +186,12 @@ class TestHaplotypeCLI(unittest.TestCase):
                 self.assertIn("CAVA_ORIGHAPLOTYPE=", line)
                 self.assertIn("CAVA_HAPLOTYPE=", line)
                 info = line.split("\t")[7]
+                self.assertTrue(all("=" in field for field in info.split(";")))
                 pairs = dict(x.split("=", 1) for x in info.split(";") if "=" in x)
+                for key in ("CSN", "CSNALT", "HGVSp"):
+                    value = pairs.get(key, "")
+                    self.assertEqual(value.count("("), value.count(")"), value)
+                    self.assertEqual(value.count("["), value.count("]"), value)
                 if pairs.get("CAVA_ORIGHAPLOTYPE") != pairs.get("CAVA_HAPLOTYPE"):
                     saw_subset = True
                 if "CSN" in pairs:
