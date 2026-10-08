@@ -1066,20 +1066,8 @@ class Record(object):
             # Iterating through variants
             #   Print one line for each alt-allele*Variant Combination
             c = 0
-            flags = []
-            flagvalues = []
+            fields = tsv_annotation_fields(options)
             for variant in outvariants:
-                for i in range(len(variant.flags)):
-                    key = variant.flags[i]
-                    value = variant.flagvalues[i]
-                    if value == "":
-                        value = "."
-                    if key in flags:
-                        flagvalues[flags.index(key)].append(value)
-                    else:
-                        flags.append(key)
-                        flagvalues.append([value])
-
                 # Standardize chromosome M notation if options specify
                 if options.args["normalized_mitochondrial_chrom"] == "MT":
                     if self.chrom == "chrM":
@@ -1117,8 +1105,8 @@ class Record(object):
                     ].split(":")
                     N = len(transcripts_list)
                     if N > 0 and ("GENE" in variant.flags) and ("CSN" in variant.flags):
-                        gene_list = variant.flagvalues[flags.index("GENE")].split(":")
-                        csn_list = variant.flagvalues[flags.index("CSN")].split(":")
+                        gene_list = variant.getFlag("GENE").split(":")
+                        csn_list = variant.getFlag("CSN").split(":")
                     else:
                         if len(transcripts_list) > 0:
                             print(
@@ -1149,39 +1137,12 @@ class Record(object):
                 for i in range(N):
                     # Creating second part of the TSV record - Transcript-specific per line.
                     rest = ""
-                    for j in range(len(variant.flags)):
-                        # First, do not split annotation that is not transcript specific
-                        if not variant.flags[j] in [
-                            "TRANSCRIPT",
-                            "GENE",
-                            "GENEID",
-                            "TRINFO",
-                            "LOC",
-                            "CSN",
-                            "CLASS",
-                            "SO",
-                            "IMPACT",
-                            "ALTANN",
-                            "ALTCLASS",
-                            "ALTSO",
-                            "ALTFLAG",
-                            "PROTPOS",
-                            "PROTREF",
-                            "PROTALT",
-                            "CAVA_ORIGHAPLOTYPE",
-                            "CAVA_HAPLOTYPE",
-                        ]:
-                            value = variant.flagvalues[j]
-                            if value == "":
-                                value = "."
-                            rest += "\t" + value
-                            continue
-
-                        values = variant.flagvalues[j].split(":")
-                        value = values[i]
-                        if value == "":
-                            value = "."
-                        rest += "\t" + value
+                    for key in fields:
+                        value = variant.getFlag(key) if key in variant.flags else "."
+                        if key not in {"TYPE", "DBSNP", "HGVSg"}:
+                            values = value.split(":")
+                            value = values[i] if i < len(values) else "."
+                        rest += "\t" + (value or ".")
                     if (
                         len(transcripts_list) == 0
                         or len(gene_list) != len(transcripts_list)
@@ -1198,7 +1159,6 @@ class Record(object):
                             HGVSC = contig + "(" + hgtranscript + "):"
                         try:
                             cdna, prot = csn_list[i].split("_p.")
-                            prot = prot.replace("X", "Ter")
                         except ValueError:  # Example c.802-51_802-14del38, splice
                             cdna = csn_list[i]
                             prot = "."
@@ -1238,6 +1198,17 @@ class Record(object):
                                             + hgtranscript
                                             + " not in transcript2protein file\n"
                                         )
+                    if getattr(self, "haplotype_hgvsc_override", ""):
+                        override_values = re.split(
+                            r":(?=[^:]+\):c\.|\.(?:$|:))",
+                            self.haplotype_hgvsc_override,
+                        )
+                        HGVSC = (
+                            override_values[i]
+                            if len(override_values) == N
+                            else self.haplotype_hgvsc_override
+                        )
+
                     # Writing record to the output file
                     orig_haplotype = (
                         variant.getFlag("CAVA_ORIGHAPLOTYPE")
@@ -1249,33 +1220,24 @@ class Record(object):
                         if "CAVA_HAPLOTYPE" in variant.flags
                         else "."
                     )
+                    annotation_columns = re.sub(
+                        r"%3[bB]",
+                        ";",
+                        rest
+                        + "\t"
+                        + HGVSC
+                        + "\t"
+                        + HGVSP
+                        + "\t"
+                        + orig_haplotype
+                        + "\t"
+                        + haplotype,
+                    )
+                    output_line = record + annotation_columns
                     if stdout:
-                        print(
-                            record
-                            + rest
-                            + "\t"
-                            + HGVSC
-                            + "\t"
-                            + HGVSP
-                            + "\t"
-                            + orig_haplotype
-                            + "\t"
-                            + haplotype
-                        )
+                        print(output_line)
                     else:
-                        outfile.write(
-                            record
-                            + rest
-                            + "\t"
-                            + HGVSC
-                            + "\t"
-                            + HGVSP
-                            + "\t"
-                            + orig_haplotype
-                            + "\t"
-                            + haplotype
-                            + "\n"
-                        )
+                        outfile.write(output_line + "\n")
 
                 c += 1
 
@@ -2885,6 +2847,41 @@ def read_dict(options, tag):
     return ret
 
 
+def tsv_annotation_fields(options):
+    fields = ["TYPE"]
+    if options.args["ensembl"] not in {".", ""}:
+        fields += [
+            "TRANSCRIPT",
+            "GENE",
+            "GENEID",
+            "TRINFO",
+            "LOC",
+            "CSN",
+            "PROTPOS",
+            "PROTREF",
+            "PROTALT",
+            "CSNALT",
+        ]
+        ontology = options.args["ontology"].upper()
+        if ontology in {"CLASS", "BOTH"}:
+            fields.append("CLASS")
+        if ontology in {"SO", "BOTH"}:
+            fields.append("SO")
+        if options.args["impactdef"] not in {".", ""}:
+            fields.append("IMPACT")
+        if options.args["givealt"]:
+            fields.append("ALTANN")
+            if ontology in {"CLASS", "BOTH"}:
+                fields.append("ALTCLASS")
+            if ontology in {"SO", "BOTH"}:
+                fields.append("ALTSO")
+        if not options.args["givealt"] or options.args["givealtflag"]:
+            fields.append("ALTFLAG")
+    if options.args["dbsnp"] not in {".", ""}:
+        fields.append("DBSNP")
+    return fields + ["HGVSg"]
+
+
 # Writing header information to output file
 def writeHeader(options, header, outfile, stdout, version):
     if options.args["prefix"]:
@@ -3107,35 +3104,12 @@ def writeHeader(options, header, outfile, stdout, version):
                 )
 
     if options.args["outputformat"] == "TSV":
-        hstr = "ID\tCHROM\tPOS\tREF\tALT\tQUAL\tFILTER\tTYPE"
-        if (not options.args["ensembl"] == ".") and (not options.args["ensembl"] == ""):
-            if options.args["ontology"].upper() == "CLASS":
-                hstr += "\tTRANSCRIPT\tGENE\tGENEID\tTRINFO\tLOC\tCSN\tPROTPOS\tPROTREF\tPROTALT\tCLASS"
-            if options.args["ontology"].upper() == "SO":
-                hstr += "\tTRANSCRIPT\tGENE\tGENEID\tTRINFO\tLOC\tCSN\tPROTPOS\tPROTREF\tPROTALT\tSO"
-            if options.args["ontology"].upper() == "BOTH":
-                hstr += "\tTRANSCRIPT\tGENE\tGENEID\tTRINFO\tLOC\tCSN\tPROTPOS\tPROTREF\tPROTALT\tCLASS\tSO"
-
-            if not (
-                options.args["impactdef"] == "." or options.args["impactdef"] == ""
-            ):
-                hstr += "\tIMPACT"
-
-            if options.args["givealt"]:
-                if options.args["ontology"].upper() == "CLASS":
-                    hstr += "\tALTANN\tALTCLASS"
-                if options.args["ontology"].upper() == "SO":
-                    hstr += "\tALTANN\tALTSO"
-                if options.args["ontology"].upper() == "BOTH":
-                    hstr += "\tALTANN\tALTCLASS\tALTSO"
-
-            if (not options.args["givealt"]) or options.args["givealtflag"]:
-                hstr += "\tALTFLAG"
-
-        if (not options.args["dbsnp"] == ".") and (not options.args["dbsnp"] == ""):
-            hstr += "\tDBSNP"
-
-        hstr += "\tHGVSG\tHGVSC\tHGVSP\tCAVA_ORIGHAPLOTYPE\tCAVA_HAPLOTYPE"
+        fields = [
+            "HGVSG" if key == "HGVSg" else key
+            for key in tsv_annotation_fields(options)
+        ]
+        hstr = "ID\tCHROM\tPOS\tREF\tALT\tQUAL\tFILTER\t" + "\t".join(fields)
+        hstr += "\tHGVSC\tHGVSP\tCAVA_ORIGHAPLOTYPE\tCAVA_HAPLOTYPE"
 
         if stdout:
             print(hstr)

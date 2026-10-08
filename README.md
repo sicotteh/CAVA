@@ -241,8 +241,12 @@ New INFO tags:
 
 Tab-delimited output:
 
+- TSV contains the same CAVA-generated annotation fields as VCF INFO, with one row per alternate allele and transcript. Existing input INFO fields are retained only in VCF output.
+- `CSNALT` follows `PROTALT`; missing annotations are written as `.`. Read columns by their header names rather than fixed offsets.
+- TSV annotation columns use literal semicolons: `%3B` and `%3b` are decoded when writing, while other percent escapes are preserved. VCF INFO continues to use `%3B`.
 - `HGVSG`, `HGVSC`, and `HGVSP` are followed by `CAVA_ORIGHAPLOTYPE` and `CAVA_HAPLOTYPE` columns.
 - The new haplotype columns mirror the INFO-tag content and are present in TSV output for both canonical and split records.
+- Haplotype `HGVSC` overrides are shared with VCF output and selected for each transcript. Haplotype columns appear once per row.
 
 INFO field encoding:
 
