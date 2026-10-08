@@ -7,6 +7,7 @@
 import os
 import sys
 import importlib.resources
+from collections import OrderedDict
 
 from . import conseq
 from . import core
@@ -145,6 +146,8 @@ class Ensembl(object):
         # Cache transcript positions
         self.transcript_bins = None
         self.chrom = None
+        self._overlap_cache = OrderedDict()
+        self._overlap_cache_capacity = 128
 
         self.nbins = 0
         self.binsize = 50000
@@ -379,6 +382,20 @@ class Ensembl(object):
     def fetch_overlapping_transcripts(
         self, chrom, startpos0, endpos1
     ):  # Give 0-base coordinate for start and 1-base for stop
+        if chrom not in self.contigs:
+            return []
+        key = (chrom, startpos0, endpos1, self.loadalltranscripts)
+        if key in self._overlap_cache:
+            self._overlap_cache.move_to_end(key)
+            return list(self._overlap_cache[key])
+        lines = tuple(self._fetch_overlapping_transcripts(chrom, startpos0, endpos1))
+        if self._overlap_cache_capacity > 0:
+            self._overlap_cache[key] = lines
+            while len(self._overlap_cache) > self._overlap_cache_capacity:
+                self._overlap_cache.popitem(last=False)
+        return list(lines)
+
+    def _fetch_overlapping_transcripts(self, chrom, startpos0, endpos1):
         # If current chromosome is not loaded, then
         #      get tabix iterator figure out length, figu.. and load all chromosomes lines
         # Check self.tabixfile.l
@@ -1726,6 +1743,8 @@ class Reference(object):
 
         lengths = self.fastafile.lengths
         references = self.fastafile.references
+        self._reference_lengths = dict(zip(references, lengths))
+        self._chrom_cache = {}
         self.reflens = dict()
         for i in range(0, len(lengths)):
             chrom = str(references[i])
@@ -1803,7 +1822,9 @@ class Reference(object):
         # XXX-HS To make faster, could retrieve large blocks of sequence (2K)
         # .. and cache them .. then next retrieval would be against the cache.
         #
-        goodchrom = core.convert_chrom(chrom, self.fastafile.references)
+        if chrom not in self._chrom_cache:
+            self._chrom_cache[chrom] = core.convert_chrom(chrom, self._reference_lengths)
+        goodchrom = self._chrom_cache[chrom]
         if goodchrom is None:
             return None
             # Fetching data from reference genome
@@ -1815,20 +1836,7 @@ class Reference(object):
             raise Exception(
                 "CAVA: getReference: Position requested before first base\n"
             )
-        try:
-            last = self.fastafile.get_reference_length(goodchrom)
-        except:
-            try:
-                last = self.fastafile.getReferenceLength(goodchrom)
-            except:
-                ichrom = self.fastafile.references.index(goodchrom)
-                if ichrom >= 0:
-                    last = self.fastafile.lengths[ichrom]
-                else:
-                    sys.stderr.write(
-                        "CAVA:ERROR: Invalid chromosome " + goodchrom
-                    )  # should not happen
-                    return None
+        last = self._reference_lengths[goodchrom]
 
         if end > last:
             # end = last

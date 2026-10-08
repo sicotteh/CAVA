@@ -11,7 +11,7 @@ from urllib.parse import unquote
 from cava.utils import core
 from cava.utils import haplotype
 from cava.utils import main
-from cava.utils.data import Reference
+from cava.utils.data import Ensembl, Reference
 
 START_CODON_MULTI_CASES = [
     {
@@ -107,7 +107,10 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
         )
         return (atoms[0].chrom, pos, row_id, ref, alt)
 
-    def _run_rows(self, rows, split_based=True, split_adj=False, return_raw=False):
+    def _run_rows(
+        self, rows, split_based=True, split_adj=False, return_raw=False,
+        load_all=True, output_format="VCF",
+    ):
         with tempfile.TemporaryDirectory() as td:
             cfg = os.path.join(td, "cfg.txt")
             inp = os.path.join(td, "in.vcf")
@@ -115,7 +118,7 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
 
             with open(cfg, "w", encoding="utf-8") as f:
                 f.write("@inputformat=VCF\n")
-                f.write("@outputformat=VCF\n")
+                f.write("@outputformat=" + output_format + "\n")
                 f.write("@reference=" + self.ref_path + "\n")
                 f.write("@ensembl=" + self.ens_path + "\n")
                 f.write("@dbsnp=.\n")
@@ -133,8 +136,10 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
             options.args["parseHaplotype"] = True
             options.args["splitBasedOnProtein"] = bool(split_based)
             options.args["splitadjacentprotein"] = bool(split_adj)
+            options.args["loadalltranscripts"] = load_all
 
-            with open(outprefix + ".vcf", "w", encoding="utf-8") as out:
+            output_path = outprefix + (".vcf" if output_format == "VCF" else ".txt")
+            with open(output_path, "w", encoding="utf-8") as out:
                 core.writeHeader(
                     options, "\n".join(main.readHeader(inp)), out, False, "2.0.15"
                 )
@@ -160,7 +165,7 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
             job.run()
 
             outrows = []
-            with open(outprefix + ".vcf", "r", encoding="utf-8") as f:
+            with open(output_path, "r", encoding="utf-8") as f:
                 if return_raw:
                     return f.read()
                 for line in f:
@@ -269,6 +274,59 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
         self.assertEqual(optimized, exhaustive)
         self.assertEqual(optimized_count, 7)
         self.assertEqual(exhaustive_count, 63)
+
+    def test_overlap_cache_preserves_vcf_and_tsv_output_in_both_lookup_modes(self):
+        rows = [
+            (
+                "chr17", 7675065,
+                "chr17_7675065_A_G;chr17_7675070_C_CT;chr17_7675074_C_T;chr17_7675076_TG_T",
+                "AGCAGCGCTCATG", "GGCAGCTGCTTAT",
+            ),
+            self._build_row_from_tokens([
+                "13_98463673_A_G", "13_98463692_C_A", "13_98463693_G_A", "13_98463696_G_A",
+            ]),
+            (
+                "17", 43044315,
+                "17_43044315_T_A;17_43044317_T_C", "TTT", "ATC",
+            ),
+        ]
+        for load_all, output_format, split_adj in product(
+            (False, True), ("VCF", "TSV"), (False, True)
+        ):
+            with self.subTest(load_all=load_all, output_format=output_format, split_adj=split_adj):
+                with redirect_stdout(io.StringIO()):
+                    cached = self._run_rows(
+                        rows, split_adj=split_adj, return_raw=True,
+                        load_all=load_all, output_format=output_format,
+                    )
+                    with patch.object(
+                        Ensembl, "fetch_overlapping_transcripts",
+                        Ensembl._fetch_overlapping_transcripts,
+                    ):
+                        uncached = self._run_rows(
+                            rows, split_adj=split_adj, return_raw=True,
+                            load_all=load_all, output_format=output_format,
+                        )
+                self.assertEqual(cached, uncached)
+
+    def test_overlap_cache_reduces_real_annotation_lookup_calls(self):
+        row = (
+            "chr17", 7675065,
+            "chr17_7675065_A_G;chr17_7675070_C_CT;chr17_7675074_C_T;chr17_7675076_TG_T",
+            "AGCAGCGCTCATG", "GGCAGCTGCTTAT",
+        )
+        original = Ensembl._fetch_overlapping_transcripts
+        for load_all in (False, True):
+            with self.subTest(load_all=load_all), redirect_stdout(io.StringIO()):
+                with patch.object(Ensembl, "_fetch_overlapping_transcripts", autospec=True, side_effect=original) as fetch:
+                    cached = self._run_rows([row], split_adj=True, return_raw=True, load_all=load_all)
+                    cached_count = fetch.call_count
+                with patch.object(Ensembl, "fetch_overlapping_transcripts", autospec=True, side_effect=original) as fetch:
+                    uncached = self._run_rows([row], split_adj=True, return_raw=True, load_all=load_all)
+                    uncached_count = fetch.call_count
+                self.assertEqual(cached, uncached)
+                self.assertEqual(cached_count, 6)
+                self.assertEqual(uncached_count, 64)
 
     def test_four_variant_splice_impact_is_not_worse_than_components(self):
         donor_side_tokens = [

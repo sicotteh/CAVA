@@ -1,12 +1,16 @@
 import hashlib
 import json
 import os
+import tempfile
 import unittest
+from collections import OrderedDict
 from itertools import product
 from random import Random
+from unittest.mock import patch
 
+from cava.utils import core
 from cava.utils import haplotype
-from cava.utils.data import Reference
+from cava.utils.data import Ensembl, Reference, pysam
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 WORKSPACE_ROOT = os.path.dirname(REPO_ROOT)
@@ -25,6 +29,138 @@ class _Options:
         self.args = {
             "reference": os.path.join(base_dir, "data", "tmp.GRCh38.fa"),
         }
+
+
+class TestTranscriptOverlapCache(unittest.TestCase):
+    @staticmethod
+    def _catalog(load_all, capacity=128):
+        rows = {
+            "1": [("first", 0, 10), ("crossbin", 6, 23), ("adjacent", 10, 20), ("nested", 11, 19), ("long", 20, 60)],
+            "2": [("other", 1, 8), ("multibin", 9, 42), ("last", 42, 50)],
+        }
+
+        class Tabix:
+            def __init__(self):
+                self.calls = []
+
+            def fetch(self, reference, start=None, end=None):
+                self.calls.append((reference, start, end))
+                return iter(
+                    "\t".join((name, ".", ".", ".", reference, ".", str(left), str(right)))
+                    for name, left, right in rows[reference]
+                    if start is None or (left < end and right > start)
+                )
+
+        catalog = Ensembl.__new__(Ensembl)
+        catalog.contigs = {"1": 60, "2": 50}
+        catalog.tabixfile = Tabix()
+        catalog.loadalltranscripts = load_all
+        catalog.chrom = None
+        catalog.transcript_bins = None
+        catalog.binsize = 10
+        catalog._overlap_cache = OrderedDict()
+        catalog._overlap_cache_capacity = capacity
+        return catalog
+
+    def test_cached_overlap_matches_uncached_for_every_interval(self):
+        checked = 0
+        for load_all in (False, True):
+            cached = self._catalog(load_all)
+            baseline = self._catalog(load_all)
+            for chrom, length in cached.contigs.items():
+                for start in range(length + 1):
+                    for end in range(start, length + 1):
+                        expected = list(baseline._fetch_overlapping_transcripts(chrom, start, end))
+                        self.assertEqual(cached.fetch_overlapping_transcripts(chrom, start, end), expected)
+                        before = len(cached.tabixfile.calls)
+                        self.assertEqual(cached.fetch_overlapping_transcripts(chrom, start, end), expected)
+                        self.assertEqual(len(cached.tabixfile.calls), before)
+                        self.assertLessEqual(len(cached._overlap_cache), 128)
+                        checked += 1
+            self.assertEqual(cached.fetch_overlapping_transcripts("unknown", 0, 1), [])
+        self.assertEqual(checked, 2 * (61 * 62 // 2 + 51 * 52 // 2))
+
+    def test_results_are_repeatable_and_independent_of_consumer_mutation(self):
+        for load_all in (False, True):
+            with self.subTest(load_all=load_all):
+                catalog = self._catalog(load_all)
+                first = catalog.fetch_overlapping_transcripts("1", 8, 15)
+                expected = list(first)
+                self.assertTrue(expected)
+                self.assertEqual(list(first), expected)
+                self.assertEqual(list(first), expected)
+                first.clear()
+                self.assertEqual(catalog.fetch_overlapping_transcripts("1", 8, 15), expected)
+                catalog.fetch_overlapping_transcripts("2", 2, 5)
+                self.assertEqual(catalog.fetch_overlapping_transcripts("1", 8, 15), expected)
+                self.assertEqual(catalog.fetch_overlapping_transcripts("1", 45, 50), list(catalog._fetch_overlapping_transcripts("1", 45, 50)))
+
+    def test_lru_limit_refreshes_recency_and_caches_empty_results(self):
+        catalog = self._catalog(False, capacity=2)
+        catalog.fetch_overlapping_transcripts("2", 0, 1)
+        self.assertEqual(catalog.fetch_overlapping_transcripts("2", 0, 1), [])
+        self.assertEqual(len(catalog.tabixfile.calls), 1)
+        catalog.fetch_overlapping_transcripts("1", 0, 1)
+        catalog.fetch_overlapping_transcripts("2", 0, 1)
+        catalog.fetch_overlapping_transcripts("1", 1, 2)
+        self.assertEqual(len(catalog._overlap_cache), 2)
+        self.assertIn(("2", 0, 1, False), catalog._overlap_cache)
+        self.assertNotIn(("1", 0, 1, False), catalog._overlap_cache)
+        before = len(catalog.tabixfile.calls)
+        catalog.fetch_overlapping_transcripts("1", 0, 1)
+        self.assertEqual(len(catalog.tabixfile.calls), before + 1)
+
+    def test_cache_is_instance_local_and_separates_lookup_modes(self):
+        first = self._catalog(False)
+        second = self._catalog(False)
+        first.fetch_overlapping_transcripts("1", 0, 1)
+        self.assertEqual(len(second._overlap_cache), 0)
+        second.fetch_overlapping_transcripts("1", 0, 1)
+        self.assertEqual(len(second.tabixfile.calls), 1)
+        first.loadalltranscripts = True
+        first.fetch_overlapping_transcripts("1", 0, 1)
+        self.assertEqual(len(first.tabixfile.calls), 2)
+        self.assertEqual(len(first._overlap_cache), 2)
+
+    def test_failed_iteration_is_not_cached(self):
+        catalog = self._catalog(False)
+
+        def failed_fetch(**kwargs):
+            yield "partial"
+            raise ValueError("failed tabix iteration")
+
+        with patch.object(catalog.tabixfile, "fetch", side_effect=failed_fetch):
+            for _ in range(2):
+                with self.assertRaisesRegex(ValueError, "failed tabix iteration"):
+                    catalog.fetch_overlapping_transcripts("1", 0, 1)
+                self.assertEqual(len(catalog._overlap_cache), 0)
+        self.assertTrue(catalog.fetch_overlapping_transcripts("1", 0, 1))
+
+    def test_real_tabix_cached_queries_match_uncached_in_both_modes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "transcripts.tsv")
+            catalog = self._catalog(False)
+            with open(path, "w", encoding="utf-8") as handle:
+                for chrom in ("1", "2"):
+                    for line in catalog.tabixfile.fetch(reference=chrom):
+                        handle.write(line + "\n")
+            compressed = pysam.tabix_index(
+                path, seq_col=4, start_col=6, end_col=7, zerobased=True,
+            )
+            with pysam.TabixFile(compressed) as tabix:
+                for load_all in (False, True):
+                    cached = self._catalog(load_all)
+                    baseline = self._catalog(load_all)
+                    cached.tabixfile = tabix
+                    baseline.tabixfile = tabix
+                    for start in range(61):
+                        for chrom, length in cached.contigs.items():
+                            if start > length:
+                                continue
+                            for end in range(start, length + 1):
+                                expected = list(baseline._fetch_overlapping_transcripts(chrom, start, end))
+                                self.assertEqual(cached.fetch_overlapping_transcripts(chrom, start, end), expected)
+                                self.assertEqual(cached.fetch_overlapping_transcripts(chrom, start, end), expected)
 
 
 class TestHaplotypeParser(unittest.TestCase):
@@ -243,6 +379,79 @@ class TestHaplotypeParser(unittest.TestCase):
                     expected,
                     tuple(atom.token for atom in atoms),
                 )
+
+    def test_reference_metadata_cache_preserves_aliases_and_boundaries(self):
+        class Fasta:
+            def __init__(self, sequences):
+                self.sequences = sequences
+                self.references = tuple(sequences)
+                self.lengths = tuple(len(value) for value in sequences.values())
+                self.fetches = []
+
+            def fetch(self, chrom, start, end):
+                self.fetches.append((chrom, start, end))
+                return self.sequences[chrom][start:end]
+
+            def get_reference_length(self, chrom):
+                raise AssertionError("Contig lengths should use cached metadata")
+
+        contig_sets = (
+            {"chr1": "ACGT", "chrM": "TGCA", "chr1_ALT": "AACC"},
+            {"1": "ACGT", "MT": "TGCA", "1_ALT": "AACC"},
+            {"chr1": "ACGT", "1": "TTAA", "chrMT": "AC", "chrM": "TGCA"},
+        )
+        aliases = ("chr1", "1", "CHR1", "chrM", "chrMT", "M", "MT", "mt", "chr1_ALT", "1_ALT", "unknown")
+        for sequences in contig_sets:
+            with self.subTest(contigs=tuple(sequences)):
+                fasta = Fasta(sequences)
+                with patch("cava.utils.data.pysam.FastaFile", return_value=fasta):
+                    reference = Reference(_Options())
+                with patch.object(core, "convert_chrom", wraps=core.convert_chrom) as resolve:
+                    for chrom in aliases:
+                        canonical = core.convert_chrom(chrom, fasta.references)
+                        before = resolve.call_count
+                        for _ in range(2):
+                            for start, end in ((1, 1), (1, 2), (2, 1), (0, 1), (1, 5)):
+                                if canonical is None:
+                                    self.assertIsNone(reference.getReference(chrom, start, end))
+                                elif end < start:
+                                    self.assertEqual(reference.getReference(chrom, start, end), "")
+                                elif start < 1:
+                                    with self.assertRaisesRegex(Exception, "before first base"):
+                                        reference.getReference(chrom, start, end)
+                                elif end > len(sequences[canonical]):
+                                    with self.assertRaisesRegex(Exception, "after last base"):
+                                        reference.getReference(chrom, start, end)
+                                else:
+                                    self.assertEqual(reference.getReference(chrom, start, end), sequences[canonical][start - 1:end])
+                        self.assertEqual(resolve.call_count - before, 1)
+                self.assertTrue(all(chrom in fasta.references for chrom, _, _ in fasta.fetches))
+
+    def test_reference_metadata_and_sequence_caches_are_instance_local(self):
+        class Fasta:
+            references = ("chr1",)
+
+            def __init__(self, sequence):
+                self.sequence = sequence
+                self.lengths = (len(sequence),)
+                self.fetch_count = 0
+
+            def fetch(self, chrom, start, end):
+                self.fetch_count += 1
+                return self.sequence[start:end]
+
+        first_fasta = Fasta("ACGT")
+        second_fasta = Fasta("TT")
+        with patch("cava.utils.data.pysam.FastaFile", side_effect=(first_fasta, second_fasta)):
+            first = Reference(_Options())
+            second = Reference(_Options())
+        for _ in range(3):
+            self.assertEqual(first.getReference("1", 1, 4), "ACGT")
+            self.assertEqual(second.getReference("1", 1, 2), "TT")
+        with self.assertRaisesRegex(Exception, "after last base"):
+            second.getReference("1", 1, 4)
+        self.assertEqual(first_fasta.fetch_count, 1)
+        self.assertEqual(second_fasta.fetch_count, 1)
 
     def test_invalid_duplicate_token(self):
         with self.assertRaises(haplotype.HaplotypeError):
