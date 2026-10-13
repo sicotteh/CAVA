@@ -188,8 +188,9 @@ This release adds an experimental mode for phased cis haplotypes encoded in the 
 CLI flags:
 
 - `--parseHaplotype` enables parsing/validation of semicolon-separated atomic IDs.
-- `--splitBasedOnProtein` emits additional subset records after haplotype annotation when the protein consequence can be partitioned into independent components.
-- `--splitAdjacentProtein` emits optional additional records even when the full protein consequence is an adjacent multi-residue replacement, as long as the split records still reproduce the same residue changes after reannotation.
+- `--splitBasedOnProtein` emits independently reannotated protein-block subsets when at least one unchanged amino acid separates the changed blocks.
+- `--splitAdjacentProtein` also permits splitting adjacent changed amino acids, with no unchanged amino acid between the blocks. It works alone or together with `--splitBasedOnProtein`, and emits only subsets supported by reannotation.
+- `--keepHapAfterSplit` retains the original haplotype record alongside emitted split alleles. By default, the original is omitted when at least one valid split allele is emitted.
 
 Dependencies:
 

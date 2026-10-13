@@ -38,6 +38,7 @@ class TestHaplotypePromptJsonConformance(unittest.TestCase):
             for r in cls.all_rows
             if r.get("VCF_SEQUENCE_STATUS") == "VERIFIED_GRCH38_PLUS_STRAND"
             and r.get("test_id") != "2V-031"
+            and r.get("SPLITNEARBY", "No") != "Yes"
         ]
 
     def _run_single_job(self, rows, split_based=True, split_adj=True):
@@ -200,6 +201,34 @@ class TestHaplotypePromptJsonConformance(unittest.TestCase):
 
         self.assertFalse(saw_canonical)
         self.assertTrue(saw_split)
+
+    def test_non_reconstructible_splitnearby_does_not_duplicate_full_haplotype(self):
+        row = next(
+            r for r in self.all_rows if r["test_id"] == "2V-025-SPLITNEARBY"
+        )
+        outrows = self._run_single_job([row], split_based=True, split_adj=True)
+        full_haplotype_rows = []
+        emitted_haplotypes = set()
+
+        for cols in outrows:
+            pairs = {}
+            for item in cols[7].split(";"):
+                if "=" in item:
+                    key, value = item.split("=", 1)
+                    pairs[key] = value
+            if (
+                unquote(pairs.get("CAVA_ORIGHAPLOTYPE", "")) == row["VCFID"]
+            ):
+                hap = unquote(pairs.get("CAVA_HAPLOTYPE", ""))
+                emitted_haplotypes.add(hap)
+                if hap == row["VCFID"]:
+                    full_haplotype_rows.append(cols)
+
+        self.assertEqual(full_haplotype_rows, [])
+        self.assertEqual(
+            emitted_haplotypes,
+            {"chr17_7675070_C_CT", "chr17_7675076_TG_T"},
+        )
 
     def test_splice_p_unknown_still_splits_nearby(self):
         row = next(

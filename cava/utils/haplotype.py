@@ -538,15 +538,67 @@ def protein_partition_subset_sizes(
     return range(1, atom_count)
 
 
+def _protein_component_position_range(component: str):
+    if not component or any(marker in component for marker in ("fs", "Ter", "?")):
+        return None
+    positions = re.findall(r"[A-Z][a-z]{2}(\d+)", component)
+    if not positions:
+        return None
+    positions = [int(position) for position in positions]
+    return min(positions), max(positions)
+
+
+def _merge_adjacent_protein_partitions(partitions, subset_component_map):
+    positioned = []
+    for key in partitions:
+        components = subset_component_map.get(key, [])
+        ranges = [
+            _protein_component_position_range(component)
+            for component in components
+        ]
+        if not ranges or any(position_range is None for position_range in ranges):
+            return partitions
+        positioned.append(
+            (
+                key,
+                min(position_range[0] for position_range in ranges),
+                max(position_range[1] for position_range in ranges),
+            )
+        )
+
+    positioned.sort(key=lambda item: (item[1], item[0]))
+    merged = []
+    current_key, current_start, current_end = positioned[0]
+    for key, start, end in positioned[1:]:
+        if start <= current_end + 1:
+            current_key = tuple(sorted(current_key + key))
+            current_end = max(current_end, end)
+        else:
+            merged.append(current_key)
+            current_key, current_start, current_end = key, start, end
+    merged.append(current_key)
+    return merged
+
+
 def choose_protein_partitions(
-    full_components: List[str], subset_component_map: dict, atoms: List[AtomicEdit]
+    full_components: List[str],
+    subset_component_map: dict,
+    atoms: List[AtomicEdit],
+    split_adjacent: bool = False,
 ) -> List[List[AtomicEdit]]:
     if len(full_components) <= 1:
-        # When multiple DNA edits collapse into one protein component (e.g. merged delins),
-        # still expose deterministic per-atomic splits for downstream analysis.
         if len(atoms) <= 1:
             return [atoms]
-        return [[a] for a in atoms]
+        if not full_components:
+            return [atoms]
+        if any((i,) not in subset_component_map for i in range(len(atoms))):
+            return [atoms]
+        chosen = [(i,) for i in range(len(atoms))]
+        if not split_adjacent:
+            chosen = _merge_adjacent_protein_partitions(
+                chosen, subset_component_map
+            )
+        return [[atoms[i] for i in key] for key in chosen]
 
     # Candidate subsets that map to one canonical component.
     single_hits = {}
@@ -564,23 +616,28 @@ def choose_protein_partitions(
     chosen = []
     for c in full_components:
         if c not in single_hits:
-            continue
+            return [atoms]
         key = single_hits[c]
         if any(i in used for i in key):
-            continue
+            return [atoms]
         chosen.append(key)
         used.update(key)
 
-    if len(chosen) == 0:
-        return [atoms]
-
-    # Any uncovered variants become independent deterministic subsets.
+    # Unmatched variants may join a partition only when their own annotation exists.
     for i in range(len(atoms)):
         if i not in used:
+            if (i,) not in subset_component_map:
+                return [atoms]
             chosen.append((i,))
+            used.add(i)
+
+    if len(used) != len(atoms):
+        return [atoms]
 
     # Sort subsets by lowest genomic coordinate.
     chosen.sort(key=lambda idxs: min(atoms[i].pos for i in idxs))
+    if not split_adjacent:
+        chosen = _merge_adjacent_protein_partitions(chosen, subset_component_map)
     return [[atoms[i] for i in idxs] for idxs in chosen]
 
 

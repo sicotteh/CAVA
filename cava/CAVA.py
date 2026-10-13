@@ -70,14 +70,21 @@ def _build_parser(version):
         default=False,
         dest="splitBasedOnProtein",
         action="store_true",
-        help="Split parsed haplotypes into subsets and reannotate [default value: %default]",
+        help="Split into independently reannotated protein blocks separated by at least one unchanged amino acid [default value: %default]",
     )
     parser.add_option(
         "--splitAdjacentProtein",
         default=False,
         dest="splitAdjacentProtein",
         action="store_true",
-        help="Emit optional adjacent protein split outputs for parsed haplotypes [default value: %default]",
+        help="Also allow separate outputs for adjacent changed amino acids, without an unchanged amino acid between blocks [default value: %default]",
+    )
+    parser.add_option(
+        "--keepHapAfterSplit",
+        default=False,
+        dest="keepHapAfterSplit",
+        action="store_true",
+        help="Keep the original haplotype record when split alleles are emitted [default value: %default]",
     )
     return parser
 

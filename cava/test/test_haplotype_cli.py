@@ -6,6 +6,7 @@ import unittest
 from contextlib import redirect_stdout
 from itertools import product
 
+from cava.CAVA import _build_parser
 from cava.utils import core
 from cava.utils import haplotype
 from cava.utils import main
@@ -25,6 +26,14 @@ class TestHaplotypeCLI(unittest.TestCase):
     def setUpClass(cls):
         cls.reference = Reference(_Options())
         cls.repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+
+    def test_keep_haplotype_after_split_cli_option(self):
+        parser = _build_parser("test")
+        default_options, _ = parser.parse_args([])
+        enabled_options, _ = parser.parse_args(["--keepHapAfterSplit"])
+
+        self.assertFalse(default_options.keepHapAfterSplit)
+        self.assertTrue(enabled_options.keepHapAfterSplit)
 
     def test_header_has_haplotype_tags(self):
         options = core.Options(os.path.join(self.repo_root, "config_template.txt"))

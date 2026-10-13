@@ -102,13 +102,17 @@
 # Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
 @parseHaplotype = FALSE
 
-# Split parsed haplotypes into deterministic subsets and reannotate each subset.
+# Split parsed haplotypes into protein blocks separated by at least one unchanged amino acid.
 # Requires @parseHaplotype=TRUE.
 # Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
 @splitBasedOnProtein = FALSE
 
-# Emit optional adjacent protein split outputs in addition to canonical output.
+# Also allow splitting adjacent changed amino acids, without an unchanged amino acid between blocks.
 # Requires @parseHaplotype=TRUE.
 # Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
 @splitadjacentprotein = FALSE
+
+# Keep the original haplotype record in addition to emitted split alleles.
+# Possible values: TRUE or FALSE | Optional: yes | Default value: FALSE
+@keepHapAfterSplit = FALSE
 

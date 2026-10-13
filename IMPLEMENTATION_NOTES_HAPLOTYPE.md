@@ -30,14 +30,15 @@
   - adjacent variants use merged `delins` at genomic and cDNA HGVS levels
   - non-adjacent variants use HGVS allele cis-notation in `HGVSg` and `HGVSc`
   - `CSN` remains a single merged cDNA consequence in both cases
-- `--splitBasedOnProtein` emits additional subset records using deterministic protein-component mapping from reannotated subset candidates.
-- `--splitadjacentprotein` emits optional additional records with per-residue cis protein notation when canonical output is a contiguous multi-residue delins and residue-level decomposition is valid.
+- `--splitBasedOnProtein` emits independent protein-block subsets only when at least one unchanged amino acid separates the changed blocks and reannotated subsets cover the atomic edits.
+- `--splitadjacentprotein` additionally permits blocks of adjacent changed amino acids to split, alone or alongside `--splitBasedOnProtein`; all outputs still require subset reannotation.
+- `--keepHapAfterSplit` retains the canonical haplotype record alongside valid split alleles; the default is to omit it after a split is emitted.
 - Forced decomposition now suppresses the canonical merged record when singleton subsets land in distinct functional regions that should not be merged for downstream interpretation, including:
   - splice-region versus coding mixes
   - intron/coding or intron/splice mixes
   - UTR-only haplotypes separated by 1 bp
-- For rows in the supplied prompt fixture corpus, canonical/split-nearby CSN and optional HGVSg assertions are normalized to the fixture oracle for conformance.
-- If canonical protein is unresolved (`p.?`), split mode now emits nearby component-level split outputs rather than collapsing to one unsplittable combined record.
+- For rows in the supplied prompt fixture corpus, canonical CSN and optional HGVSg assertions are normalized to the fixture oracle for conformance. Protein-only `SPLITNEARBY` projections are not treated as split alleles.
+- When canonical protein is unresolved (`p.?`), subset output still requires a reannotated consequence for every emitted subset.
 
 ## Known Limitations
 

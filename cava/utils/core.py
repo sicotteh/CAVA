@@ -2702,6 +2702,7 @@ class Options(object):
         self.defs["parseHaplotype"] = ("boolean", False)
         self.defs["splitBasedOnProtein"] = ("boolean", False)
         self.defs["splitadjacentprotein"] = ("boolean", False)
+        self.defs["keepHapAfterSplit"] = ("boolean", False)
 
         self.defs["transcript2protein"] = ("string", ".")
         self.defs["loadalltranscripts"] = ("boolean", True)

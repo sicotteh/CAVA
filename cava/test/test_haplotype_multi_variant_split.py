@@ -109,7 +109,7 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
 
     def _run_rows(
         self, rows, split_based=True, split_adj=False, return_raw=False,
-        load_all=True, output_format="VCF",
+        load_all=True, output_format="VCF", keep_hap_after_split=False,
     ):
         with tempfile.TemporaryDirectory() as td:
             cfg = os.path.join(td, "cfg.txt")
@@ -136,6 +136,7 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
             options.args["parseHaplotype"] = True
             options.args["splitBasedOnProtein"] = bool(split_based)
             options.args["splitadjacentprotein"] = bool(split_adj)
+            options.args["keepHapAfterSplit"] = bool(keep_hap_after_split)
             options.args["loadalltranscripts"] = load_all
 
             output_path = outprefix + (".vcf" if output_format == "VCF" else ".txt")
@@ -216,6 +217,65 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
                 list(haplotype.protein_partition_subset_sizes(count, [], True, True, True)),
                 [],
             )
+
+    def test_split_adjacent_emits_reannotated_atomic_alleles_only(self):
+        row = (
+            "1",
+            69500,
+            "chr1_69500_T_C;chr1_69511_A_G",
+            "TTATGGCTGTCA",
+            "CTATGGCTGTCG",
+        )
+        outrows = self._run_rows([row], split_based=True, split_adj=True)
+        emitted = [r for r in outrows if r["orig"] == row[2]]
+        by_haplotype = defaultdict(list)
+        for rec in emitted:
+            by_haplotype[rec["hap"]].append(rec)
+
+        self.assertEqual(
+            set(by_haplotype),
+            {"chr1_69500_T_C", "chr1_69511_A_G"},
+        )
+        self.assertEqual(by_haplotype["chr1_69500_T_C"][0]["csn"], "c.473T>C_p.Ile158Thr")
+        self.assertEqual(by_haplotype["chr1_69511_A_G"][0]["csn"], "c.484A>G_p.Thr162Ala")
+
+        protein_only_rows = self._run_rows(
+            [row], split_based=True, split_adj=False
+        )
+        protein_only_haplotypes = {
+            r["hap"] for r in protein_only_rows if r["orig"] == row[2]
+        }
+        self.assertEqual(
+            protein_only_haplotypes,
+            {"chr1_69500_T_C", "chr1_69511_A_G"},
+        )
+
+        kept_rows = self._run_rows(
+            [row], split_based=True, split_adj=True, keep_hap_after_split=True
+        )
+        kept_haplotypes = {r["hap"] for r in kept_rows if r["orig"] == row[2]}
+        self.assertEqual(
+            kept_haplotypes,
+            {row[2], "chr1_69500_T_C", "chr1_69511_A_G"},
+        )
+
+    def test_split_adjacent_works_without_split_based_on_protein(self):
+        row = (
+            "1",
+            69500,
+            "chr1_69500_T_C;chr1_69511_A_G",
+            "TTATGGCTGTCA",
+            "CTATGGCTGTCG",
+        )
+        outrows = self._run_rows([row], split_based=False, split_adj=True)
+        emitted_haplotypes = {
+            r["hap"] for r in outrows if r["orig"] == row[2]
+        }
+
+        self.assertEqual(
+            emitted_haplotypes,
+            {"chr1_69500_T_C", "chr1_69511_A_G"},
+        )
 
     def test_subset_shortcuts_preserve_complete_vcf_output(self):
         tokens = []
@@ -326,7 +386,7 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
                     uncached_count = fetch.call_count
                 self.assertEqual(cached, uncached)
                 self.assertEqual(cached_count, 6)
-                self.assertEqual(uncached_count, 64)
+                self.assertEqual(uncached_count, 60)
 
     def test_four_variant_splice_impact_is_not_worse_than_components(self):
         donor_side_tokens = [
@@ -500,7 +560,7 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
                 sorted(case["expected_split"]), sorted(split_csns), msg=case["name"]
             )
 
-    def test_all_two_serine_snv_pairs_split_to_independent_expected_arrays(self):
+    def test_adjacent_serine_snv_pairs_split_only_with_adjacent_flag(self):
         # Known consecutive Ser codons from existing single-variant region:
         # chr17:43092111-43092116 is ACTACT on genome (+), coding Ser1140/Ser1139 on transcript (-).
         chrom = "17"
@@ -562,7 +622,30 @@ class TestHaplotypeMultiVariantSplit(unittest.TestCase):
                 multi_rows.append(row)
                 expected_arrays.append((row[2], expected))
 
-        multi_out = self._run_rows(multi_rows)
+        adjacent_case, adjacent_expected = build_haplotype_row(
+            left_block[0], right_block[0]
+        )
+        protein_only_out = self._run_rows(
+            [adjacent_case], split_based=True, split_adj=False
+        )
+        protein_only = [
+            r for r in protein_only_out if r["orig"] == adjacent_case[2]
+        ]
+        self.assertEqual(len(protein_only), 1)
+        self.assertEqual(protein_only[0]["hap"], adjacent_case[2])
+
+        adjacent_only_out = self._run_rows(
+            [adjacent_case], split_based=False, split_adj=True
+        )
+        adjacent_only_haplotypes = {
+            r["hap"] for r in adjacent_only_out if r["orig"] == adjacent_case[2]
+        }
+        self.assertEqual(
+            adjacent_only_haplotypes,
+            set(adjacent_case[2].split(";")),
+        )
+
+        multi_out = self._run_rows(multi_rows, split_based=True, split_adj=True)
         by_orig = defaultdict(list)
         for r in multi_out:
             by_orig[r["orig"]].append(r)
